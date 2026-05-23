@@ -1,6 +1,7 @@
 import TopMenu from "@/components/TopMenu";
 import HowItWorks from "@/components/HowItWorks";
 import ChauffeursPreview from "@/components/ChauffeursPreview";
+import BookingForm from "@/components/BookingForm";
 
 export default function Home() {
   return (
@@ -39,6 +40,7 @@ export default function Home() {
       </section>
       <HowItWorks />
       <ChauffeursPreview />
+      <BookingForm />
     </main>
   );
 }
