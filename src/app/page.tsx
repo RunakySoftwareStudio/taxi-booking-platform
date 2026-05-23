@@ -1,6 +1,12 @@
+import TopMenu from "@/components/TopMenu";
+import HowItWorks from "@/components/HowItWorks";
+import ChauffeursPreview from "@/components/ChauffeursPreview";
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
+      <TopMenu />
+
       <section className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 text-center">
         <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">
           Taxi Chauffeur Platform
@@ -31,6 +37,8 @@ export default function Home() {
           </a>
         </div>
       </section>
+      <HowItWorks />
+      <ChauffeursPreview />
     </main>
   );
 }
