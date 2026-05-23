@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
+import { type BookingRequest } from "@/types/booking";
 
 export default function BookingForm() 
 {
@@ -12,19 +13,20 @@ export default function BookingForm()
     const formData = new FormData(event.currentTarget);
 
 
-    const bookingRequest = {
-    pickup: formData.get("pickup"),
-    destination: formData.get("destination"),
-    date: formData.get("date"),
-    time: formData.get("time"),
-    passengers: formData.get("passengers"),
-    luggage: formData.get("luggage"),
-    name: formData.get("name"),
-    phone: formData.get("phone"),
-    email: formData.get("email"),
-    tripType: formData.get("tripType"),
-    notes: formData.get("notes"),
+    const bookingRequest: BookingRequest = {
+        pickup: String(formData.get("pickup") || ""),
+        destination: String(formData.get("destination") || ""),
+        date: String(formData.get("date") || ""),
+        time: String(formData.get("time") || ""),
+        passengers: String(formData.get("passengers") || ""),
+        luggage: String(formData.get("luggage") || ""),
+        name: String(formData.get("name") || ""),
+        phone: String(formData.get("phone") || ""),
+        email: String(formData.get("email") || ""),
+        tripType: String(formData.get("tripType") || ""),
+        notes: String(formData.get("notes") || ""),
     };
+    
     console.log("Booking request:", bookingRequest);
 
     setSubmitted(true);
