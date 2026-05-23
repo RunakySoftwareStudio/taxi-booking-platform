@@ -1,5 +1,8 @@
-const chauffeurs = [
+import { type Chauffeur } from "@/types/chauffeur";
+
+const chauffeurs: Chauffeur[] = [
   {
+    id: "chauffeur-1",
     name: "Hassan",
     vehicle: "Mercedes E-Class",
     area: "Amsterdam / Schiphol",
@@ -7,6 +10,7 @@ const chauffeurs = [
     rating: "4.9",
   },
   {
+    id: "chauffeur-2",
     name: "Rozbeh",
     vehicle: "Tesla Model Y",
     area: "Utrecht / Amsterdam",
@@ -14,6 +18,7 @@ const chauffeurs = [
     rating: "4.8",
   },
   {
+    id: "chauffeur-3",
     name: "Dominik",
     vehicle: "Mercedes Vito Van",
     area: "Rotterdam / The Hague",
@@ -44,7 +49,7 @@ export default function ChauffeursPreview() {
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {chauffeurs.map((chauffeur) => (
             <div
-              key={chauffeur.name}
+              key={chauffeur.id}
               className="rounded-2xl border border-white/10 bg-white/5 p-6"
             >
               <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-400 text-xl font-bold text-slate-950">
