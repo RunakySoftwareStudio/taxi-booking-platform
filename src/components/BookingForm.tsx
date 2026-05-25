@@ -2,6 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { type BookingRequest } from "@/types/bookingType";
+import { tripTypes } from "@/data/tripTypeData";
 
 export default function BookingForm() 
 {
@@ -64,17 +65,17 @@ export default function BookingForm()
             >
                 <div className="grid gap-6 md:grid-cols-2">
                     <div>
-                    <label htmlFor="pickup" className="mb-2 block text-sm font-medium">
-                        Pickup location
-                    </label>
-                    <input
-                        id="pickup"
-                        name="pickup"
-                        type="text"
-                        required
-                        placeholder="Amsterdam Central Station"
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                    />
+                        <label htmlFor="pickup" className="mb-2 block text-sm font-medium">
+                            Pickup location
+                        </label>
+                        <input
+                            id="pickup"
+                            name="pickup"
+                            type="text"
+                            required
+                            placeholder="Amsterdam Central Station"
+                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
+                        />
                     </div>
 
                     <div>
@@ -169,21 +170,21 @@ export default function BookingForm()
                     </div>
 
                     <div>
-                    <label htmlFor="phone" className="mb-2 block text-sm font-medium">
-                        Phone number
-                    </label>
-                    <input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        
-                        required
-                        inputMode="tel"
-                        pattern="\+?[0-9 ]{7,20}"
-                        title="Please enter a valid phone number. Use numbers, +, spaces, or - only."
-                        placeholder="+31 6 12345678"
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                    />
+                        <label htmlFor="phone" className="mb-2 block text-sm font-medium">
+                            Phone number
+                        </label>
+                        <input
+                            id="phone"
+                            name="phone"
+                            type="tel"
+                            
+                            required
+                            inputMode="tel"
+                            pattern="\+?[0-9 ]{7,20}"
+                            title="Please enter a valid phone number. Use numbers, +, spaces, or - only."
+                            placeholder="+31 6 12345678"
+                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
+                        />
                     </div>
 
                     <div>
@@ -210,12 +211,9 @@ export default function BookingForm()
                             required
                             className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400"
                         >
-                            <option value="">Select trip type</option>
-                            <option value="one-way">One-way trip</option>
-                            <option value="return">Return trip</option>
-                            <option value="airport">Airport transfer</option>
-                            <option value="business">Business trip</option>
-                            <option value="hourly">Hourly chauffeur</option>
+                                <option value=""> Select trip type </option> 
+                                {/* <option value="one-way">One-way trip</option> */}
+                                {tripTypes.map((tripType) => ( <option key={tripType.value} value={tripType.value}> {tripType.label} </option>))}
                         </select>
                     </div>
 
