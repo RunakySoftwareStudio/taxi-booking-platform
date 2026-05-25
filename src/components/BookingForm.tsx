@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import { type BookingRequest } from "@/types/booking";
+import { type BookingRequest } from "@/types/bookingType";
 
 export default function BookingForm() 
 {
@@ -26,7 +26,7 @@ export default function BookingForm()
         tripType: String(formData.get("tripType") || ""),
         notes: String(formData.get("notes") || ""),
     };
-    
+
     console.log("Booking request:", bookingRequest);
 
     setSubmitted(true);

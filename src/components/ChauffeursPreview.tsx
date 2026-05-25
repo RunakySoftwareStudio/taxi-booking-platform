@@ -1,31 +1,5 @@
-import { type Chauffeur } from "@/types/chauffeur";
 
-const chauffeurs: Chauffeur[] = [
-  {
-    id: "chauffeur-1",
-    name: "Hassan",
-    vehicle: "Mercedes E-Class",
-    area: "Amsterdam / Schiphol",
-    status: "Available today",
-    rating: "4.9",
-  },
-  {
-    id: "chauffeur-2",
-    name: "Rozbeh",
-    vehicle: "Tesla Model Y",
-    area: "Utrecht / Amsterdam",
-    status: "Available tomorrow",
-    rating: "4.8",
-  },
-  {
-    id: "chauffeur-3",
-    name: "Dominik",
-    vehicle: "Mercedes Vito Van",
-    area: "Rotterdam / The Hague",
-    status: "Busy now",
-    rating: "4.7",
-  },
-];
+import { chauffeurs } from "@/data/chauffeurData";
 
 export default function ChauffeursPreview() {
   return (
