@@ -1,3 +1,6 @@
+
+import { type BookingStatus } from "@/types/bookingStatusType";
+
 export type BookingRequest = {
   pickup: string;
   destination: string;
@@ -10,4 +13,5 @@ export type BookingRequest = {
   email: string;
   tripType: string;
   notes: string;
+  status: BookingStatus;
 };

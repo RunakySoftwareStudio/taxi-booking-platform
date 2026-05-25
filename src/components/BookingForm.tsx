@@ -26,6 +26,7 @@ export default function BookingForm()
         email: String(formData.get("email") || ""),
         tripType: String(formData.get("tripType") || ""),
         notes: String(formData.get("notes") || ""),
+        status: "pending",
     };
 
     console.log("Booking request:", bookingRequest);
