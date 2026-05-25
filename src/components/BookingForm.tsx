@@ -7,13 +7,13 @@ import { tripTypes } from "@/data/tripTypeData";
 export default function BookingForm() 
 {
   const [submitted, setSubmitted] = useState(false);
-
+  const [submittedBooking, setSubmittedBooking] = useState<BookingRequest | null>(null);
+  
+  useState<BookingRequest | null>(null);
+  
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     const formData = new FormData(event.currentTarget);
-
-
     const bookingRequest: BookingRequest = {
         pickup: String(formData.get("pickup") || ""),
         destination: String(formData.get("destination") || ""),
@@ -30,7 +30,7 @@ export default function BookingForm()
     };
 
     console.log("Booking request:", bookingRequest);
-
+    setSubmittedBooking(bookingRequest);
     setSubmitted(true);
     event.currentTarget.reset();
 }
@@ -52,18 +52,62 @@ export default function BookingForm()
                 an available chauffeur.
             </p>
             </div>
-
             {submitted && (
-            <div className="mt-8 rounded-2xl border border-green-400/30 bg-green-400/10 p-4 text-green-200">
-                Your booking request has been received. We will connect you with an
-                available chauffeur.
-            </div>
-            )}
+                <div className="mt-8 rounded-2xl border border-green-400/30 bg-green-400/10 p-4 text-green-200">
+                    Your booking request has been received. We will connect you with an
+                    available chauffeur.
+                </div>)
+            }
 
-            <form
-            onSubmit={handleSubmit}
-            className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-6"
-            >
+            {submittedBooking && (
+                <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950 p-6">
+                    <h3 className="text-xl font-semibold text-white"> Booking summary </h3>
+
+                    <div className="mt-6 grid gap-4 text-sm text-slate-300 md:grid-cols-2">
+                    <p>
+                        <span className="font-semibold text-white">Pickup:</span>{" "}
+                        {submittedBooking.pickup}
+                    </p>
+
+                    <p>
+                        <span className="font-semibold text-white">Destination:</span>{" "}
+                        {submittedBooking.destination}
+                    </p>
+
+                    <p>
+                        <span className="font-semibold text-white">Date:</span>{" "}
+                        {submittedBooking.date}
+                    </p>
+
+                    <p>
+                        <span className="font-semibold text-white">Time:</span>{" "}
+                        {submittedBooking.time}
+                    </p>
+
+                    <p>
+                        <span className="font-semibold text-white">Passengers:</span>{" "}
+                        {submittedBooking.passengers}
+                    </p>
+
+                    <p>
+                        <span className="font-semibold text-white">Trip type:</span>{" "}
+                        {submittedBooking.tripType}
+                    </p>
+
+                    <p>
+                        <span className="font-semibold text-white">Client:</span>{" "}
+                        {submittedBooking.name}
+                    </p>
+
+                    <p>
+                        <span className="font-semibold text-white">Status:</span>{" "}
+                        {submittedBooking.status}
+                    </p>
+                    </div>
+                </div>)
+            }
+
+            <form onSubmit={handleSubmit} className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-6">
                 <div className="grid gap-6 md:grid-cols-2">
                     <div>
                         <label htmlFor="pickup" className="mb-2 block text-sm font-medium">
@@ -233,10 +277,7 @@ export default function BookingForm()
                     />
                 </div>
 
-                <button
-                    type="submit"
-                    className="mt-8 rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300"
-                >
+                <button type="submit" className="mt-8 rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300">
                     Send booking request
                 </button>
             </form>
