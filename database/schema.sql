@@ -84,6 +84,14 @@ CREATE TYPE trip_type AS ENUM (
   'hourly'
 );
 
+-- Chauffeur availability status values
+CREATE TYPE availability_status AS ENUM (
+  'available',
+  'busy',
+  'offline',
+  'holiday'
+);
+
 -- Chauffeur availability schedule
 CREATE TABLE chauffeur_availability (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -100,13 +108,7 @@ CREATE TABLE chauffeur_availability (
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
--- Chauffeur availability status values
-CREATE TYPE availability_status AS ENUM (
-  'available',
-  'busy',
-  'offline',
-  'holiday'
-);
+
 
 -- Taxi trip booking requests
 CREATE TABLE bookings (
@@ -227,3 +229,9 @@ FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
 --===================================================================
+/* Enable Row Level Security */
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chauffeurs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chauffeur_availability ENABLE ROW LEVEL SECURITY;

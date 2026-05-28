@@ -1,37 +1,80 @@
 import { NextResponse } from "next/server";
 import { type BookingRequest } from "@/types/bookingType";
+import { supabaseAdmin } from "@/lib/supabaseServer";
 
-/*
-    -- That /api/bookings is our API endpoint.
-    -- Make this function available to Next.js.
-    -- Next.js looks inside route.ts and searches for exported functions like: GET, POST, PUT, DELETE
-    -- async This function can wait for something.
-    -- const bookingRequest = await request.json(); = Reading JSON from the request takes a moment, so we wait for it. This line receives the booking data:
-    -- function POST = Run this function when the frontend sends a POST request to this API route.
-    -- So this file: src/app/api/bookings/route.ts, creates this API URL: /api/bookings  And this function handles: POST /api/bookings
-    -- request.json(): This reads data from the frontend: Client says something
-    -- NextResponse.json() : This sends data back to the frontend: API answers back  
-*/
 export async function POST(request: Request) {
-  try 
-    {
-        const bookingRequest = (await request.json()) as BookingRequest; // 
+  try {
+    const bookingRequest = (await request.json()) as BookingRequest;
 
-        console.log("Booking request received by API:", bookingRequest); //This line prints it in the VS Code terminal, not the browser console:
+    console.log("Booking request received by API:", bookingRequest);
 
-        // This part sends an answer back to the frontend.
-        // return = Stop the function here and send something back.
-        return NextResponse.json // This creates a JSON response for the frontend. JSON is the common format used between frontend and backend.
-        ( 
-            {
-                message: "Booking request received successfully",
-                booking: bookingRequest,
-            },
-            { status: 201 }
-        );
-    } 
-    catch (error) 
-    {
-        return NextResponse.json( { message: "Invalid booking request", }, { status: 400 });
+    const { data: client, error: clientError } = await supabaseAdmin
+      .from("clients")
+      .insert({
+        name: bookingRequest.name,
+        email: bookingRequest.email,
+        phone: bookingRequest.phone,
+      })
+      .select("id, name, email, phone")
+      .single();
+
+    if (clientError || !client) {
+      console.error("Client insert error:", clientError);
+
+      return NextResponse.json(
+        {
+          message: "Could not create client",
+        },
+        { status: 500 }
+      );
     }
+
+    const { data: savedBooking, error: bookingError } = await supabaseAdmin
+      .from("bookings")
+      .insert({
+        client_id: client.id,
+        chauffeur_id: null,
+        pickup_location: bookingRequest.pickup,
+        destination: bookingRequest.destination,
+        pickup_date: bookingRequest.date,
+        pickup_time: bookingRequest.time,
+        passengers: Number(bookingRequest.passengers),
+        luggage: Number(bookingRequest.luggage || 0),
+        trip_type: bookingRequest.tripType,
+        notes: bookingRequest.notes,
+        status: "pending",
+      })
+      .select()
+      .single();
+
+    if (bookingError || !savedBooking) {
+      console.error("Booking insert error:", bookingError);
+
+      return NextResponse.json(
+        {
+          message: "Could not create booking",
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        message: "Booking saved successfully",
+        booking: bookingRequest,
+        savedBooking,
+        client,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Invalid booking request:", error);
+
+    return NextResponse.json(
+      {
+        message: "Invalid booking request",
+      },
+      { status: 400 }
+    );
+  }
 }
