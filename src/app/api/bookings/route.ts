@@ -8,25 +8,52 @@ export async function POST(request: Request) {
 
     console.log("Booking request received by API:", bookingRequest);
 
-    const { data: client, error: clientError } = await supabaseAdmin
-      .from("clients")
-      .insert({
-        name: bookingRequest.name,
-        email: bookingRequest.email,
-        phone: bookingRequest.phone,
-      })
-      .select("id, name, email, phone")
-      .single();
+    const clientEmail = bookingRequest.email.trim().toLowerCase();
+    const clientName = bookingRequest.name.trim();
+    const clientPhone = bookingRequest.phone.trim();
 
-    if (clientError || !client) {
-      console.error("Client insert error:", clientError);
+    const { data: existingClients, error: findClientError } = await supabaseAdmin
+      .from("clients")
+      .select("id, name, email, phone")
+      .eq("email", clientEmail)
+      .limit(1);
+
+    if (findClientError) {
+      console.error("Client search error:", findClientError);
 
       return NextResponse.json(
         {
-          message: "Could not create client",
+          message: "Could not search client",
         },
         { status: 500 }
       );
+    }
+
+    let client = existingClients?.[0];
+
+    if (!client) {
+      const { data: newClient, error: clientError } = await supabaseAdmin
+        .from("clients")
+        .insert({
+          name: clientName,
+          email: clientEmail,
+          phone: clientPhone,
+        })
+        .select("id, name, email, phone")
+        .single();
+
+      if (clientError || !newClient) {
+        console.error("Client insert error:", clientError);
+
+        return NextResponse.json(
+          {
+            message: "Could not create client",
+          },
+          { status: 500 }
+        );
+      }
+
+      client = newClient;
     }
 
     const { data: savedBooking, error: bookingError } = await supabaseAdmin
