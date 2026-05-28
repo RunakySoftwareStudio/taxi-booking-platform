@@ -1,4 +1,4 @@
-/*
+/*================================================================
     build our own admin dashboard.
     creates a new admin page at: http://localhost:3000/admin/bookings
     Admin opens /admin/bookings
@@ -8,8 +8,10 @@
     Supabase returns booking rows
             ↓
     page.tsx displays them in a table
-*/
+=================================================================*/
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,40 @@ type BookingRow =
         phone: string;
     } | null;
 };
+
+/*================================
+Update the booking with this ID and set its status to the selected status.
+It receives data from a small form inside the admin table:
+    bookingId
+    status
+Then it updates Supabase:
+with revalidatePath = Refresh the admin bookings page data after the update.
+====================================*/
+async function updateBookingStatus(formData: FormData) 
+{
+    "use server";
+
+    const bookingId = String(formData.get("bookingId") || "");
+    const status = String(formData.get("status") || "");
+
+    console.log("Updating booking status:", {bookingId,status,});
+
+    if (!bookingId || !status) { console.error("Missing bookingId or status"); return;}
+
+    const { data, error } = await supabaseAdmin
+        .from("bookings")
+        .update({ status })
+        .eq("id", bookingId) // Find only the row where the column id is equal to bookingId.
+        .select("id, status") //This line forces Supabase to return the updated row:
+        .single();
+
+    if (error) { console.error("Could not update booking status:", error);return;}
+
+    console.log("Booking status updated:", data);
+
+    revalidatePath("/admin/bookings"); //Refresh the admin bookings page data after the update.
+    redirect("/admin/bookings"); //And this line forces the admin page to reload:
+}
 
 export default async function AdminBookingsPage() {
   const { data: bookings, error } = await supabaseAdmin
@@ -105,47 +141,65 @@ export default async function AdminBookingsPage() {
             <tbody>
               {bookingRows.map((booking) => (
                 <tr key={booking.id} className="border-b border-white/10">
-                  <td className="p-4">
-                    <div className="font-medium text-white">
-                      {booking.clients?.name || "Unknown client"}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {booking.clients?.email}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {booking.clients?.phone}
-                    </div>
-                  </td>
+                    <td className="p-4">
+                        <div className="font-medium text-white">
+                        {booking.clients?.name || "Unknown client"}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                        {booking.clients?.email}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                        {booking.clients?.phone}
+                        </div>
+                    </td>
 
-                  <td className="p-4 text-slate-300">
-                    {booking.pickup_location}
-                  </td>
+                    <td className="p-4 text-slate-300">
+                        {booking.pickup_location}
+                    </td>
 
-                  <td className="p-4 text-slate-300">
-                    {booking.destination}
-                  </td>
+                    <td className="p-4 text-slate-300">
+                        {booking.destination}
+                    </td>
 
-                  <td className="p-4 text-slate-300">
-                    {booking.pickup_date}
-                  </td>
+                    <td className="p-4 text-slate-300">
+                        {booking.pickup_date}
+                    </td>
 
-                  <td className="p-4 text-slate-300">
-                    {booking.pickup_time}
-                  </td>
+                    <td className="p-4 text-slate-300">
+                        {booking.pickup_time}
+                    </td>
 
-                  <td className="p-4 text-slate-300">
-                    {booking.passengers}
-                  </td>
+                    <td className="p-4 text-slate-300">
+                        {booking.passengers}
+                    </td>
 
-                  <td className="p-4 text-slate-300">
-                    {booking.trip_type}
-                  </td>
+                    <td className="p-4 text-slate-300">
+                        {booking.trip_type}
+                    </td>
 
-                  <td className="p-4">
-                    <span className="rounded-full bg-yellow-400/10 px-3 py-1 text-xs font-medium text-yellow-200">
-                      {booking.status}
-                    </span>
-                  </td>
+                    <td className="p-4">
+                        <form action={updateBookingStatus} className="flex items-center gap-2">
+                            <input type="hidden" name="bookingId" value={booking.id} />
+
+                            <select
+                                name="status"
+                                defaultValue={booking.status}
+                                className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"
+                                >
+                                <option value="pending">pending</option>
+                                <option value="accepted">accepted</option>
+                                <option value="rejected">rejected</option>
+                                <option value="confirmed">confirmed</option>
+                                <option value="completed">completed</option>
+                                <option value="cancelled">cancelled</option>
+                            </select>
+
+                            <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
+                                Save
+                            </button>
+                        </form>
+                    </td>
+
                 </tr>
               ))}
 
