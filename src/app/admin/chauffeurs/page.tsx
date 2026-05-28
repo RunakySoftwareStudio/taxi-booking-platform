@@ -1,0 +1,205 @@
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { supabaseAdmin } from "@/lib/supabaseServer";
+
+export const dynamic = "force-dynamic";
+
+type ChauffeurRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company_name: string | null;
+  license_number: string | null;
+  service_area: string | null;
+  account_status: string;
+  rating: number;
+  created_at: string;
+};
+
+async function addChauffeur(formData: FormData) {
+  "use server";
+
+  const name = String(formData.get("name") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const phone = String(formData.get("phone") || "").trim();
+  const companyName = String(formData.get("companyName") || "").trim();
+  const licenseNumber = String(formData.get("licenseNumber") || "").trim();
+  const serviceArea = String(formData.get("serviceArea") || "").trim();
+
+  if (!name || !email || !phone) {
+    return;
+  }
+
+  const { error } = await supabaseAdmin.from("chauffeurs").insert({
+    name,
+    email,
+    phone,
+    company_name: companyName || null,
+    license_number: licenseNumber || null,
+    service_area: serviceArea || null,
+    account_status: "pending_approval",
+  });
+
+  if (error) {
+    console.error("Could not add chauffeur:", error);
+    return;
+  }
+
+  revalidatePath("/admin/chauffeurs");
+  redirect("/admin/chauffeurs");
+}
+
+export default async function AdminChauffeursPage() {
+  const { data: chauffeurs, error } = await supabaseAdmin
+    .from("chauffeurs")
+    .select(
+      `
+      id,
+      name,
+      email,
+      phone,
+      company_name,
+      license_number,
+      service_area,
+      account_status,
+      rating,
+      created_at
+    `
+    )
+    .order("created_at", { ascending: false });
+
+  const chauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+      <div className="mx-auto max-w-6xl">
+        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
+          Admin
+        </p>
+
+        <h1 className="mt-3 text-3xl font-bold">Chauffeurs</h1>
+
+        <p className="mt-4 max-w-2xl text-slate-300">
+          Add chauffeurs and view chauffeur accounts registered in the platform.
+        </p>
+
+        <form
+          action={addChauffeur}
+          className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-6"
+        >
+          <h2 className="text-xl font-semibold">Add chauffeur</h2>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <input
+              name="name"
+              required
+              placeholder="Name"
+              className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"
+            />
+
+            <input
+              name="email"
+              type="email"
+              required
+              placeholder="Email"
+              className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"
+            />
+
+            <input
+              name="phone"
+              required
+              placeholder="Phone"
+              className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"
+            />
+
+            <input
+              name="companyName"
+              placeholder="Company name"
+              className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"
+            />
+
+            <input
+              name="licenseNumber"
+              placeholder="License number"
+              className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"
+            />
+
+            <input
+              name="serviceArea"
+              placeholder="Service area"
+              className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="mt-6 rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300"
+          >
+            Add chauffeur
+          </button>
+        </form>
+
+        {error && (
+          <p className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+            Could not load chauffeurs.
+          </p>
+        )}
+
+        <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="border-b border-white/10 bg-white/10 text-slate-300">
+              <tr>
+                <th className="p-4">Name</th>
+                <th className="p-4">Email</th>
+                <th className="p-4">Phone</th>
+                <th className="p-4">Company</th>
+                <th className="p-4">Service area</th>
+                <th className="p-4">Status</th>
+                <th className="p-4">Rating</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {chauffeurRows.map((chauffeur) => (
+                <tr key={chauffeur.id} className="border-b border-white/10">
+                  <td className="p-4 font-medium text-white">
+                    {chauffeur.name}
+                  </td>
+
+                  <td className="p-4 text-slate-300">{chauffeur.email}</td>
+
+                  <td className="p-4 text-slate-300">{chauffeur.phone}</td>
+
+                  <td className="p-4 text-slate-300">
+                    {chauffeur.company_name || "-"}
+                  </td>
+
+                  <td className="p-4 text-slate-300">
+                    {chauffeur.service_area || "-"}
+                  </td>
+
+                  <td className="p-4">
+                    <span className="rounded-full bg-yellow-400/10 px-3 py-1 text-xs font-medium text-yellow-200">
+                      {chauffeur.account_status}
+                    </span>
+                  </td>
+
+                  <td className="p-4 text-slate-300">{chauffeur.rating}</td>
+                </tr>
+              ))}
+
+              {chauffeurRows.length === 0 && (
+                <tr>
+                  <td className="p-4 text-slate-300" colSpan={7}>
+                    No chauffeurs found yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  );
+}
