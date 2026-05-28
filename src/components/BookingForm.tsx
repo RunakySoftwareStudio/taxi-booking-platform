@@ -10,30 +10,52 @@ export default function BookingForm()
   const [submittedBooking, setSubmittedBooking] = useState<BookingRequest | null>(null);
   
   useState<BookingRequest | null>(null);
-  
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const bookingRequest: BookingRequest = {
-        pickup: String(formData.get("pickup") || ""),
-        destination: String(formData.get("destination") || ""),
-        date: String(formData.get("date") || ""),
-        time: String(formData.get("time") || ""),
-        passengers: String(formData.get("passengers") || ""),
-        luggage: String(formData.get("luggage") || ""),
-        name: String(formData.get("name") || ""),
-        phone: String(formData.get("phone") || ""),
-        email: String(formData.get("email") || ""),
-        tripType: String(formData.get("tripType") || ""),
-        notes: String(formData.get("notes") || ""),
-        status: "pending",
-    };
 
-    console.log("Booking request:", bookingRequest);
-    setSubmittedBooking(bookingRequest);
-    setSubmitted(true);
-    event.currentTarget.reset();
-}
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        const form = event.currentTarget;
+        const formData = new FormData(form);
+
+        const bookingRequest: BookingRequest = {
+            pickup: String(formData.get("pickup") || ""),
+            destination: String(formData.get("destination") || ""),
+            date: String(formData.get("date") || ""),
+            time: String(formData.get("time") || ""),
+            passengers: String(formData.get("passengers") || ""),
+            luggage: String(formData.get("luggage") || ""),
+            name: String(formData.get("name") || ""),
+            phone: String(formData.get("phone") || ""),
+            email: String(formData.get("email") || ""),
+            tripType: String(formData.get("tripType") || ""),
+            notes: String(formData.get("notes") || ""),
+            status: "pending",
+        };
+
+        try 
+        {
+            const response = await fetch
+                ("/api/bookings", 
+                    {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json", },
+                        body: JSON.stringify(bookingRequest),
+                    }
+                );
+
+                if (!response.ok) {throw new Error("Booking request failed"); }
+
+                const result = await response.json();
+
+                console.log("API response:", result);
+
+                setSubmittedBooking(result.booking);
+                setSubmitted(true);
+                form.reset();
+        } 
+        catch (error) { console.error("Could not submit booking:", error);}}
+    
 
   return (
     <section id="booking" className="bg-slate-900 px-6 py-24 text-white">
