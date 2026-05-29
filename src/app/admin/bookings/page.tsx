@@ -33,6 +33,20 @@ type BookingRow =
         email: string;
         phone: string;
     } | null;
+    chauffeur_id: string | null;
+    chauffeurs: 
+    {
+        name: string;
+        email: string;
+        phone: string;
+    } | null;
+};
+
+type ChauffeurOption = {
+  id: string;
+  name: string;
+  email: string;
+  account_status: string;
 };
 
 /*================================
@@ -69,46 +83,87 @@ async function updateBookingStatus(formData: FormData)
     redirect("/admin/bookings"); //And this line forces the admin page to reload:
 }
 
+async function assignChauffeurToBooking(formData: FormData) {
+    "use server";
+
+    const bookingId = String(formData.get("bookingId") || "");
+    const chauffeurIdValue = String(formData.get("chauffeurId") || "");
+
+    if (!bookingId) {
+        return;
+    }
+
+    const chauffeurId = chauffeurIdValue || null;
+
+    const { error } = await supabaseAdmin
+        .from("bookings")
+        .update({ chauffeur_id: chauffeurId })
+        .eq("id", bookingId);
+
+    if (error) {
+        console.error("Could not assign chauffeur:", error);
+        return;
+    }
+
+    revalidatePath("/admin/bookings");
+    redirect("/admin/bookings");
+}
+
 export default async function AdminBookingsPage() {
   const { data: bookings, error } = await supabaseAdmin
     .from("bookings")
     .select(
       `
-      id,
-      pickup_location,
-      destination,
-      pickup_date,
-      pickup_time,
-      passengers,
-      luggage,
-      trip_type,
-      status,
-      created_at,
-      clients (
-        name,
-        email,
-        phone
-      )
+        id,
+        pickup_location,
+        destination,
+        pickup_date,
+        pickup_time,
+        passengers,
+        luggage,
+        trip_type,
+        status,
+        created_at,
+        clients (
+            name,
+            email,
+            phone
+        ),
+        chauffeur_id,
+        chauffeurs (
+            name,
+            email,
+            phone
+        )
     `
     )
     .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Could not load bookings:", error);
+  if (error) {console.error("Could not load bookings:", error);
+        return 
+        (
+        <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+            <div className="mx-auto max-w-6xl">
+            <h1 className="text-3xl font-bold">Admin bookings</h1>
+            <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+                Could not load bookings.
+            </p>
+            </div>
+        </main>
+        );
+    }
     
-    return (
-      <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="text-3xl font-bold">Admin bookings</h1>
-          <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-            Could not load bookings.
-          </p>
-        </div>
-      </main>
-    );
-  }
+    const { data: approvedChauffeurs, error: chauffeursError } = await supabaseAdmin
+        .from("chauffeurs")
+        .select("id, name, email, account_status")
+        .eq("account_status", "approved")
+        .order("name", { ascending: true });
 
-  const bookingRows = (bookings ?? []) as unknown as BookingRow[];
+    const chauffeurOptions = (approvedChauffeurs ?? []) as unknown as ChauffeurOption[];
+    if (chauffeursError) { console.error("Could not load approved chauffeurs:", chauffeursError);
+}
+    const bookingRows = (bookings ?? []) as unknown as BookingRow[];
+  
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
@@ -134,6 +189,7 @@ export default async function AdminBookingsPage() {
                 <th className="p-4">Time</th>
                 <th className="p-4">Passengers</th>
                 <th className="p-4">Trip type</th>
+                <th className="p-4">Chauffeur</th>
                 <th className="p-4">Status</th>
               </tr>
             </thead>
@@ -178,6 +234,25 @@ export default async function AdminBookingsPage() {
                     </td>
 
                     <td className="p-4">
+                        <form action={assignChauffeurToBooking} className="flex items-center gap-2">
+                            <input type="hidden" name="bookingId" value={booking.id} />
+                            <select
+                                name="chauffeurId"
+                                defaultValue={booking.chauffeur_id ?? ""}
+                                className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                                <option value="">Unassigned</option>
+
+                                {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} </option> ))}
+                            </select>
+
+                            <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300" >
+                                Save
+                            </button>
+                        </form>
+
+                        {booking.chauffeurs && ( <p className="mt-2 text-xs text-slate-400"> Assigned: {booking.chauffeurs.name} </p> )}
+                    </td>
+                    <td className="p-4">
                         <form action={updateBookingStatus} className="flex items-center gap-2">
                             <input type="hidden" name="bookingId" value={booking.id} />
 
@@ -205,7 +280,7 @@ export default async function AdminBookingsPage() {
 
               {bookingRows.length === 0 && (
                 <tr>
-                  <td className="p-4 text-slate-300" colSpan={8}>
+                  <td className="p-4 text-slate-300" colSpan={9}>
                     No bookings found yet.
                   </td>
                 </tr>
