@@ -50,6 +50,30 @@ async function addChauffeur(formData: FormData) {
   redirect("/admin/chauffeurs");
 }
 
+async function updateChauffeurStatus(formData: FormData) {
+  "use server";
+
+  const chauffeurId = String(formData.get("chauffeurId") || "");
+  const accountStatus = String(formData.get("accountStatus") || "");
+
+  if (!chauffeurId || !accountStatus) {
+    return;
+  }
+
+  const { error } = await supabaseAdmin
+    .from("chauffeurs")
+    .update({ account_status: accountStatus })
+    .eq("id", chauffeurId);
+
+  if (error) {
+    console.error("Could not update chauffeur status:", error);
+    return;
+  }
+
+  revalidatePath("/admin/chauffeurs");
+  redirect("/admin/chauffeurs");
+}
+
 export default async function AdminChauffeursPage() {
   const { data: chauffeurs, error } = await supabaseAdmin
     .from("chauffeurs")
@@ -134,8 +158,7 @@ export default async function AdminChauffeursPage() {
 
           <button
             type="submit"
-            className="mt-6 rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300"
-          >
+            className="mt-6 rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300" >
             Add chauffeur
           </button>
         </form>
@@ -179,11 +202,25 @@ export default async function AdminChauffeursPage() {
                     {chauffeur.service_area || "-"}
                   </td>
 
-                  <td className="p-4">
-                    <span className="rounded-full bg-yellow-400/10 px-3 py-1 text-xs font-medium text-yellow-200">
-                      {chauffeur.account_status}
-                    </span>
-                  </td>
+                <td className="p-4">
+                    <form action={updateChauffeurStatus} className="flex items-center gap-2">
+                        <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+
+                        <select
+                            name="accountStatus"
+                            defaultValue={chauffeur.account_status}
+                            className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                            <option value="pending_approval">pending_approval</option>
+                            <option value="approved">approved</option>
+                            <option value="suspended">suspended</option>
+                            <option value="inactive">inactive</option>
+                        </select>
+
+                        <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
+                            Save
+                        </button>
+                    </form>
+                </td>
 
                   <td className="p-4 text-slate-300">{chauffeur.rating}</td>
                 </tr>
