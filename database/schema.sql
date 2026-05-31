@@ -193,14 +193,14 @@ CHECK (end_time > start_time);
 CREATE OR REPLACE FUNCTION update_updated_at_column() /* If this function already exists, replace it with this new version.*/
 RETURNS TRIGGER AS $$ -- trigger function, mot normal function that returns text, number, or table data.
 BEGIN
-  NEW.updated_at = now(); -- Set the updated_at column of the new row to the current date and time.
-  RETURN NEW; --Save this new changed version of the row.
+  NEW.updated_at = now(); -- NEW = the new version of the existing row. OLD = the old version of the row.  Set updated_at to the current time before an existing row is updated.
+  RETURN NEW; --Save this new changed version of the row. 
 END; --This ends the function logic.
 $$ LANGUAGE plpgsql; -- PL/pgSQL is PostgreSQL’s procedural language, used for functions, triggers, loops, conditions, and database logic.
 
 /* Apply updated_at trigger to clients */
 CREATE TRIGGER update_clients_updated_at
-BEFORE UPDATE ON clients
+BEFORE UPDATE ON clients -- before an existing row is updated. So it runs only when an existing row is updated.
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
@@ -235,3 +235,51 @@ ALTER TABLE chauffeurs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chauffeur_availability ENABLE ROW LEVEL SECURITY;
+
+--===================================================================
+/* create a function to get data from enumrated types */
+-- you can call a function in his way: SELECT get_enum_values('booking_status');
+
+CREATE OR REPLACE FUNCTION get_enum_values(p_enum_type_name text)
+RETURNS text[]
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(
+    array_agg(e.enumlabel::text ORDER BY e.enumsortorder),
+    ARRAY[]::text[]
+  )
+  FROM pg_type t
+  JOIN pg_enum e ON t.oid = e.enumtypid
+  JOIN pg_namespace n ON n.oid = t.typnamespace
+  WHERE t.typname = p_enum_type_name AND
+        n.nspname = 'public';
+$$;
+
+/* ==========example trigger function=================
+ -- When a chauffeur is assigned to a booking, automatically set status to assigned and update
+
+CREATE OR REPLACE FUNCTION update_booking_status_and_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Always update the updated_at column
+  NEW.updated_at = now();
+
+  -- If chauffeur_id is added or changed, set status to assigned
+  IF NEW.chauffeur_id IS NOT NULL
+     AND NEW.chauffeur_id IS DISTINCT FROM OLD.chauffeur_id THEN
+    NEW.status = 'assigned';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+Then attach it to the bookings table:
+
+CREATE TRIGGER update_bookings_status_and_updated_at
+BEFORE UPDATE ON bookings
+FOR EACH ROW
+EXECUTE FUNCTION update_booking_status_and_updated_at();
+
+*/
