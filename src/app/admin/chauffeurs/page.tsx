@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
@@ -143,6 +144,7 @@ export default async function AdminChauffeursPage() {
                                 <th className="p-4">Service area</th>
                                 <th className="p-4">Status</th>
                                 <th className="p-4">Rating</th>
+                                <th className="p-4">Dashboard</th>
                             </tr>
                         </thead>
 
@@ -178,6 +180,11 @@ export default async function AdminChauffeursPage() {
                                     </td>
 
                                     <td className="p-4 text-slate-300">{chauffeur.rating}</td>
+                                    <td className="p-4">
+                                        <Link href={`/chauffeur/${chauffeur.id}`} className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
+                                            Open
+                                        </Link>
+                                    </td>
                                 </tr>
                             ))}
 

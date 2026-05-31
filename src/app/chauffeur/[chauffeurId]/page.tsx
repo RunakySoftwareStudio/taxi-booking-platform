@@ -1,0 +1,120 @@
+import { supabaseAdmin } from "@/lib/supabaseServer";
+
+export const dynamic = "force-dynamic";
+
+type ChauffeurRow = { id: string;  name: string;  email: string;  phone: string;  service_area: string | null;  account_status: string;};
+type AssignedBookingRow = 
+{
+  id: string;  pickup_location: string;  destination: string;  
+  pickup_date: string;  pickup_time: string;  passengers: number;  luggage: number;  
+  trip_type: string;  status: string;  notes: string | null;
+  clients: { name: string;  email: string;  phone: string; } | null;
+};
+
+type ChauffeurDashboardPageProps = { params: Promise<{ chauffeurId: string; }>;};
+
+export default async function ChauffeurDashboardPage
+(
+    {params,}: ChauffeurDashboardPageProps) 
+    {
+        const { chauffeurId } = await params;
+        const { data: chauffeur, error: chauffeurError } = await supabaseAdmin
+            .from("chauffeurs")
+            .select("id, name, email, phone, service_area, account_status")
+            .eq("id", chauffeurId)
+            .single();
+        const { data: bookings, error: bookingsError } = await supabaseAdmin
+            .from("bookings")
+            .select
+            (
+                    `
+                    id, pickup_location, destination, pickup_date, pickup_time, passengers, luggage, trip_type, status, notes, 
+                    clients (name, email, phone)
+                    `
+            )
+            .eq("chauffeur_id", chauffeurId)
+            .order("pickup_date", { ascending: true })
+            .order("pickup_time", { ascending: true });
+
+        if (chauffeurError || !chauffeur) { console.error("Could not load chauffeur:", chauffeurError);
+            return 
+            (
+                <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+                    <div className="mx-auto max-w-6xl">
+                        <h1 className="text-3xl font-bold">Chauffeur dashboard</h1>
+                        <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeur. </p>
+                    </div>
+                </main>
+            );
+        }
+
+        if (bookingsError) { console.error("Could not load chauffeur bookings:", bookingsError);}
+
+        const chauffeurRow = chauffeur as ChauffeurRow;
+        const bookingRows = (bookings ?? []) as unknown as AssignedBookingRow[];
+
+        return (
+            <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+                <div className="mx-auto max-w-6xl">
+                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Chauffeur </p>
+                    <h1 className="mt-3 text-3xl font-bold"> Welcome, {chauffeurRow.name} </h1>
+                    <p className="mt-4 text-slate-300"> Here you can see bookings assigned to you. </p>
+
+                    <div className="mt-8 grid gap-4 md:grid-cols-3">
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                            <p className="text-sm text-slate-400">Email</p>
+                            <p className="mt-2 font-medium">{chauffeurRow.email}</p>
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                            <p className="text-sm text-slate-400">Phone</p>
+                            <p className="mt-2 font-medium">{chauffeurRow.phone}</p>
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                            <p className="text-sm text-slate-400">Status</p>
+                            <p className="mt-2 font-medium">{chauffeurRow.account_status}</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+                        <table className="w-full min-w-[900px] text-left text-sm">
+                            <thead className="border-b border-white/10 bg-white/10 text-slate-300">
+                            <tr>
+                                <th className="p-4">Client</th>
+                                <th className="p-4">Pickup</th>
+                                <th className="p-4">Destination</th>
+                                <th className="p-4">Date</th>
+                                <th className="p-4">Time</th>
+                                <th className="p-4">Passengers</th>
+                                <th className="p-4">Trip type</th>
+                                <th className="p-4">Status</th>
+                            </tr>
+                            </thead>
+
+                            <tbody>
+                                {bookingRows.map((booking) =>(
+                                    <tr key={booking.id} className="border-b border-white/10">
+                                        <td className="p-4">
+                                            <div className="font-medium text-white"> {booking.clients?.name || "Unknown client"} </div>
+                                            <div className="text-xs text-slate-400"> {booking.clients?.email} </div>
+                                            <div className="text-xs text-slate-400"> {booking.clients?.phone} </div>
+                                        </td>
+                                        <td className="p-4 text-slate-300"> {booking.pickup_location} </td>
+                                        <td className="p-4 text-slate-300"> {booking.destination} </td>
+                                        <td className="p-4 text-slate-300"> {booking.pickup_date} </td>
+                                        <td className="p-4 text-slate-300"> {booking.pickup_time} </td>
+                                        <td className="p-4 text-slate-300"> {booking.passengers}  </td>
+                                        <td className="p-4 text-slate-300"> {booking.trip_type}   </td>
+                                        <td className="p-4"> <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200"> {booking.status} </span> </td>
+                                    </tr>
+                                ))}
+
+                                {bookingRows.length === 0 && (<tr> <td className="p-4 text-slate-300" colSpan={8}>  No assigned bookings found yet. </td> </tr> )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+    );
+}
