@@ -1,5 +1,6 @@
-import { supabaseAdmin } from "@/lib/supabaseServer";
 
+import Link from "next/link";
+import { supabaseAdmin } from "@/lib/supabaseServer";
 export const dynamic = "force-dynamic";
 
 type ClientRow = 
@@ -48,20 +49,26 @@ export default async function AdminClientsPage()
                 <th className="p-4">Email</th>
                 <th className="p-4">Phone</th>
                 <th className="p-4">Created at</th>
+                <th className="p-4">Details</th>
               </tr>
             </thead>
 
             <tbody>
-              {clientRows.map((client) => (
-                <tr key={client.id} className="border-b border-white/10">
-                  <td className="p-4 font-medium text-white">{client.name}</td>
-                  <td className="p-4 text-slate-300"> {client.email}</td>
-                  <td className="p-4 text-slate-300"> {client.phone}</td>
-                  <td className="p-4 text-slate-300"> {new Date(client.created_at).toLocaleString()}  </td>
-                </tr>
-              ))}
+                {clientRows.map((client) => (
+                    <tr key={client.id} className="border-b border-white/10">
+                        <td className="p-4 font-medium text-white">{client.name}</td>
+                        <td className="p-4 text-slate-300"> {client.email}</td>
+                        <td className="p-4 text-slate-300"> {client.phone}</td>
+                        <td className="p-4 text-slate-300"> {new Date(client.created_at).toLocaleString()}  </td>
+                        <td className="p-4">
+                            <Link  href={`/admin/clients/${client.id}`} className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300" >
+                                Open
+                            </Link>
+                        </td>
+                    </tr>
+                ))}
 
-              {clientRows.length === 0 && (<tr> <td className="p-4 text-slate-300" colSpan={4}>  No clients found yet. </td> </tr> )}
+              {clientRows.length === 0 && (<tr> <td className="p-4 text-slate-300" colSpan={5}>  No clients found yet. </td> </tr> )}
             </tbody>
           </table>
         </div>
