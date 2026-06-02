@@ -1,3 +1,5 @@
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
@@ -13,29 +15,57 @@ type AssignedBookingRow =
 
 type ChauffeurDashboardPageProps = { params: Promise<{ chauffeurId: string; }>;};
 
+// Only update this booking if it belongs to this chauffeur.
+async function updateAssignedBookingStatus(formData: FormData) 
+{
+  "use server";
+
+  const bookingId = String(formData.get("bookingId") || "");
+  const chauffeurId = String(formData.get("chauffeurId") || "");
+  const status = String(formData.get("status") || "");
+
+  if (!bookingId || !chauffeurId || !status) {  return;  }
+
+  const { error } = await supabaseAdmin
+    .from("bookings")
+    .update({ status })
+    .eq("id", bookingId)
+    .eq("chauffeur_id", chauffeurId);
+
+  if (error) { console.error("Could not update assigned booking status:", error); return;  }
+
+  revalidatePath(`/chauffeur/${chauffeurId}`);
+  redirect(`/chauffeur/${chauffeurId}`);
+}
+
 export default async function ChauffeurDashboardPage
 (
     {params,}: ChauffeurDashboardPageProps) 
     {
         const { chauffeurId } = await params;
+
+        // get chauffeur data of this chauffeur id
         const { data: chauffeur, error: chauffeurError } = await supabaseAdmin
             .from("chauffeurs")
             .select("id, name, email, phone, service_area, account_status")
             .eq("id", chauffeurId)
             .single();
+
+        // get the list of bookings of this chauffeurid in booking table
         const { data: bookings, error: bookingsError } = await supabaseAdmin
             .from("bookings")
             .select
             (
-                    `
-                    id, pickup_location, destination, pickup_date, pickup_time, passengers, luggage, trip_type, status, notes, 
-                    clients (name, email, phone)
-                    `
+                `
+                id, pickup_location, destination, pickup_date, pickup_time, passengers, luggage, trip_type, status, notes, 
+                clients (name, email, phone)
+                `
             )
             .eq("chauffeur_id", chauffeurId)
             .order("pickup_date", { ascending: true })
             .order("pickup_time", { ascending: true });
-
+        
+        // Show error if chauffeur does not exists
         if (chauffeurError || !chauffeur) { console.error("Could not load chauffeur:", chauffeurError);
             return 
             (
@@ -48,10 +78,16 @@ export default async function ChauffeurDashboardPage
             );
         }
 
+        // give warnning in form of red message if there are error in bookings
         if (bookingsError) { console.error("Could not load chauffeur bookings:", bookingsError);}
 
+        // assign values to know const varaiables
         const chauffeurRow = chauffeur as ChauffeurRow;
         const bookingRows = (bookings ?? []) as unknown as AssignedBookingRow[];
+
+        const { data: bookingStatuses, error: bookingStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "booking_status" });
+        if (bookingStatusError) { console.error("Could not load booking statuses:", bookingStatusError);}
+        const bookingStatusOptions = (bookingStatuses ?? []) as string[];
 
         return (
             <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
@@ -106,7 +142,22 @@ export default async function ChauffeurDashboardPage
                                         <td className="p-4 text-slate-300"> {booking.pickup_time} </td>
                                         <td className="p-4 text-slate-300"> {booking.passengers}  </td>
                                         <td className="p-4 text-slate-300"> {booking.trip_type}   </td>
-                                        <td className="p-4"> <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200"> {booking.status} </span> </td>
+
+                                        <td className="p-4">
+                                            <form action={updateAssignedBookingStatus} className="flex items-center gap-2">
+                                                <input type="hidden" name="bookingId" value={booking.id} />
+                                                <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
+                                                <select
+                                                    name="status" defaultValue={booking.status} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                                                    {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status} </option>  ))}
+                                                </select>
+
+                                                <button type="submit"  className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300" >
+                                                    Save
+                                                </button>
+                                            </form>
+                                        </td>
+                                        {/*  <td className="p-4"> <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200"> {booking.status} </span> </td> */}
                                     </tr>
                                 ))}
 

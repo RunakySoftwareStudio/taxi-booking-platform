@@ -41,6 +41,13 @@ type ChauffeurOption = { id: string;  name: string;  email: string;  account_sta
     let   = creates a real variable/value that can change
     var   = old way to create variables, usually avoid it
     type  = creates a TypeScript rule/shape for data
+    supabaseAdmin.rpc() = says it is an enum type, not a table. 
+    rpc("get_enum_values") = Run a custom function inside Supabase/PostgreSQL and give me the result.
+    supabaseAdmin.from() = says it is a table.
+    ?   = optional / safe access
+    ??  = fallback when value is null or undefined
+    :   = type annotation OR object property value
+    ::  = not TypeScript; usually PostgreSQL type cast
 ====================================*/
 async function updateBookingStatus(formData: FormData) 
 {
@@ -131,13 +138,9 @@ export default async function AdminBookingsPage() {
     if (chauffeursError) { console.error("Could not load approved chauffeurs:", chauffeursError);}
     const bookingRows = (bookings ?? []) as unknown as BookingRow[];
     
-    /*
-    const { data: availabilityStatuses, error:statusTypeError } = await supabaseAdmin.rpc( "get_enum_values", { p_enum_type_name: "availability_status",});
-    if (statusTypeError) { console.error("Could not load booking statuses:", statusTypeError);}
-    const availabilityStatusOptions = (availabilityStatuses ?? []) as string[];
-    */
-    const { data: bookingStatuses, error:bookingStatusError } = await supabaseAdmin.rpc( "get_enum_values", { p_enum_type_name: "booking_status",});
-    if (bookingStatusError) { console.error("CCould not load booking statuses:", bookingStatusError);}
+
+    const { data: bookingStatuses, error:bookingStatusError } = await supabaseAdmin.rpc( "get_enum_values", { p_enum_type_name: "booking_status"});
+    if (bookingStatusError) { console.error("Could not load booking statuses:", bookingStatusError);}
     const bookingStatusOptions = (bookingStatuses ?? []) as string[];
     
     /* =====================================================

@@ -19,92 +19,63 @@ type ChauffeurRow = {
 };
 
 async function addChauffeur(formData: FormData) {
-  "use server";
+    "use server";
 
-  const name = String(formData.get("name") || "").trim();
-  const email = String(formData.get("email") || "").trim().toLowerCase();
-  const phone = String(formData.get("phone") || "").trim();
-  const companyName = String(formData.get("companyName") || "").trim();
-  const licenseNumber = String(formData.get("licenseNumber") || "").trim();
-  const serviceArea = String(formData.get("serviceArea") || "").trim();
+    const name = String(formData.get("name") || "").trim();
+    const email = String(formData.get("email") || "").trim().toLowerCase();
+    const phone = String(formData.get("phone") || "").trim();
+    const companyName = String(formData.get("companyName") || "").trim();
+    const licenseNumber = String(formData.get("licenseNumber") || "").trim();
+    const serviceArea = String(formData.get("serviceArea") || "").trim();
 
-  if (!name || !email || !phone) {
-    return;
-  }
+    if (!name || !email || !phone) { return; }
 
-  const { error } = await supabaseAdmin.from("chauffeurs").insert({
-    name,
-    email,
-    phone,
-    company_name: companyName || null,
-    license_number: licenseNumber || null,
-    service_area: serviceArea || null,
-    account_status: "pending_approval",
-  });
+    const { error } = await supabaseAdmin.from("chauffeurs").insert({
+        name,
+        email,
+        phone,
+        company_name: companyName || null,
+        license_number: licenseNumber || null,
+        service_area: serviceArea || null,
+        account_status: "pending_approval",
+    });
 
-  if (error) {
-    console.error("Could not add chauffeur:", error);
-    return;
-  }
+    if (error) { console.error("Could not add chauffeur:", error); return; }
 
-  revalidatePath("/admin/chauffeurs");
-  redirect("/admin/chauffeurs");
+    revalidatePath("/admin/chauffeurs");
+    redirect("/admin/chauffeurs");
 }
 
 async function updateChauffeurStatus(formData: FormData) {
   "use server";
 
-  const chauffeurId = String(formData.get("chauffeurId") || "");
-  const accountStatus = String(formData.get("accountStatus") || "");
+    const chauffeurId = String(formData.get("chauffeurId") || "");
+    const accountStatus = String(formData.get("accountStatus") || "");
 
-  if (!chauffeurId || !accountStatus) {
-    return;
-  }
+    if (!chauffeurId || !accountStatus) { return; }
 
-  const { error } = await supabaseAdmin
+    const { error } = await supabaseAdmin
     .from("chauffeurs")
     .update({ account_status: accountStatus })
     .eq("id", chauffeurId);
 
-  if (error) {
-    console.error("Could not update chauffeur status:", error);
-    return;
-  }
+    if (error) { console.error("Could not update chauffeur status:", error); return; }
 
-  revalidatePath("/admin/chauffeurs");
-  redirect("/admin/chauffeurs");
+    revalidatePath("/admin/chauffeurs");
+    redirect("/admin/chauffeurs");
 }
 
 export default async function AdminChauffeursPage() {
+    
     const { data: chauffeurs, error } = await supabaseAdmin
         .from("chauffeurs")
-        .select(
-        `
-        id,
-        name,
-        email,
-        phone,
-        company_name,
-        license_number,
-        service_area,
-        account_status,
-        rating,
-        created_at
-        `
-        )
+        .select( ` id, name, email, phone, company_name, license_number, service_area, account_status, rating, created_at `)
         .order("created_at", { ascending: false });
 
     const chauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
-
-    const { data: chauffeurStatuses, error: chauffeurStatusError } =
-    await supabaseAdmin.rpc("get_enum_values", {
-        p_enum_type_name: "chauffeur_account_status",
-    });
-
-    if (chauffeurStatusError) {
-    console.error("Could not load chauffeur statuses:", chauffeurStatusError);
-    }
-
+    
+    const { data: chauffeurStatuses, error: chauffeurStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status",  });
+    if (chauffeurStatusError) { console.error("Could not load chauffeur statuses:", chauffeurStatusError); }
     const chauffeurStatusOptions = (chauffeurStatuses ?? []) as string[];
 
     return (
@@ -188,12 +159,12 @@ export default async function AdminChauffeursPage() {
                                 </tr>
                             ))}
 
-                            {chauffeurRows.length === 0 && ( <tr> <td className="p-4 text-slate-300" colSpan={7}> No chauffeurs found yet. </td> </tr> )}
+                            {chauffeurRows.length === 0 && ( <tr> <td className="p-4 text-slate-300" colSpan={8}> No chauffeurs found yet. </td> </tr> )}
 
                         </tbody>
                     </table>
                 </div>
             </div>
         </main>
-  );
+    );
 }
