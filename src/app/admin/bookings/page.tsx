@@ -102,21 +102,20 @@ export default async function AdminBookingsPage() {
     .from("bookings")
     .select
     (
-      `
+        `
         id, pickup_location, destination, pickup_date, pickup_time, 
         passengers, luggage, trip_type, status, created_at,
         clients (name, email, phone ),
         chauffeur_id,
         chauffeurs (name, email, phone )
-    `
+        `
     )
     .order("created_at", { ascending: false });
 
   if (error) 
     {
         console.error("Could not load bookings:", error);
-        return 
-        (
+        return (
         <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
             <div className="mx-auto max-w-6xl">
                 <h1 className="text-3xl font-bold">Admin bookings</h1>
