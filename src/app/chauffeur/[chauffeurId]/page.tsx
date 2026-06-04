@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -60,8 +61,7 @@ export default async function ChauffeurDashboardPage
 
         // Show error if chauffeur does not exists
         if (chauffeurError || !chauffeur) { console.error("Could not load chauffeur:", chauffeurError);
-            return 
-            (
+            return (
                 <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
                     <div className="mx-auto max-w-6xl">
                         <h1 className="text-3xl font-bold">Chauffeur dashboard</h1>
@@ -113,6 +113,12 @@ export default async function ChauffeurDashboardPage
                     <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Chauffeur </p>
                     <h1 className="mt-3 text-3xl font-bold"> Welcome, {chauffeurRow.name} </h1>
                     <p className="mt-4 text-slate-300"> Here you can see bookings assigned to you. </p>
+
+                    <div className="mt-6">
+                        <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className="inline-block rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300" >
+                            Manage availability
+                        </Link>
+                    </div>
 
                     <div className="mt-8 grid gap-4 md:grid-cols-3">
                         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
