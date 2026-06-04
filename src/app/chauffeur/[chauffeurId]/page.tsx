@@ -15,6 +15,13 @@ type AssignedBookingRow =
 
 type ChauffeurDashboardPageProps = { params: Promise<{ chauffeurId: string; }>;};
 
+type VehicleRow = 
+{
+    id: string;  brand: string;  model: string;
+    license_plate: string;  vehicle_type: string;
+    seats: number;  luggage_capacity: number;  created_at: string;
+};
+
 // Only update this booking if it belongs to this chauffeur.
 async function updateAssignedBookingStatus(formData: FormData) 
 {
@@ -51,6 +58,19 @@ export default async function ChauffeurDashboardPage
             .eq("id", chauffeurId)
             .single();
 
+        // Show error if chauffeur does not exists
+        if (chauffeurError || !chauffeur) { console.error("Could not load chauffeur:", chauffeurError);
+            return 
+            (
+                <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+                    <div className="mx-auto max-w-6xl">
+                        <h1 className="text-3xl font-bold">Chauffeur dashboard</h1>
+                        <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeur. </p>
+                    </div>
+                </main>
+            );
+        }
+
         // get the list of bookings of this chauffeurid in booking table
         const { data: bookings, error: bookingsError } = await supabaseAdmin
             .from("bookings")
@@ -65,26 +85,24 @@ export default async function ChauffeurDashboardPage
             .order("pickup_date", { ascending: true })
             .order("pickup_time", { ascending: true });
         
-        // Show error if chauffeur does not exists
-        if (chauffeurError || !chauffeur) { console.error("Could not load chauffeur:", chauffeurError);
-            return 
-            (
-                <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-                    <div className="mx-auto max-w-6xl">
-                        <h1 className="text-3xl font-bold">Chauffeur dashboard</h1>
-                        <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeur. </p>
-                    </div>
-                </main>
-            );
-        }
-
         // give warnning in form of red message if there are error in bookings
         if (bookingsError) { console.error("Could not load chauffeur bookings:", bookingsError);}
+
+        const { data: vehicles, error: vehiclesError } = await supabaseAdmin
+            .from("vehicles")
+            .select( ` id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, created_at `)
+            .eq("chauffeur_id", chauffeurId)
+            .order("created_at", { ascending: false });
+        
+        // give warnning in form of red message if there are error in vehicles
+        if (vehiclesError) { console.error("Could not load chauffeur vehicles:", vehiclesError); }
 
         // assign values to know const varaiables
         const chauffeurRow = chauffeur as ChauffeurRow;
         const bookingRows = (bookings ?? []) as unknown as AssignedBookingRow[];
-
+        const vehicleRows = (vehicles ?? []) as VehicleRow[];
+        
+        // get list of bookingStatuses types
         const { data: bookingStatuses, error: bookingStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "booking_status" });
         if (bookingStatusError) { console.error("Could not load booking statuses:", bookingStatusError);}
         const bookingStatusOptions = (bookingStatuses ?? []) as string[];
@@ -113,6 +131,38 @@ export default async function ChauffeurDashboardPage
                         </div>
                     </div>
 
+                    <h3 className="mt-12 text-2xl font-bold">My vehicles</h3>
+                    <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+                    <table className="w-full min-w-[800px] text-left text-sm">
+                        <thead className="border-b border-white/10 bg-white/10 text-slate-300">
+                            <tr>
+                                <th className="p-4">Brand</th>
+                                <th className="p-4">Model</th>
+                                <th className="p-4">License plate</th>
+                                <th className="p-4">Type</th>
+                                <th className="p-4">Seats</th>
+                                <th className="p-4">Luggage</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {vehicleRows.map((vehicle) => (
+                                <tr key={vehicle.id} className="border-b border-white/10">
+                                <td className="p-4 text-slate-300">{vehicle.brand}</td>
+                                <td className="p-4 text-slate-300">{vehicle.model}</td>
+                                <td className="p-4 text-slate-300">{vehicle.license_plate}</td>
+                                <td className="p-4 text-slate-300">{vehicle.vehicle_type}</td>
+                                <td className="p-4 text-slate-300">{vehicle.seats}</td>
+                                <td className="p-4 text-slate-300">{vehicle.luggage_capacity}</td>
+                                </tr>
+                            ))}
+
+                            {vehicleRows.length === 0 && ( <tr><td className="p-4 text-slate-300" colSpan={6}> No vehicles connected to this chauffeur yet.</td> </tr> )}
+                        </tbody>
+                    </table>
+                    </div>
+                    
+                    <h3 className="mt-12 text-2xl font-bold">My Bookins</h3>
                     <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
                         <table className="w-full min-w-[900px] text-left text-sm">
                             <thead className="border-b border-white/10 bg-white/10 text-slate-300">
@@ -148,7 +198,8 @@ export default async function ChauffeurDashboardPage
                                                 <input type="hidden" name="bookingId" value={booking.id} />
                                                 <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
                                                 <select
-                                                    name="status" defaultValue={booking.status} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                                                    name="status" defaultValue={booking.status} 
+                                                    className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
                                                     {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status} </option>  ))}
                                                 </select>
 
