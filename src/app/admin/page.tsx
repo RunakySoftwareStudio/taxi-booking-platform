@@ -12,13 +12,19 @@ export default function AdminDashboardPage() {
                     <h2 className="text-xl font-semibold">Bookings</h2>
                     <p className="mt-3 text-sm text-slate-300"> View booking requests and update their status. </p>
                 </Link>
+
                 <Link href="/admin/chauffeurs" className="rounded-2xl border border-white/10 bg-white/5 p-6 hover:bg-white/10" >
                     <h2 className="text-xl font-semibold">Chauffeurs</h2>
                     <p className="mt-3 text-sm text-slate-300"> Manage chauffeur profiles and approvals. </p>
                 </Link>
-                <Link  href="/admin/clients" className="rounded-2xl border border-white/10 bg-white/5 p-6 hover:bg-white/10" >
+
+                <Link href="/admin/clients" className="rounded-2xl border border-white/10 bg-white/5 p-6 hover:bg-white/10" >
                     <h2 className="text-xl font-semibold">Clients</h2>
                     <p className="mt-3 text-sm text-slate-300">  View clients and their booking history. </p>
+                </Link>
+                <Link href="/admin/vehicles" className="rounded-2xl border border-white/10 bg-white/5 p-6 hover:bg-white/10" >
+                    <h2 className="text-xl font-semibold">Vehicles</h2>
+                    <p className="mt-3 text-sm text-slate-300"> Add vehicles and connect them to approved chauffeurs. </p>
                 </Link>
             </div>
         </div>
