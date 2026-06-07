@@ -30,7 +30,7 @@ export async function POST(request: Request) {
             { status: 201 }
         );
     } 
-    catch (error) 
+    catch
     {
         return NextResponse.json( { message: "Invalid booking request", }, { status: 400 });
     }

@@ -11,9 +11,11 @@ export default function TopMenu()
           <a href="#how-it-works" className="transition hover:text-white"> How it works </a>
           <a href="#chauffeurs" className="transition hover:text-white"> Chauffeurs </a>
           <a href="#booking" className="transition hover:text-white"> Booking </a>
+          <Link href="/status" className="text-sm text-slate-300 hover:text-cyan-300">  Check booking </Link>
         </nav>
 
         <a href="#login" className="rounded-full border border-yellow-400 px-5 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-slate-950"> Login </a>
+        
         <Link href="/admin"> Admin </Link>
       </div>
     </header>
