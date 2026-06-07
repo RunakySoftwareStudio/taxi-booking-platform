@@ -46,9 +46,10 @@ export async function POST(request: Request) {
                 .select("id, name, email, phone")
                 .single();
 
-                if (clientError || !newClient) { console.error("Client insert error:", clientError);
-                return NextResponse.json( { message: "Could not create client", }, { status: 500 } );
-            }
+                if (clientError || !newClient) { 
+                    console.error("Client insert error:", clientError);
+                    return NextResponse.json( { message: "Could not create client"}, { status: 500 } ); 
+                }
 
             client = newClient;
         }
@@ -71,8 +72,7 @@ export async function POST(request: Request) {
             .select()
             .single();
 
-        if (bookingError || !savedBooking) 
-        {
+        if (bookingError || !savedBooking) {
             console.error("Booking insert error:", bookingError);
             return NextResponse.json( { message: "Could not create booking", }, { status: 500 } );
         }
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
             {
                 message: "Booking saved successfully",
                 booking: bookingForFrontend,
-                client,
+                client
             },
             { status: 201 }
         );
