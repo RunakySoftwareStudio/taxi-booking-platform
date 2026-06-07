@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import { type BookingRequest } from "@/types/bookingType";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { validateBookingRequest } from "@/lib/bookings/validateBooking";
+import type { BookingSummary } from "@/types/bookingSummaryType";
 
 export async function POST(request: Request) {
   try 
    {
         const bookingRequest = (await request.json()) as BookingRequest;
+        const validationResult = validateBookingRequest(bookingRequest);
+        /*=============================================================
+            Receive booking request
+            Check if booking data is valid using from "@/lib/bookings/validateBooking";
+            If invalid → return 400 error
+            If valid → continue saving to Supabase
+        */
+        if (!validationResult.isValid) { return NextResponse.json( { message: validationResult.message}, { status: 400 } ); }
 
         console.log("Booking request received by API:", bookingRequest);
 
@@ -25,7 +35,8 @@ export async function POST(request: Request) {
             return NextResponse.json( { message: "Could not search client", }, { status: 500 });
         }
 
-        let client = existingClients?.[0];
+        let client = existingClients?.[0];  // If existingClients exists, get the first item.
+                                            // If existingClients is null or undefined, do not crash.
 
         if (!client) 
         {
@@ -66,12 +77,32 @@ export async function POST(request: Request) {
             return NextResponse.json( { message: "Could not create booking", }, { status: 500 } );
         }
 
-        return NextResponse.json
+        // Create an object that matches the frontend field names
+        const bookingForFrontend: BookingSummary = {
+            id: savedBooking.id,
+
+            pickup: savedBooking.pickup_location,
+            destination: savedBooking.destination,
+            date: savedBooking.pickup_date,
+            time: savedBooking.pickup_time,
+
+            passengers: savedBooking.passengers,
+            luggage: savedBooking.luggage,
+
+            name: client.name,
+            phone: client.phone,
+            email: client.email,
+
+            tripType: savedBooking.trip_type,
+            notes: savedBooking.notes,
+            status: savedBooking.status,
+        };
+
+        return NextResponse.json    //// This sends JSON back to the frontend.
         (
             {
                 message: "Booking saved successfully",
-                booking: bookingRequest,
-                savedBooking,
+                booking: bookingForFrontend,
                 client,
             },
             { status: 201 }

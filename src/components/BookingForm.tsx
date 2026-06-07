@@ -2,27 +2,34 @@
 
 import { type FormEvent, useState } from "react";
 import { type BookingRequest } from "@/types/bookingType";
+import { type BookingSummary } from "@/types/bookingSummaryType";
 import { tripTypes } from "@/data/tripTypeData";
 
-export default function BookingForm() 
-{
-  const [submitted, setSubmitted] = useState(false);
-  const [submittedBooking, setSubmittedBooking] = useState<BookingRequest | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  useState<BookingRequest | null>(null);
-
+export default function BookingForm() {
+    const [submitted, setSubmitted] = useState(false);
+    const [submittedBooking, setSubmittedBooking] = useState<BookingSummary | null>(null);
+    const [errorMessage, setErrorMessage] = useState("");
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) 
     {
-        event.preventDefault();
+        event.preventDefault();                 // Normally, when you submit a form, the browser refreshes the page.
+                                                // So instead of refreshing the page, React/Next.js can handle the form submission with JavaScript.
+                                                // Without this line, the page may reload and you may lose the form data.
 
-        const form = event.currentTarget;
-        const formData = new FormData(form);
+        const form = event.currentTarget;       // This line gets the form that was submitted:
+                                                // So form is now the actual HTML form element.
+                                                // <form onSubmit={handleSubmit}> When this form is submitted, event.currentTarget means: this form
+                                                // So now we can read all input values from that form.
 
-        const bookingRequest: BookingRequest = 
+        const formData = new FormData(form);    // This creates a FormData object from the form:
+                                                // FormData collects all values from inputs that have a name.
+                                                // <input name="pickup" /> Then FormData can find them by name:formData.get("pickup")
+                                                // Important: the word inside get() must match the input name.
+
+        const bookingRequest: BookingRequest =  // This creates an object called bookingRequest.
+                                                // This object will contain the data we want to send to the API/database.
         {
-            pickup: String(formData.get("pickup") || ""),
+            pickup: String(formData.get("pickup") || ""), // Get the value from the input with name="pickup". If it is empty or missing, use "".  Convert the result to a string.
             destination: String(formData.get("destination") || ""),
             date: String(formData.get("date") || ""),
             time: String(formData.get("time") || ""),
@@ -43,19 +50,24 @@ export default function BookingForm()
                 ("/api/bookings", 
                     {
                         method: "POST",
-                        headers: {"Content-Type": "application/json", },
+                        headers: {"Content-Type": "application/json"},
                         body: JSON.stringify(bookingRequest),
                     }
                 );
 
-                if (!response.ok) {throw new Error("Booking request failed"); }
+            if (!response.ok) {throw new Error("Booking request failed"); }
 
-                const result = await response.json();
-                console.log("API response:", result);
+            //const result = await response.json();
+            const result = (await response.json()) as {
+                message: string;
+                booking: BookingSummary;
+                };
 
-                setSubmittedBooking(result.booking);
-                setSubmitted(true);
-                form.reset();
+            console.log("API response:", result);
+
+            setSubmittedBooking(result.booking);
+            setSubmitted(true);
+            form.reset();
         } 
         catch (error) 
         { 
@@ -64,176 +76,77 @@ export default function BookingForm()
         }
     }
     
-
   return (
     <section id="booking" className="bg-slate-900 px-6 py-24 text-white">
         <div className="mx-auto max-w-6xl">
             <div className="max-w-2xl">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">
-                Booking
-            </p>
-
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Request your taxi trip
-            </h2>
-
-            <p className="mt-4 text-slate-300">
-                Enter your trip details and the platform will help connect you with
-                an available chauffeur.
-            </p>
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"> Booking </p>
+                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl"> Request your taxi trip </h2>
+                <p className="mt-4 text-slate-300"> Enter your trip details and the platform will help connect you with an available chauffeur. </p>
             </div>
              
             <form onSubmit={handleSubmit} className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-6">
                 <div className="grid gap-6 md:grid-cols-2">
                     <div>
-                        <label htmlFor="pickup" className="mb-2 block text-sm font-medium">
-                            Pickup location
-                        </label>
-                        <input
-                            id="pickup"
-                            name="pickup"
-                            type="text"
-                            required
-                            placeholder="Amsterdam Central Station"
-                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                        />
+                        <label htmlFor="pickup" className="mb-2 block text-sm font-medium"> Pickup location </label>
+                        <input id="pickup" name="pickup" type="text" required placeholder="Amsterdam Central Station"  
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400" />
                     </div>
 
                     <div>
-                    <label
-                        htmlFor="destination"
-                        className="mb-2 block text-sm font-medium"
-                    >
-                        Destination
-                    </label>
-                    <input
-                        id="destination"
-                        name="destination"
-                        type="text"
-                        required
-                        placeholder="Schiphol Airport"
+                        <label htmlFor="destination" className="mb-2 block text-sm font-medium" > Destination </label>
+                        <input id="destination" name="destination" type="text" required placeholder="Schiphol Airport"  
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400" />
+                    </div>
+
+                    <div>
+                        <label htmlFor="date" className="mb-2 block text-sm font-medium"> Date </label>
+                        <input id="date" name="date" type="date" min="2026-01-01" max="2099-12-31" required 
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400" />
+                    </div>
+
+                    <div>
+                        <label htmlFor="time" className="mb-2 block text-sm font-medium"> Time </label>
+                        <input id="time" name="time" type="time" required 
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400" />
+                    </div>
+
+                    <div>
+                        <label htmlFor="passengers"  className="mb-2 block text-sm font-medium"> Passengers </label>
+                        <input id="passengers" name="passengers" type="number" min="1" required placeholder="2" 
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400" />
+                    </div>
+
+                    <div>
+                        <label htmlFor="luggage" className="mb-2 block text-sm font-medium"> Luggage </label>
+                        <input id="luggage" name="luggage" type="number"  min="0" placeholder="1" 
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"/>
+                    </div>
+
+                    <div>
+                    <label htmlFor="name" className="mb-2 block text-sm font-medium"> Your name</label>
+                    <input id="name" name="name" type="text" required placeholder="Your full name"
                         className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
                     />
                     </div>
 
                     <div>
-                    <label htmlFor="date" className="mb-2 block text-sm font-medium">
-                        Date
-                    </label>
-                    <input
-                        id="date"
-                        name="date"
-                        type="date"
-                        min="2026-01-01"
-                        max="2099-12-31"
-                        required
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400"
-                    />
+                        <label htmlFor="phone" className="mb-2 block text-sm font-medium"> Phone number </label>
+                        <input id="phone" name="phone" type="tel" required inputMode="tel" pattern="\+?[0-9 ]{7,20}" title="Please enter a valid phone number. Use numbers, +, spaces, or - only." placeholder="+31 6 12345678"
+                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"/>
                     </div>
 
                     <div>
-                    <label htmlFor="time" className="mb-2 block text-sm font-medium">
-                        Time
-                    </label>
-                    <input
-                        id="time"
-                        name="time"
-                        type="time"
-                        required
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400"
-                    />
+                        <label htmlFor="email" className="mb-2 block text-sm font-medium"> Email address </label>
+                        <input id="email" name="email" type="email" required placeholder="client@example.com"
+                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"/>
                     </div>
 
                     <div>
-                    <label
-                        htmlFor="passengers"
-                        className="mb-2 block text-sm font-medium"
-                    >
-                        Passengers
-                    </label>
-                    <input
-                        id="passengers"
-                        name="passengers"
-                        type="number"
-                        min="1"
-                        required
-                        placeholder="2"
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                    />
-                    </div>
-
-                    <div>
-                    <label htmlFor="luggage" className="mb-2 block text-sm font-medium">
-                        Luggage
-                    </label>
-                    <input
-                        id="luggage"
-                        name="luggage"
-                        type="number"
-                        min="0"
-                        placeholder="1"
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                    />
-                    </div>
-
-                    <div>
-                    <label htmlFor="name" className="mb-2 block text-sm font-medium">
-                        Your name
-                    </label>
-                    <input
-                        id="name"
-                        name="name"
-                        type="text"
-                        required
-                        placeholder="Your full name"
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                    />
-                    </div>
-
-                    <div>
-                        <label htmlFor="phone" className="mb-2 block text-sm font-medium">
-                            Phone number
-                        </label>
-                        <input
-                            id="phone"
-                            name="phone"
-                            type="tel"
-                            
-                            required
-                            inputMode="tel"
-                            pattern="\+?[0-9 ]{7,20}"
-                            title="Please enter a valid phone number. Use numbers, +, spaces, or - only."
-                            placeholder="+31 6 12345678"
-                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="email" className="mb-2 block text-sm font-medium">
-                            Email address
-                        </label>
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            required
-                            placeholder="client@example.com"
-                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="tripType" className="mb-2 block text-sm font-medium">
-                            Trip type
-                        </label>
-                        <select
-                            id="tripType"
-                            name="tripType"
-                            required
-                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400"
-                        >
-                                <option value=""> Select trip type </option> 
-                                {/* <option value="one-way">One-way trip</option> */}
+                        <label htmlFor="tripType" className="mb-2 block text-sm font-medium"> Trip type </label>
+                        <select id="tripType" name="tripType" required
+                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400" >
+                                <option value=""> Select trip type </option>  {/* <option value="one-way">One-way trip</option> */}
                                 {tripTypes.map((tripType) => ( <option key={tripType.value} value={tripType.value}> {tripType.label} </option>))}
                         </select>
                     </div>
@@ -241,16 +154,9 @@ export default function BookingForm()
                 </div>
 
                 <div className="md:col-span-2">
-                    <label htmlFor="notes" className="mb-2 block text-sm font-medium">
-                        Extra notes
-                    </label>
-                    <textarea
-                        id="notes"
-                        name="notes"
-                        rows={4}
-                        placeholder="Flight number, child seat request, exact pickup point, or other information..."
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                    />
+                    <label htmlFor="notes" className="mb-2 block text-sm font-medium"> Extra notes </label>
+                    <textarea id="notes" name="notes"  rows={4} placeholder="Flight number, child seat request, exact pickup point, or other information..."
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"/>
                 </div>
 
                 <button type="submit" className="mt-8 rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300">
@@ -258,67 +164,29 @@ export default function BookingForm()
                 </button>
             </form>
 
-             {errorMessage && (
-                <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
-                    {errorMessage}
-                </p>
-            )}
+            {errorMessage && ( <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"> {errorMessage} </p> )}
 
             {submitted && (
                 <div className="mt-8 rounded-2xl border border-green-400/30 bg-green-400/10 p-4 text-green-200">
-                    Your booking request has been received. We will connect you with an
-                    available chauffeur.
+                    Your booking request has been received. We will connect you with an available chauffeur.
                 </div>)
             }
 
             {submittedBooking && (
                 <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950 p-6">
                     <h3 className="text-xl font-semibold text-white"> Booking summary </h3>
-
                     <div className="mt-6 grid gap-4 text-sm text-slate-300 md:grid-cols-2">
-                    <p>
-                        <span className="font-semibold text-white">Pickup:</span>{" "}
-                        {submittedBooking.pickup}
-                    </p>
-
-                    <p>
-                        <span className="font-semibold text-white">Destination:</span>{" "}
-                        {submittedBooking.destination}
-                    </p>
-
-                    <p>
-                        <span className="font-semibold text-white">Date:</span>{" "}
-                        {submittedBooking.date}
-                    </p>
-
-                    <p>
-                        <span className="font-semibold text-white">Time:</span>{" "}
-                        {submittedBooking.time}
-                    </p>
-
-                    <p>
-                        <span className="font-semibold text-white">Passengers:</span>{" "}
-                        {submittedBooking.passengers}
-                    </p>
-
-                    <p>
-                        <span className="font-semibold text-white">Trip type:</span>{" "}
-                        {submittedBooking.tripType}
-                    </p>
-
-                    <p>
-                        <span className="font-semibold text-white">Client:</span>{" "}
-                        {submittedBooking.name}
-                    </p>
-
-                    <p>
-                        <span className="font-semibold text-white">Status:</span>{" "}
-                        {submittedBooking.status}
-                    </p>
+                        <p> <span className="font-semibold text-white">Pickup:</span>{" "} {submittedBooking.pickup} </p>
+                        <p> <span className="font-semibold text-white">Destination:</span>{" "} {submittedBooking.destination} </p>
+                        <p> <span className="font-semibold text-white">Date:</span>{" "} {submittedBooking.date} </p>
+                        <p> <span className="font-semibold text-white">Time:</span>{" "} {submittedBooking.time} </p>
+                        <p><span className="font-semibold text-white">Passengers:</span>{" "}{submittedBooking.passengers} </p>
+                        <p> <span className="font-semibold text-white">Trip type:</span>{" "}{submittedBooking.tripType} </p>
+                        <p> <span className="font-semibold text-white">Client:</span>{" "} {submittedBooking.name} </p>
+                        <p> <span className="font-semibold text-white">Status:</span>{" "} {submittedBooking.status} </p>
                     </div>
                 </div>)
             }
-
         </div>
     </section>
   );
