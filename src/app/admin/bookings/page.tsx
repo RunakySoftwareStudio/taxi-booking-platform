@@ -12,6 +12,7 @@
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic"; // Next.js says force-dynamic forces dynamic rendering, meaning the route is rendered for each user at request time.
 
@@ -159,8 +160,8 @@ export default async function AdminBookingsPage() {
     ========================================================*/
     return (
         <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-        <div className="mx-auto max-w-7
-        xl"> 
+        <div className="mx-auto max-w-7xl"> 
+            <Link  href="/admin" className="text-sm text-cyan-300 hover:text-cyan-200" > ← Back to admin dashboard </Link>
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin </p>
             <h1 className="mt-3 text-3xl font-bold">Booking requests</h1>
             <p className="mt-4 max-w-2xl text-slate-300"> Here you can see booking requests submitted through the website. </p>

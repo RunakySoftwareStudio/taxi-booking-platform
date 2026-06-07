@@ -6,16 +6,16 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 export const dynamic = "force-dynamic";
 
 type ChauffeurRow = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company_name: string | null;
-  license_number: string | null;
-  service_area: string | null;
-  account_status: string;
-  rating: number;
-  created_at: string;
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    company_name: string | null;
+    license_number: string | null;
+    service_area: string | null;
+    account_status: string;
+    rating: number;
+    created_at: string;
 };
 
 async function addChauffeur(formData: FormData) {
@@ -81,30 +81,27 @@ export default async function AdminChauffeursPage() {
     return (
         <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
             <div className="mx-auto max-w-6xl">
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
-                Admin
-                </p>
-                    <h1 className="mt-3 text-3xl font-bold">Chauffeurs</h1>
-                    <p className="mt-4 max-w-2xl text-slate-300"> Add chauffeurs and view chauffeur accounts registered in the platform.</p>
+                <Link  href="/admin" className="text-sm text-cyan-300 hover:text-cyan-200" > ← Back to admin dashboard </Link>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin </p>
+                <h1 className="mt-3 text-3xl font-bold">Chauffeurs</h1>
+                <p className="mt-4 max-w-2xl text-slate-300"> Add chauffeurs and view chauffeur accounts registered in the platform.</p>
 
-                    <form action={addChauffeur} className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-6">
-                        <h2 className="text-xl font-semibold">Add chauffeur</h2>
+                <form action={addChauffeur} className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-6">
+                    <h2 className="text-xl font-semibold">Add chauffeur</h2>
+                    <div className="mt-6 grid gap-4 md:grid-cols-3">
+                        <input name="name" required placeholder="Name" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white" />
+                        <input name="email" type="email" required placeholder="Email" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white" />
+                        <input name="phone" required placeholder="Phone" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
+                        <input name="companyName" placeholder="Company name" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white" />
+                        <input name="licenseNumber" placeholder="License number" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
+                        <input name="serviceArea" placeholder="Service area" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
+                    </div>
+                    <button type="submit"  className="mt-6 rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300"> Add chauffeur </button>
+                </form>
 
-                        <div className="mt-6 grid gap-4 md:grid-cols-3">
-                            <input name="name" required placeholder="Name" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white" />
-                            <input name="email" type="email" required placeholder="Email" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white" />
-                            <input name="phone" required placeholder="Phone" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
-                            <input name="companyName" placeholder="Company name" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white" />
-                            <input name="licenseNumber" placeholder="License number" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
-                            <input name="serviceArea" placeholder="Service area" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
-                        </div>
+                {error && (<p className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeurs. </p> )}
 
-                        <button type="submit"  className="mt-6 rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300"> Add chauffeur </button>
-                    </form>
-
-                    {error && (<p className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeurs. </p> )}
-
-                    <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+                <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
                     <table className="w-full min-w-[900px] text-left text-sm">
                         <thead className="border-b border-white/10 bg-white/10 text-slate-300">
                             <tr>

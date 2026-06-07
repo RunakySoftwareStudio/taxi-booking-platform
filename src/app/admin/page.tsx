@@ -26,6 +26,10 @@ export default function AdminDashboardPage() {
                     <h2 className="text-xl font-semibold">Vehicles</h2>
                     <p className="mt-3 text-sm text-slate-300"> Add vehicles and connect them to approved chauffeurs. </p>
                 </Link>
+                <Link href="/admin/availability"  className="rounded-2xl border border-white/10 bg-white/5 p-6 transition hover:border-cyan-300/50 hover:bg-white/10" >
+                    <h2 className="text-xl font-semibold text-white">  Chauffeur availability </h2>
+                    <p className="mt-3 text-sm text-slate-300"> View when chauffeurs are available, busy, offline, or on holiday. </p>
+                </Link>
             </div>
         </div>
     </main>

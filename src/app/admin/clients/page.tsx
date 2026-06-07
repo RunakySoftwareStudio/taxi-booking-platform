@@ -37,6 +37,7 @@ export default async function AdminClientsPage()
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
       <div className="mx-auto max-w-6xl">
+        <Link  href="/admin" className="text-sm text-cyan-300 hover:text-cyan-200" > ← Back to admin dashboard </Link>
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin </p>
         <h1 className="mt-3 text-3xl font-bold"> Clients </h1>
         <p className="mt-4 max-w-2xl text-slate-300"> View clients who submitted booking requests through the website. </p>

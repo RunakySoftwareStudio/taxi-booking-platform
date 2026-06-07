@@ -52,7 +52,7 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
             <div className="mx-auto max-w-6xl">
                 
                 <Link href="/admin/clients" className="text-sm text-cyan-300 hover:text-cyan-200"> ← Back to clients </Link>
-                <p className="mt-8 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin client</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin client</p>
                 <h1 className="mt-3 text-3xl font-bold">{clientRow.name}</h1>
 
                 <div className="mt-8 grid gap-4 md:grid-cols-3">
