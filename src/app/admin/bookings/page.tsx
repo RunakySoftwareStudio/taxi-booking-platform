@@ -159,13 +159,14 @@ export default async function AdminBookingsPage() {
     ========================================================*/
     return (
         <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-7
+        xl"> 
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin </p>
             <h1 className="mt-3 text-3xl font-bold">Booking requests</h1>
             <p className="mt-4 max-w-2xl text-slate-300"> Here you can see booking requests submitted through the website. </p>
 
             <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-            <table className="w-full min-w-[900px] text-left text-sm">
+            <table className="w-full min-w-[1200px] text-left text-sm">
                 <thead className="border-b border-white/10 bg-white/10 text-slate-300">
                 <tr>
                     <th className="p-4">Client</th>
@@ -181,62 +182,50 @@ export default async function AdminBookingsPage() {
                 </thead>
 
                 <tbody>
-                    {
-                        bookingRows.map((booking) => 
-                            (
-                                <tr key={booking.id} className="border-b border-white/10">
-                                    <td className="p-4">
-                                        <div className="font-medium text-white"> {booking.clients?.name || "Unknown client"} </div>
-                                        <div className="text-xs text-slate-400"> {booking.clients?.email} </div>
-                                        <div className="text-xs text-slate-400"> {booking.clients?.phone} </div>
-                                    </td>
+                    { bookingRows.map((booking) => (
+                        <tr key={booking.id} className="border-b border-white/10">
+                            <td className="p-4">
+                                <div className="font-medium text-white"> {booking.clients?.name || "Unknown client"} </div>
+                                <div className="text-xs text-slate-400"> {booking.clients?.email} </div>
+                                <div className="text-xs text-slate-400"> {booking.clients?.phone} </div>
+                            </td>
 
-                                    <td className="p-4 text-slate-300"> {booking.pickup_location} </td>
-                                    <td className="p-4 text-slate-300"> {booking.destination} </td>
-                                    <td className="p-4 text-slate-300"> {booking.pickup_date} </td>
-                                    <td className="p-4 text-slate-300"> {booking.pickup_time} </td>
-                                    <td className="p-4 text-slate-300"> {booking.passengers}  </td>
-                                    <td className="p-4 text-slate-300"> {booking.trip_type}   </td>
+                            <td className="p-4 text-slate-300"> {booking.pickup_location} </td>
+                            <td className="p-4 text-slate-300"> {booking.destination} </td>
+                            <td className="p-4 text-slate-300"> {booking.pickup_date} </td>
+                            <td className="p-4 text-slate-300"> {booking.pickup_time} </td>
+                            <td className="p-4 text-slate-300"> {booking.passengers}  </td>
+                            <td className="p-4 text-slate-300"> {booking.trip_type}   </td>
 
-                                    <td className="p-4">
-                                        <form action={assignChauffeurToBooking} className="flex items-center gap-2">
-                                            <input type="hidden" name="bookingId" value={booking.id} />
-                                            <select
-                                                name="chauffeurId"
-                                                defaultValue={booking.chauffeur_id ?? ""}
-                                                className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
-                                                <option value="">Unassigned</option>
-                                                {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} </option> ))}
-                                            </select>
+                            <td className="p-4">
+                                <form action={assignChauffeurToBooking} className="flex items-center gap-2">
+                                    <input type="hidden" name="bookingId" value={booking.id} />
+                                    <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                                        <option value="">Unassigned</option>
+                                        {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} </option> ))}
+                                    </select>
 
-                                            <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300" >
-                                                Save
-                                            </button>
-                                        </form>
+                                    <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300" >
+                                        Save
+                                    </button>
+                                </form>
 
-                                        {booking.chauffeurs && ( <p className="mt-2 text-xs text-slate-400"> Assigned: {booking.chauffeurs.name} </p> )}
-                                    </td>
-                                    <td className="p-4">
-                                        <form action={updateBookingStatus} className="flex items-center gap-2">
-                                            <input type="hidden" name="bookingId" value={booking.id} />
+                                {booking.chauffeurs && ( <p className="mt-2 text-xs text-slate-400"> Assigned: {booking.chauffeurs.name} </p> )}
+                            </td>
+                            <td className="p-4">
+                                <form action={updateBookingStatus} className="flex items-center gap-2">
+                                    <input type="hidden" name="bookingId" value={booking.id} />
+                                    <select name="status"  defaultValue={booking.status}  className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                                        {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status}</option> ))} 
+                                    </select>
 
-                                            <select
-                                                name="status"
-                                                defaultValue={booking.status}
-                                                className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
-                                                {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status}</option> ))} 
-                                            </select>
-
-                                            <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
-                                                Save
-                                            </button>
-                                        </form>
-                                    </td>
-
-                                </tr>
-                            )
-                        )
-                    }
+                                    <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
+                                        Save
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    ))}
 
                     {bookingRows.length === 0 && ( <tr> <td className="p-4 text-slate-300" colSpan={9}>  No bookings found yet. </td> </tr>)}
                 </tbody>

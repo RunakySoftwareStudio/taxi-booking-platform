@@ -121,15 +121,11 @@ CREATE TABLE bookings (
   destination TEXT NOT NULL,
   pickup_date DATE NOT NULL,
   pickup_time TIME NOT NULL,
-
   passengers INTEGER NOT NULL DEFAULT 1,
   luggage INTEGER DEFAULT 0,
-
   trip_type trip_type NOT NULL,
   notes TEXT,
-
   status booking_status NOT NULL DEFAULT 'pending',
-
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -239,8 +235,10 @@ ALTER TABLE chauffeur_availability ENABLE ROW LEVEL SECURITY;
 --===================================================================
 /* create a function to get data from enumrated types */
 -- you can call a function in his way: SELECT get_enum_values('booking_status');
+-- in supasql:  const { data: availabilityStatuses, error } = await supabaseAdmin.rpc( "get_enum_values", { p_enum_type_name: "availability_status",});
 
-CREATE OR REPLACE FUNCTION get_enum_values(p_enum_type_name text)
+/* Get enum values by enum type name */
+CREATE OR REPLACE FUNCTION public.get_enum_values(p_enum_type_name text)
 RETURNS text[]
 LANGUAGE sql
 STABLE
@@ -252,8 +250,8 @@ AS $$
   FROM pg_type t
   JOIN pg_enum e ON t.oid = e.enumtypid
   JOIN pg_namespace n ON n.oid = t.typnamespace
-  WHERE t.typname = p_enum_type_name AND
-        n.nspname = 'public';
+  WHERE t.typname = p_enum_type_name
+    AND n.nspname = 'public';
 $$;
 
 /* ==========example trigger function=================

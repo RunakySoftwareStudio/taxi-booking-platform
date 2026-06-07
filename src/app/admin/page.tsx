@@ -8,7 +8,7 @@ export default function AdminDashboardPage() {
             <h1 className="mt-3 text-3xl font-bold">Admin dashboard</h1>
             <p className="mt-4 max-w-2xl text-slate-300"> Manage bookings, chauffeurs, clients, and platform settings. </p>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
-                <Link href="/admin/boo  kings" className="rounded-2xl border border-white/10 bg-white/5 p-6 hover:bg-white/10" >
+                <Link href="/admin/bookings" className="rounded-2xl border border-white/10 bg-white/5 p-6 hover:bg-white/10" >
                     <h2 className="text-xl font-semibold">Bookings</h2>
                     <p className="mt-3 text-sm text-slate-300"> View booking requests and update their status. </p>
                 </Link>
