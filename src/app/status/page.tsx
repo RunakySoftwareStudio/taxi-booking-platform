@@ -93,7 +93,7 @@ export default function StatusPage() {
             </label>
           </div>
 
-          <button type="submit" disabled={isLoading}  className="mt-6 rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60" >
+          <button className="mt-6 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-3 font-semibold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60" >
             {isLoading ? "Searching..." : "Check status"}
           </button>
           {errorMessage && ( <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"> {errorMessage} </p> )}

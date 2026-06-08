@@ -206,9 +206,9 @@ export default async function AdminBookingsPage() {
                                         {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} </option> ))}
                                     </select>
 
-                                    <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300" >
+                                    <button type="submit" className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
                                         Save
-                                    </button>
+                                    </button>   
                                 </form>
 
                                 {booking.chauffeurs && ( <p className="mt-2 text-xs text-slate-400"> Assigned: {booking.chauffeurs.name} </p> )}
@@ -219,10 +219,9 @@ export default async function AdminBookingsPage() {
                                     <select name="status"  defaultValue={booking.status}  className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
                                         {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status}</option> ))} 
                                     </select>
-
-                                    <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
+                                    <button type="submit" className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
                                         Save
-                                    </button>
+                                    </button>                                
                                 </form>
                             </td>
                         </tr>

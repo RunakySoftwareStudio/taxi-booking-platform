@@ -62,7 +62,7 @@ export default async function AdminClientsPage()
                         <td className="p-4 text-slate-300"> {client.phone}</td>
                         <td className="p-4 text-slate-300"> {new Date(client.created_at).toLocaleString()}  </td>
                         <td className="p-4">
-                            <Link  href={`/admin/clients/${client.id}`} className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300" >
+                            <Link  href={`/admin/clients/${client.id}`} className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20" >
                                 Open
                             </Link>
                         </td>

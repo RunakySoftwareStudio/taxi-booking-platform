@@ -104,7 +104,9 @@ export default async function ChauffeurAvailabilityPage({params}: ChauffeurAvail
             </label>
           </div>
 
-          <button  type="submit"  className="mt-6 rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300" >  Add availability </button>
+          <button  type="submit"  className="mt-6 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-3 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20" >  
+              Add availability 
+          </button>
         </form>
 
         <h2 className="mt-12 text-2xl font-bold">Availability records</h2>

@@ -96,7 +96,9 @@ export default async function AdminChauffeursPage() {
                         <input name="licenseNumber" placeholder="License number" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
                         <input name="serviceArea" placeholder="Service area" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
                     </div>
-                    <button type="submit"  className="mt-6 rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300"> Add chauffeur </button>
+                    <button type="submit"  className="mt-6 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-3 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20"> 
+                        Add chauffeur 
+                    </button>
                 </form>
 
                 {error && (<p className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeurs. </p> )}
@@ -141,7 +143,7 @@ export default async function AdminChauffeursPage() {
                                                 {chauffeurStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
                                             </select>
 
-                                            <button type="submit" className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
+                                            <button type="submit" className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
                                                 Save
                                             </button>
                                         </form>
@@ -149,7 +151,7 @@ export default async function AdminChauffeursPage() {
 
                                     <td className="p-4 text-slate-300">{chauffeur.rating}</td>
                                     <td className="p-4">
-                                        <Link href={`/chauffeur/${chauffeur.id}`} className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
+                                        <Link href={`/chauffeur/${chauffeur.id}`} className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
                                             Open
                                         </Link>
                                     </td>

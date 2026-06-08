@@ -103,12 +103,13 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
     return (
         <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
             <div className="mx-auto max-w-6xl">
+                <Link href="/admin/chauffeurs" className="text-sm text-cyan-300 hover:text-cyan-200"> ← Back to Chauffeurs </Link>
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Chauffeur </p>
                 <h1 className="mt-3 text-3xl font-bold"> Welcome, {chauffeurRow.name} </h1>
                 <p className="mt-4 text-slate-300"> Here you can see bookings assigned to you. </p>
 
                 <div className="mt-6">
-                    <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className="inline-block rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300" >
+                    <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className="mt-6 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-3 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20" >
                         Manage availability
                     </Link>
                 </div>
@@ -162,8 +163,8 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
                 </div>
                 
                 <h3 className="mt-12 text-2xl font-bold">My Bookins</h3>
-                <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-                    <table className="w-ful-225 text-left text-sm">
+                <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+                    <table className="w-full min-w-200 text-left text-sm">
                         <thead className="border-b border-white/10 bg-white/10 text-slate-300">
                         <tr>
                             <th className="p-4">Client</th>
@@ -202,7 +203,7 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
                                                 {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status} </option>  ))}
                                             </select>
 
-                                            <button type="submit"  className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300" >
+                                            <button type="submit" className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
                                                 Save
                                             </button>
                                         </form>
