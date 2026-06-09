@@ -67,6 +67,8 @@ CREATE TABLE vehicles (
   chauffeur_id UUID NOT NULL REFERENCES chauffeurs(id) ON DELETE CASCADE,
   brand TEXT NOT NULL,
   model TEXT NOT NULL,
+  vehicle_year INTEGER,
+  vehicle_color TEXT,
   license_plate TEXT NOT NULL UNIQUE,
   vehicle_type vehicle_type NOT NULL DEFAULT 'standard',
   seats INTEGER NOT NULL DEFAULT 4,
@@ -175,6 +177,10 @@ CHECK (luggage_capacity >= 0);
 ALTER TABLE chauffeur_availability
 ADD CONSTRAINT chauffeur_availability_time_order
 CHECK (end_time > start_time);
+
+ALTER TABLE vehicles
+ADD CONSTRAINT vehicles_year_valid
+CHECK (vehicle_year IS NULL OR (vehicle_year >= 1980 AND vehicle_year <= 2100));
 --===================================================================
 
 

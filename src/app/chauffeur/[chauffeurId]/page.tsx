@@ -156,8 +156,7 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
                             <td className="p-4 text-slate-300">{vehicle.luggage_capacity}</td>
                             </tr>
                         ))}
-
-                        {vehicleRows.length === 0 && ( <tr><td className="p-4 text-slate-300" colSpan={6}> No vehicles connected to this chauffeur yet.</td> </tr> )}
+                        {vehicleRows.length === 0 && (<tr><td className="p-4 text-slate-300" colSpan={6}>No vehicles connected to this chauffeur yet.</td></tr>)}
                     </tbody>
                 </table>
                 </div>
@@ -208,11 +207,10 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
                                             </button>
                                         </form>
                                     </td>
-                                    {/*  <td className="p-4"> <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200"> {booking.status} </span> </td> */}
                                 </tr>
                             ))}
 
-                            {bookingRows.length === 0 && (<tr> <td className="p-4 text-slate-300" colSpan={8}>  No assigned bookings found yet. </td> </tr> )}
+                            {bookingRows.length === 0 && (<tr><td className="p-4 text-slate-300" colSpan={8}>No assigned bookings found yet.</td></tr>)}
                         </tbody>
                     </table>
                 </div>

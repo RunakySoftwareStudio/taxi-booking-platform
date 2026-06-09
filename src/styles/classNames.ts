@@ -1,11 +1,16 @@
 export const formStyles = {
-    form:                   "mt-10 rounded-2xl border border-cyan-400/30 bg-white/5 p-6",
+    form:                   "mt-8 rounded-2xl border border-cyan-400/30 bg-white/5 p-6",
+    formDiv:                "mt-6 grid gap-5 md:grid-cols-3",
+    inputWFull:             "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full", //with w-full 
+    inputNumber:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-26",
     input:                  "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
-    label:                  "block text-sm font-medium text-slate-200",
+    selectWFull:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full",
     select:                 "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
+    label:                  "block text-sm font-medium text-slate-200",
+    
     textarea:               "rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
     primaryButtonOutside:   "rounded-xl border border-cyan-400/30 bg-cyan-400/10 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20 px-5 py-3 ",
-    primaryButtonInside:    "rounded-xl border border-cyan-400/30 bg-cyan-400/10 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20 px-5 py-3 mt-1 " ,
+    primaryButtonInside:    "rounded-xl border border-cyan-400/30 bg-cyan-400/10 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20 px-5 py-3 ",
     primaryButtonDP:        "rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold leading-none text-cyan-100 hover:bg-cyan-400/20 mt-1 h-12 w-fit self-start ",//phone: full width, desktop: small width
     smallButton:            "rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     link:                   "text-sm text-cyan-300 hover:text-cyan-200",
@@ -33,6 +38,7 @@ export const tableStyles = {
   rowWhite:                 "border-b border-white/10",
   rowCyan:                  "border-b border-cyan-400/30",
   cell:                     "p-4 text-slate-300",
+  cellInfo:                 "text-xs text-slate-400",
   headingCell:              "p-4",
   emptyCell:                "p-4 text-slate-300",
 };
