@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import Link from "next/link";
 import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
-//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
+//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx 
 
 type TypeChauffeurRow = { id: string;  name: string;  email: string;  phone: string;  service_area: string | null;  account_status: string;};
 type TypeAssignedBookingRow = 

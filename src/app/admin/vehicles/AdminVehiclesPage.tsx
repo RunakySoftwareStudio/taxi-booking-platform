@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
-//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
+//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/vehicles/page.tsx 
 
 
 type ChauffeurOption = {

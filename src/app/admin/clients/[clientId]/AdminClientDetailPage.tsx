@@ -2,7 +2,7 @@ import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import Link from "next/link";
 
-//export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app/admin/bookings/page.tsx 
+//export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app//admin/clients/[clientid]/page.tsx 
 
 type ClientRow = { id: string; name: string; email: string; phone: string; created_at: string; };
 type AdminClientDetailPageProps = { params: Promise<{clientId: string;}>; };

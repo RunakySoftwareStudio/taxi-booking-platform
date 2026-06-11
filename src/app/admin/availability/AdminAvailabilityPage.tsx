@@ -2,7 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
-//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
+//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/availability/page.tsx 
 
 type AvailabilityRow = {
   id: string;
