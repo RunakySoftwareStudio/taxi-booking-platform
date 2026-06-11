@@ -174,7 +174,7 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
                     </tbody>
                 </table>
             </div>
-                <h3 className={tableStyles.headerTableSmall}>My Bookins</h3>
+                <h3 className={tableStyles.headerTableSmall}>My Bookings</h3>
                 <div className={tableStyles.tableDiv}>
                     <table className={tableStyles.table1000}>
                         <thead className={tableStyles.tableHeaderCyan}>

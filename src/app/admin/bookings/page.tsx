@@ -104,29 +104,27 @@ export default async function AdminBookingsPage() {
   const { data: bookings, error } = await supabaseAdmin // data: bookings= you are renaming data to bookings.
     .from("bookings")
     .select
-    (
-        `
+    ( `
         id, pickup_location, destination, pickup_date, pickup_time, 
         passengers, luggage, trip_type, status, created_at,
         clients (name, email, phone ),
         chauffeur_id,
-        chauffeurs (name, email, phone )
-        `
+        chauffeurs (name, email, phone ) `
     )
     .order("created_at", { ascending: false });
 
-  if (error) 
-    {
-        console.error("Could not load bookings:", error);
-        return (
-        <main className={pageStyles.main}>
-            <div className={pageStyles.containerMedium}>
-                <h1 className={pageStyles.pageTitle}> Admin bookings</h1>
-                <p className={pageStyles.errorMessage}> Could not load bookings. </p>
-            </div>
-        </main>
-        );
-    }
+    if (error) 
+        {
+            console.error("Could not load bookings:", error);
+            return (
+                <main className={pageStyles.main}>
+                    <div className={pageStyles.containerMedium}>
+                        <h1 className={pageStyles.pageTitle}> Admin bookings</h1>
+                        <p className={pageStyles.errorMessage}> Could not load bookings. </p>
+                    </div>
+                </main>
+            );
+        }
 
     const { data: approvedChauffeurs, error: chauffeursError } = await supabaseAdmin
         .from("chauffeurs")

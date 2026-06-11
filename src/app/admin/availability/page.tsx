@@ -23,20 +23,17 @@ export default async function AdminAvailabilityPage()
         .order("start_time", { ascending: true });
 
     if (error) 
-        {
-            console.error("Could not load chauffeur availability:", error);
-            return (
-                <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-                    <div className="mx-auto max-w-7xl">
-                        <h1 className="text-3xl font-bold">Chauffeur availability</h1>
-                        <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-                            Could not load chauffeur availability.
-                        </p>
-                    </div>
-                </main>
-            );
-        }
-
+    {
+        console.error("Could not load chauffeur availability:", error);
+        return (
+            <main className={pageStyles.main}>
+                <div className={pageStyles.containerMedium}>
+                    <h1 className={pageStyles.pageTitle}> Chauffeur availability</h1>
+                    <p className={pageStyles.errorMessage}> Could not load chauffeur availability. </p>
+                </div>
+            </main>
+        );
+    }
     const availabilityRows = (availabilityRecords ?? []) as unknown as AvailabilityRow[];
 
     return (
