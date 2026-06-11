@@ -16,7 +16,7 @@ import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
 import Link from "next/link"; 
 
-export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
+//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
 
 // type  = creates a TypeScript rule/shape for data
 type BookingRow = 
