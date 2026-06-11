@@ -12,6 +12,8 @@
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+
 import Link from "next/link";
 
 export const dynamic = "force-dynamic"; // Next.js says force-dynamic forces dynamic rendering, meaning the route is rendered for each user at request time.
@@ -117,17 +119,15 @@ export default async function AdminBookingsPage() {
     {
         console.error("Could not load bookings:", error);
         return (
-        <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-            <div className="mx-auto max-w-6xl">
-                <h1 className="text-3xl font-bold">Admin bookings</h1>
-                <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-                    Could not load bookings.
-                </p>
+        <main className={pageStyles.main}>
+            <div className={pageStyles.containerMedium}>
+                <h1 className={pageStyles.pageTitle}> Admin bookings</h1>
+                <p className={pageStyles.errorMessage}> Could not load bookings. </p>
             </div>
         </main>
         );
     }
-    
+
     const { data: approvedChauffeurs, error: chauffeursError } = await supabaseAdmin
         .from("chauffeurs")
         .select("id, name, email, account_status")
@@ -159,67 +159,65 @@ export default async function AdminBookingsPage() {
         </table>
     ========================================================*/
     return (
-        <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-        <div className="mx-auto max-w-7xl"> 
-            <Link  href="/admin" className="text-sm text-cyan-300 hover:text-cyan-200" > ← Back to admin dashboard </Link>
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin </p>
-            <h1 className="mt-3 text-3xl font-bold">Booking requests</h1>
-            <p className="mt-4 max-w-2xl text-slate-300"> Here you can see booking requests submitted through the website. </p>
+        <main className={pageStyles.main}>
+        <div className={pageStyles.container}> 
+            <Link  href="/admin" className={formStyles.link}  > ← Back to admin dashboard </Link>
+            <p className={pageStyles.pageLabel}> Admin </p>
+            <h1 className={pageStyles.pageTitle}>Booking requests</h1>
+            <p className={pageStyles.pageDescription}>  Here you can see booking requests submitted through the website. </p>
 
-            <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-            <table className="w-full min-w-[1200px] text-left text-sm">
-                <thead className="border-b border-white/10 bg-white/10 text-slate-300">
+            <div className={tableStyles.tableDiv}>
+            <table className={tableStyles.table1000}>
+                <thead className={tableStyles.tableHeaderCyan}>
                 <tr>
-                    <th className="p-4">Client</th>
-                    <th className="p-4">Pickup</th>
-                    <th className="p-4">Destination</th>
-                    <th className="p-4">Date</th>
-                    <th className="p-4">Time</th>
-                    <th className="p-4">Passengers</th>
-                    <th className="p-4">Trip type</th>
-                    <th className="p-4">Chauffeur</th>
-                    <th className="p-4">Status</th>
+                    <th className={tableStyles.cellCaption}>Client</th>
+                    <th className={tableStyles.cellCaption}>Pickup</th>
+                    <th className={tableStyles.cellCaption}>Destination</th>
+                    <th className={tableStyles.cellCaption}>Date</th>
+                    <th className={tableStyles.cellCaption}>Time</th>
+                    <th className={tableStyles.cellCaption}>Passengers</th>
+                    <th className={tableStyles.cellCaption}>Trip type</th>
+                    <th className={tableStyles.cellCaption}>Assigned chauffeur</th>
+                    <th className={tableStyles.cellCaption}>Status</th>
                 </tr>
                 </thead>
 
                 <tbody>
                     { bookingRows.map((booking) => (
-                        <tr key={booking.id} className="border-b border-white/10">
-                            <td className="p-4">
-                                <div className="font-medium text-white"> {booking.clients?.name || "Unknown client"} </div>
-                                <div className="text-xs text-slate-400"> {booking.clients?.email} </div>
-                                <div className="text-xs text-slate-400"> {booking.clients?.phone} </div>
+                        <tr key={booking.id} className={tableStyles.rowCyan}>
+                            <td className={tableStyles.cellCaption}>
+                                <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"} </div>
+                                <div className={tableStyles.cellInfo}> {booking.clients?.email} </div>
+                                <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
                             </td>
 
-                            <td className="p-4 text-slate-300"> {booking.pickup_location} </td>
-                            <td className="p-4 text-slate-300"> {booking.destination} </td>
-                            <td className="p-4 text-slate-300"> {booking.pickup_date} </td>
-                            <td className="p-4 text-slate-300"> {booking.pickup_time} </td>
-                            <td className="p-4 text-slate-300"> {booking.passengers}  </td>
-                            <td className="p-4 text-slate-300"> {booking.trip_type}   </td>
+                            <td className={tableStyles.cell}> {booking.pickup_location} </td>
+                            <td className={tableStyles.cell}> {booking.destination} </td>
+                            <td className={tableStyles.cell}> {booking.pickup_date} </td>
+                            <td className={tableStyles.cell}> {booking.pickup_time} </td>
+                            <td className={tableStyles.cell}> {booking.passengers}  </td>
+                            <td className={tableStyles.cell}> {booking.trip_type}   </td>
 
-                            <td className="p-4">
+                            <td className={tableStyles.cellCaption}>
                                 <form action={assignChauffeurToBooking} className="flex items-center gap-2">
                                     <input type="hidden" name="bookingId" value={booking.id} />
-                                    <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                                    <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""} className={tableStyles.selectTable}>
                                         <option value="">Unassigned</option>
                                         {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} </option> ))}
                                     </select>
 
-                                    <button type="submit" className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
+                                    <button type="submit" className={formStyles.smallButton}>
                                         Save
                                     </button>   
                                 </form>
-
-                                {booking.chauffeurs && ( <p className="mt-2 text-xs text-slate-400"> Assigned: {booking.chauffeurs.name} </p> )}
                             </td>
-                            <td className="p-4">
+                            <td className={tableStyles.cellCaption}>
                                 <form action={updateBookingStatus} className="flex items-center gap-2">
                                     <input type="hidden" name="bookingId" value={booking.id} />
-                                    <select name="status"  defaultValue={booking.status}  className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                                    <select name="status"  defaultValue={booking.status}  className={tableStyles.selectTable}>
                                         {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status}</option> ))} 
                                     </select>
-                                    <button type="submit" className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
+                                    <button type="submit" className={formStyles.smallButton}>
                                         Save
                                     </button>                                
                                 </form>
@@ -227,7 +225,7 @@ export default async function AdminBookingsPage() {
                         </tr>
                     ))}
 
-                    {bookingRows.length === 0 && ( <tr> <td className="p-4 text-slate-300" colSpan={9}>  No bookings found yet. </td> </tr>)}
+                    {bookingRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={9}>  No bookings found yet. </td> </tr>)}
                 </tbody>
             </table>
             </div>

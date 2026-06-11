@@ -126,14 +126,13 @@ export default async function AdminVehiclesPage() {
 
     return (
       <main className={pageStyles.main}>
-        <div className="mx-auto max-w-6xl">
+        <div className={pageStyles.container}> 
           <Link  href="/admin" className={formStyles.link} > ← Back to admin dashboard </Link>
           <p className={pageStyles.pageLabel}> Admin </p>
           <h1 className={pageStyles.pageTitle}>Vehicles</h1>
           <p className={pageStyles.pageDescription}> Add vehicles and connect them to approved chauffeurs. </p>
 
           <form  action={addVehicle}  className={formStyles.form}>
-              <h2 className="text-xl font-semibold">Add vehicle</h2>
                 <div className={formStyles.formDiv}>
                     <label className="block">
                         <span className={formStyles.span}> Chauffeur </span>
@@ -167,11 +166,6 @@ export default async function AdminVehiclesPage() {
                     </label>
                     
                     <label className="block">
-                        <span className={formStyles.span}> Color</span>
-                        <input  name="vehicleColor"  placeholder="Example: black"  className={formStyles.inputWFull} />
-                    </label>     
-
-                    <label className="block">
                         <span className={formStyles.span}> Seats </span>
                         <input  name="seats" type="number"  min="1" defaultValue="4" required  placeholder="Example: 4" className={formStyles.inputNumber} />
                     </label>
@@ -183,11 +177,14 @@ export default async function AdminVehiclesPage() {
                     
                     <label className="block">
                         <span className={formStyles.span}> Year </span>
-                        <input  name="vehicleYear"  type="number"  min="1980"  max="2100"  placeholder="2026"  className={formStyles.input} />
+                        <input  name="vehicleYear"  type="number"  min="1980"  max="2100"  placeholder="Ex: 2026"  className={formStyles.input} />
                             
                     </label>      
                     
- 
+                     <label className="block">
+                        <span className={formStyles.span}> Color</span>
+                        <input  name="vehicleColor"  placeholder="Example: black"  className={formStyles.inputWFull} />
+                    </label>     
                 </div>
 
                 <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}> 
@@ -195,19 +192,20 @@ export default async function AdminVehiclesPage() {
                 </button>
           </form>
 
+          <h3 className={tableStyles.headerTableSmall}>List of chauffeurs linked to a vehicle</h3>
           <div className={tableStyles.tableDiv}>
             <table className={tableStyles.table1000}>
-              <thead className={tableStyles.headerCyan}>
+              <thead className={tableStyles.tableHeaderCyan}>
                 <tr>
-                  <th className="p-4">Chauffeur</th>
-                  <th className="p-4">Brand</th>
-                  <th className="p-4">Model</th>
-                  <th className="p-4">Year</th>
-                  <th className="p-4">Color</th>
-                  <th className="p-4">License plate</th>
-                  <th className="p-4">Type</th>
-                  <th className="p-4">Seats</th>
-                  <th className="p-4">Luggage</th>
+                  <th className={tableStyles.cellCaption}>Chauffeur</th>
+                  <th className={tableStyles.cellCaption}>Brand</th>
+                  <th className={tableStyles.cellCaption}>Model</th>
+                  <th className={tableStyles.cellCaption}>Year</th>
+                  <th className={tableStyles.cellCaption}>Color</th>
+                  <th className={tableStyles.cellCaption}>License plate</th>
+                  <th className={tableStyles.cellCaption}>Type</th>
+                  <th className={tableStyles.cellCaption}>Seats</th>
+                  <th className={tableStyles.cellCaption}>Luggage</th>
                 </tr>
               </thead>
 
@@ -215,9 +213,9 @@ export default async function AdminVehiclesPage() {
                 {vehicleRows.map((vehicle) => (
                   <tr key={vehicle.id} className={tableStyles.rowCyan}>
                     <td className="p-2">
-                      <div className="font-medium text-white"> {vehicle.chauffeurs?.name || "Unknown chauffeur"} </div>
-                      <div className="text-xs text-slate-400"> {vehicle.chauffeurs?.email}  </div>
-                      <div className="text-xs text-slate-400"> {vehicle.chauffeurs?.phone}  </div>
+                      <div className={tableStyles.cellCaptionGroup}> {vehicle.chauffeurs?.name || "Unknown chauffeur"} </div>
+                      <div className={tableStyles.cellInfo}> {vehicle.chauffeurs?.email}  </div>
+                      <div className={tableStyles.cellInfo}> {vehicle.chauffeurs?.phone}  </div>
                     </td>
 
                     <td className={tableStyles.cell}> {vehicle.brand}</td>
@@ -231,7 +229,7 @@ export default async function AdminVehiclesPage() {
                   </tr>
                 ))}
 
-                {vehicleRows.length === 0 && ( <tr>  <td className={tableStyles.emptyCell} colSpan={9}>  No vehicles found yet. </td> </tr> )}
+                {vehicleRows.length === 0 && ( <tr>  <td className={tableStyles.cellEmpty} colSpan={9}>  No vehicles found yet. </td> </tr> )}
               </tbody>
             </table>
           </div>

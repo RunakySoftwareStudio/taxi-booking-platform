@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import Link from "next/link";
+import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +21,17 @@ type TypePromiseChauffeurId = { params: Promise<{ chauffeurId: string; }>;};
 
 type TypeVehicleRow = 
 {
-    id: string;  brand: string;  model: string;
-    license_plate: string;  vehicle_type: string;
-    seats: number;  luggage_capacity: number;  created_at: string;
+    id: string;
+    chauffeur_id: string;
+    brand: string;
+    model: string;
+    license_plate: string;
+    vehicle_year: number | null;
+    vehicle_color: string | null;
+    vehicle_type: string;
+    seats: number;
+    luggage_capacity: number;
+    created_at: string;
 };
 
 // Only update this booking if it belongs to this chauffeur.
@@ -101,108 +110,111 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
     const bookingStatusOptions = (supabaseAdminBookingStatuses ?? []) as string[];
 
     return (
-        <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-            <div className="mx-auto max-w-6xl">
-                <Link href="/admin/chauffeurs" className="text-sm text-cyan-300 hover:text-cyan-200"> ← Back to Chauffeurs </Link>
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Chauffeur </p>
-                <h1 className="mt-3 text-3xl font-bold"> Welcome, {chauffeurRow.name} </h1>
-                <p className="mt-4 text-slate-300"> Here you can see bookings assigned to you. </p>
+        <main className={pageStyles.main}>
+            <div className={pageStyles.container}> 
+                <Link href="/admin/chauffeurs" className={formStyles.link}> ← Back to Chauffeurs </Link>
+                <p className={pageStyles.pageLabel}> Chauffeur </p>
+                <h1 className={pageStyles.pageTitle}> Welcome, {chauffeurRow.name} </h1>
+                <p className={pageStyles.pageDescription}> Here you can see bookings assigned to you. </p>
 
-                <div className="mt-6">
-                    <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className="mt-6 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-3 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20" >
+                <div className="mt-8 grid gap-4 md:grid-cols-3">
+                    <div className={formStyles.info}>
+                        <p className={formStyles.formInputInfoCaption}>Email</p>
+                        <p className={formStyles.formInputInfoValue}>{chauffeurRow.email}</p>
+                    </div>
+
+                    <div className={formStyles.info}>
+                        <p className={formStyles.formInputInfoCaption}>Phone</p>
+                        <p className={formStyles.formInputInfoValue}>{chauffeurRow.phone}</p>
+
+                    </div>
+
+                    <div className={formStyles.info}>
+                        <p className={formStyles.formInputInfoCaption}>Status</p>
+                        <p className={formStyles.formInputInfoValue}>{chauffeurRow.account_status}</p>
+                    </div>
+
+                </div>
+                <div className="mt-8">
+                    <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className={formStyles.primaryButtonOutside}>
                         Manage availability
                     </Link>
                 </div>
 
-                <div className="mt-8 grid gap-4 md:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                        <p className="text-sm text-slate-400">Email</p>
-                        <p className="mt-2 font-medium">{chauffeurRow.email}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                        <p className="text-sm text-slate-400">Phone</p>
-                        <p className="mt-2 font-medium">{chauffeurRow.phone}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                        <p className="text-sm text-slate-400">Status</p>
-                        <p className="mt-2 font-medium">{chauffeurRow.account_status}</p>
-                    </div>
-                </div>
-
-                <h3 className="mt-12 text-2xl font-bold">My vehicles</h3>
-                <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-                <table className="w-full min-w-200 text-left text-sm">
-                    <thead className="border-b border-white/10 bg-white/10 text-slate-300">
+            <h3 className={tableStyles.headerTableSmall}>My vehicles</h3>
+            <div className={tableStyles.tableDiv}>
+                <table className={tableStyles.table1000}>
+                    <thead className={tableStyles.tableHeaderCyan}>
                         <tr>
-                            <th className="p-4">Brand</th>
-                            <th className="p-4">Model</th>
-                            <th className="p-4">License plate</th>
-                            <th className="p-4">Type</th>
-                            <th className="p-4">Seats</th>
-                            <th className="p-4">Luggage</th>
+                            <th className={tableStyles.cellCaption}>Brand</th>
+                            <th className={tableStyles.cellCaption}>Model</th>
+                            <th className={tableStyles.cellCaption}>License plate</th>
+                            <th className={tableStyles.cellCaption}>Type</th>
+                            <th className={tableStyles.cellCaption}>Seats</th>
+                            <th className={tableStyles.cellCaption}>Luggage</th>
+                            <th className={tableStyles.cellCaption}>Year</th>
+                            <th className={tableStyles.cellCaption}>Color</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         {vehicleRows.map((vehicle) => (
-                            <tr key={vehicle.id} className="border-b border-white/10">
-                            <td className="p-4 text-slate-300">{vehicle.brand}</td>
-                            <td className="p-4 text-slate-300">{vehicle.model}</td>
-                            <td className="p-4 text-slate-300">{vehicle.license_plate}</td>
-                            <td className="p-4 text-slate-300">{vehicle.vehicle_type}</td>
-                            <td className="p-4 text-slate-300">{vehicle.seats}</td>
-                            <td className="p-4 text-slate-300">{vehicle.luggage_capacity}</td>
+                            <tr key={vehicle.id} className={tableStyles.rowCyan}>
+                                <td className={tableStyles.cell}>{vehicle.brand}</td>
+                                <td className={tableStyles.cell}>{vehicle.model}</td>
+                                <td className={tableStyles.cell}>{vehicle.license_plate}</td>
+                                <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
+                                <td className={tableStyles.cell}>{vehicle.seats}</td>
+                                <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
+                                <td className={tableStyles.cell}>{vehicle.vehicle_year}</td>
+                                <td className={tableStyles.cell}>{vehicle.vehicle_color}</td>
                             </tr>
                         ))}
-                        {vehicleRows.length === 0 && (<tr><td className="p-4 text-slate-300" colSpan={6}>No vehicles connected to this chauffeur yet.</td></tr>)}
+                        {vehicleRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}>No vehicles connected to this chauffeur yet.</td></tr>)}
                     </tbody>
                 </table>
-                </div>
-                
-                <h3 className="mt-12 text-2xl font-bold">My Bookins</h3>
-                <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-                    <table className="w-full min-w-200 text-left text-sm">
-                        <thead className="border-b border-white/10 bg-white/10 text-slate-300">
-                        <tr>
-                            <th className="p-4">Client</th>
-                            <th className="p-4">Pickup</th>
-                            <th className="p-4">Destination</th>
-                            <th className="p-4">Date</th>
-                            <th className="p-4">Time</th>
-                            <th className="p-4">Passengers</th>
-                            <th className="p-4">Trip type</th>
-                            <th className="p-4">Status</th>
-                        </tr>
+            </div>
+                <h3 className={tableStyles.headerTableSmall}>My Bookins</h3>
+                <div className={tableStyles.tableDiv}>
+                    <table className={tableStyles.table1000}>
+                        <thead className={tableStyles.tableHeaderCyan}>
+                            <tr>
+                                <th className={tableStyles.cellCaption}>Client</th>
+                                <th className={tableStyles.cellCaption}>Pickup</th>
+                                <th className={tableStyles.cellCaption}>Destination</th>
+                                <th className={tableStyles.cellCaption}>Date</th>
+                                <th className={tableStyles.cellCaption}>Time</th>
+                                <th className={tableStyles.cellCaption}>Passengers</th>
+                                <th className={tableStyles.cellCaption}>Trip type</th>
+                                <th className={tableStyles.cellCaption}>Status</th>
+                            </tr>
                         </thead>
 
                         <tbody>
                             {bookingRows.map((booking) =>(
                                 <tr key={booking.id} className="border-b border-white/10">
-                                    <td className="p-4">
-                                        <div className="font-medium text-white"> {booking.clients?.name || "Unknown client"} </div>
-                                        <div className="text-xs text-slate-400"> {booking.clients?.email} </div>
-                                        <div className="text-xs text-slate-400"> {booking.clients?.phone} </div>
+                                    <td className={tableStyles.cellCaption}>
+                                        <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"} </div>
+                                        <div className={tableStyles.cellInfo}> {booking.clients?.email} </div>
+                                        <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
                                     </td>
-                                    <td className="p-4 text-slate-300"> {booking.pickup_location} </td>
-                                    <td className="p-4 text-slate-300"> {booking.destination} </td>
-                                    <td className="p-4 text-slate-300"> {booking.pickup_date} </td>
-                                    <td className="p-4 text-slate-300"> {booking.pickup_time} </td>
-                                    <td className="p-4 text-slate-300"> {booking.passengers}  </td>
-                                    <td className="p-4 text-slate-300"> {booking.trip_type}   </td>
-
-                                    <td className="p-4">
+                                    <td className={tableStyles.cell}> {booking.pickup_location} </td>
+                                    <td className={tableStyles.cell}> {booking.destination} </td>
+                                    <td className={tableStyles.cell}> {booking.pickup_date} </td>
+                                    <td className={tableStyles.cell}> {booking.pickup_time} </td>
+                                    <td className={tableStyles.cell}> {booking.passengers}  </td>
+                                    <td className={tableStyles.cell}> {booking.trip_type}   </td>
+                                    <td className={tableStyles.cellCaption}>
                                         <form action={updateAssignedBookingStatus} className="flex items-center gap-2">
                                             <input type="hidden" name="bookingId" value={booking.id} />
                                             <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
                                             <select
                                                 name="status" defaultValue={booking.status} 
-                                                className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                                                className={tableStyles.selectTable}>
                                                 {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status} </option>  ))}
                                             </select>
 
-                                            <button type="submit" className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
+                                            <button type="submit" className={formStyles.smallButton}>
                                                 Save
                                             </button>
                                         </form>
@@ -210,7 +222,7 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
                                 </tr>
                             ))}
 
-                            {bookingRows.length === 0 && (<tr><td className="p-4 text-slate-300" colSpan={8}>No assigned bookings found yet.</td></tr>)}
+                            {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}>No assigned bookings found yet.</td></tr>)}
                         </tbody>
                     </table>
                 </div>

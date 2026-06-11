@@ -1,6 +1,8 @@
 
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+
 export const dynamic = "force-dynamic";
 
 type ClientRow = 
@@ -35,45 +37,45 @@ export default async function AdminClientsPage()
   const clientRows = (clients ?? []) as ClientRow[];
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-      <div className="mx-auto max-w-6xl">
-        <Link  href="/admin" className="text-sm text-cyan-300 hover:text-cyan-200" > ← Back to admin dashboard </Link>
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin </p>
-        <h1 className="mt-3 text-3xl font-bold"> Clients </h1>
-        <p className="mt-4 max-w-2xl text-slate-300"> View clients who submitted booking requests through the website. </p>
+    <main className={pageStyles.main}>
+        <div className={pageStyles.container}> 
+              <Link  href="/admin" className={formStyles.link}  > ← Back to admin dashboard </Link>
+              <p className={pageStyles.pageLabel}> Admin </p>
+              <h1 className={pageStyles.pageTitle}>Clients</h1>
+              <p className={pageStyles.pageDescription}>  View clients who submitted booking requests through the website.  </p>
+              <div className={tableStyles.tableDiv}>
+              <table className={tableStyles.table1000}>
 
-        <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="border-b border-white/10 bg-white/10 text-slate-300">
-              <tr>
-                <th className="p-4">Name</th>
-                <th className="p-4">Email</th>
-                <th className="p-4">Phone</th>
-                <th className="p-4">Created at</th>
-                <th className="p-4">Details</th>
-              </tr>
-            </thead>
+              <thead className={tableStyles.tableHeaderCyan}>
+                <tr>
+                  <th className={tableStyles.cellCaption}>Name</th>
+                  <th className={tableStyles.cellCaption}>Email</th>
+                  <th className={tableStyles.cellCaption}>Phone</th>
+                  <th className={tableStyles.cellCaption}>Created at</th>
+                  <th className={tableStyles.cellCaption}>Details</th>
+                </tr>
+              </thead>
 
-            <tbody>
-                {clientRows.map((client) => (
-                    <tr key={client.id} className="border-b border-white/10">
-                        <td className="p-4 font-medium text-white">{client.name}</td>
-                        <td className="p-4 text-slate-300"> {client.email}</td>
-                        <td className="p-4 text-slate-300"> {client.phone}</td>
-                        <td className="p-4 text-slate-300"> {new Date(client.created_at).toLocaleString()}  </td>
-                        <td className="p-4">
-                            <Link  href={`/admin/clients/${client.id}`} className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20" >
-                                Open
-                            </Link>
-                        </td>
-                    </tr>
-                ))}
+              <tbody>
+                  {clientRows.map((client) => (
+                      <tr key={client.id} className={tableStyles.rowCyan}>
+                          <td className={tableStyles.cell}>{client.name}</td>
+                          <td className={tableStyles.cell}> {client.email}</td>
+                          <td className={tableStyles.cell}> {client.phone}</td>
+                          <td className={tableStyles.cell}> {new Date(client.created_at).toLocaleString()}  </td>
+                          <td className={tableStyles.cellCaption}>
+                              <Link href={`/admin/clients/${client.id}`} className={formStyles.smallButton} >
+                                  Open
+                              </Link>
+                          </td>
+                      </tr>
+                  ))}
 
-              {clientRows.length === 0 && (<tr> <td className="p-4 text-slate-300" colSpan={5}>  No clients found yet. </td> </tr> )}
-            </tbody>
-          </table>
+                {clientRows.length === 0 && (<tr> <td className={tableStyles.cell} colSpan={5}>  No clients found yet. </td> </tr> )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
     </main>
   );
 }

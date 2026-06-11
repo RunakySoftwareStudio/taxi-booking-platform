@@ -2,6 +2,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
 export const dynamic = "force-dynamic";
 
@@ -79,61 +80,60 @@ export default async function AdminChauffeursPage() {
     const chauffeurStatusOptions = (chauffeurStatuses ?? []) as string[];
 
     return (
-        <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-            <div className="mx-auto max-w-6xl">
-                <Link  href="/admin" className="text-sm text-cyan-300 hover:text-cyan-200" > ← Back to admin dashboard </Link>
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin </p>
-                <h1 className="mt-3 text-3xl font-bold">Chauffeurs</h1>
-                <p className="mt-4 max-w-2xl text-slate-300"> Add chauffeurs and view chauffeur accounts registered in the platform.</p>
 
-                <form action={addChauffeur} className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-6">
-                    <h2 className="text-xl font-semibold">Add chauffeur</h2>
-                    <div className="mt-6 grid gap-4 md:grid-cols-3">
-                        <input name="name" required placeholder="Name" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white" />
-                        <input name="email" type="email" required placeholder="Email" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white" />
-                        <input name="phone" required placeholder="Phone" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
-                        <input name="companyName" placeholder="Company name" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white" />
-                        <input name="licenseNumber" placeholder="License number" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
-                        <input name="serviceArea" placeholder="Service area" className="rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white"/>
+        <main className={pageStyles.main}>
+        <div className={pageStyles.container}> 
+          <Link  href="/admin" className={formStyles.link} > ← Back to admin dashboard </Link>
+          <p className={pageStyles.pageLabel}> Admin </p>
+          <h1 className={pageStyles.pageTitle}>Chauffeurs</h1>
+          <p className={pageStyles.pageDescription}> Add chauffeurs and view chauffeur accounts registered in the platform. </p>
+
+                <form action={addChauffeur} className={formStyles.form}>
+                    <div className={formStyles.formDiv}>
+                        <input name="name" required placeholder="Name" className={formStyles.selectWFull}/>
+                        <input name="email" type="email" required placeholder="Email" className={formStyles.selectWFull}/>
+                        <input name="phone" required placeholder="Phone" className={formStyles.selectWFull}/>
+                        <input name="companyName" placeholder="Company name" className={formStyles.selectWFull}/>
+                        <input name="licenseNumber" placeholder="License number" className={formStyles.selectWFull}/>
+                        <input name="serviceArea" placeholder="Service area" className={formStyles.selectWFull}/>
                     </div>
-                    <button type="submit"  className="mt-6 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-3 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20"> 
+                    <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}> 
                         Add chauffeur 
                     </button>
                 </form>
 
                 {error && (<p className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeurs. </p> )}
-
-                <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-                    <table className="w-full min-w-[900px] text-left text-sm">
-                        <thead className="border-b border-white/10 bg-white/10 text-slate-300">
+                
+                <h3 className={tableStyles.headerTableSmall}>List of chauffeurs:</h3>
+                <div className={tableStyles.tableDiv}>
+                    <table className={tableStyles.table1000}>
+                        <thead className={tableStyles.tableHeaderCyan}>
                             <tr>
-                                <th className="p-4">Name</th>
-                                <th className="p-4">Email</th>
-                                <th className="p-4">Phone</th>
-                                <th className="p-4">Company</th>
-                                <th className="p-4">Service area</th>
-                                <th className="p-4">Status</th>
-                                <th className="p-4">Rating</th>
-                                <th className="p-4">Dashboard</th>
+                                <th className={tableStyles.cellCaption}>Name</th>
+                                <th className={tableStyles.cellCaption}>Email</th>
+                                <th className={tableStyles.cellCaption}>Phone</th>
+                                <th className={tableStyles.cellCaption}>Company</th>
+                                <th className={tableStyles.cellCaption}>Service area</th>
+                                <th className={tableStyles.cellCaption}>Rating</th>
+                                <th className={tableStyles.cellCaption}>Status</th>
+                                <th className={tableStyles.cellCaption}>Dashboard</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             {chauffeurRows.map((chauffeur) => (
-                                <tr key={chauffeur.id} className="border-b border-white/10">
+                                <tr key={chauffeur.id} className={tableStyles.rowCyan}>
                                     <td className="p-4 font-medium text-white"> {chauffeur.name} </td>
-                                    <td className="p-4 text-slate-300">{chauffeur.email}</td>
-                                    <td className="p-4 text-slate-300">{chauffeur.phone}</td>
-                                    <td className="p-4 text-slate-300"> {chauffeur.company_name || "-"} </td>
-                                    <td className="p-4 text-slate-300"> {chauffeur.service_area || "-"} </td>
-                                    <td className="p-4">
+                                    <td className={tableStyles.cell}>{chauffeur.email}</td>
+                                    <td className={tableStyles.cell}>{chauffeur.phone}</td>
+                                    <td className={tableStyles.cell}> {chauffeur.company_name || "-"} </td>
+                                    <td className={tableStyles.cell}> {chauffeur.service_area || "-"} </td>
+                                    <td className={tableStyles.cell}>{chauffeur.rating}</td>
+                                    <td className={tableStyles.cellCaption}>
                                         <form action={updateChauffeurStatus} className="flex items-center gap-2">
                                             <input type="hidden" name="chauffeurId" value={chauffeur.id} />
 
-                                            <select
-                                                name="accountStatus"
-                                                defaultValue={chauffeur.account_status}
-                                                className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                                            <select name="accountStatus" defaultValue={chauffeur.account_status} className={formStyles.selectForm}>
                                                  {/* This is normal selection of status options
                                                     <option value="pending_approval">pending_approval</option> 
                                                     <option value="approved">approved</option>
@@ -143,22 +143,22 @@ export default async function AdminChauffeursPage() {
                                                 {chauffeurStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
                                             </select>
 
-                                            <button type="submit" className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
+                                            <button type="submit" className={formStyles.smallButton}>
                                                 Save
                                             </button>
                                         </form>
                                     </td>
 
-                                    <td className="p-4 text-slate-300">{chauffeur.rating}</td>
-                                    <td className="p-4">
-                                        <Link href={`/chauffeur/${chauffeur.id}`} className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20">
-                                            Open
+                                    
+                                    <td className={tableStyles.cellCaption}>
+                                        <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
+                                            Open chauffeur details
                                         </Link>
                                     </td>
                                 </tr>
                             ))}
 
-                            {chauffeurRows.length === 0 && ( <tr> <td className="p-4 text-slate-300" colSpan={8}> No chauffeurs found yet. </td> </tr> )}
+                            {chauffeurRows.length === 0 && ( <tr> <td className={tableStyles.cell} colSpan={8}> No chauffeurs found yet. </td> </tr> )}
 
                         </tbody>
                     </table>

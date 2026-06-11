@@ -1,5 +1,6 @@
-import Link from "next/link";
+import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -49,41 +50,42 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
 
     return (
         <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-            <div className="mx-auto max-w-6xl">
+            <div className={pageStyles.container}> 
                 
-                <Link href="/admin/clients" className="text-sm text-cyan-300 hover:text-cyan-200"> ← Back to clients </Link>
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Admin client</p>
-                <h1 className="mt-3 text-3xl font-bold">{clientRow.name}</h1>
+                <Link href="/admin/clients" className={formStyles.link} > ← Back to clients </Link>
+                <p className={pageStyles.pageLabel}> Admin client</p>
+                <h1 className={pageStyles.pageTitle}>{clientRow.name}</h1>
 
                 <div className="mt-8 grid gap-4 md:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                        <p className="text-sm text-slate-400">Email</p>
-                        <p className="mt-2 font-medium">{clientRow.email}</p>
+                    <div className={formStyles.info}>
+                        <p className={formStyles.formInputInfoCaption}>Email</p>
+                        <p className={formStyles.formInputInfoValue}>{clientRow.email}</p>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                        <p className="text-sm text-slate-400">Phone</p>
-                        <p className="mt-2 font-medium">{clientRow.phone}</p>
+                    <div className={formStyles.info}>
+                        <p className={formStyles.formInputInfoCaption}>Phone</p>
+                        <p className={formStyles.formInputInfoValue}>{clientRow.phone}</p>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                        <p className="text-sm text-slate-400">Created at</p>
-                        <p className="mt-2 font-medium"> {new Date(clientRow.created_at).toLocaleString()} </p>
+                    <div className={formStyles.info}>
+                        <p className={formStyles.formInputInfoCaption}>Created at</p>
+                        <p className={formStyles.formInputInfoValue}> {new Date(clientRow.created_at).toLocaleString()} </p>
                     </div>
                 </div>
-                <h2 className="mt-12 text-2xl font-bold">Booking history</h2>
-                <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-                    <table className="w-full min-w-[900px] text-left text-sm">
-                        <thead className="border-b border-white/10 bg-white/10 text-slate-300">
+                
+                <h2 className={tableStyles.headerTableSmall}>Booking history</h2>
+                <div className={tableStyles.tableDiv}>
+                    <table className={tableStyles.table1000}>
+                        <thead className={tableStyles.tableHeaderCyan}>
                             <tr>
-                                <th className="p-4">Pickup</th>
-                                <th className="p-4">Destination</th>
-                                <th className="p-4">Date</th>
-                                <th className="p-4">Time</th>
-                                <th className="p-4">Passengers</th>
-                                <th className="p-4">Trip type</th>
-                                <th className="p-4">Chauffeur</th>
-                                <th className="p-4">Status</th>
+                                <th className={tableStyles.cellCaption}>Pickup</th>
+                                <th className={tableStyles.cellCaption}>Destination</th>
+                                <th className={tableStyles.cellCaption}>Date</th>
+                                <th className={tableStyles.cellCaption}>Time</th>
+                                <th className={tableStyles.cellCaption}>Passengers</th>
+                                <th className={tableStyles.cellCaption}>Trip type</th>
+                                <th className={tableStyles.cellCaption}>Chauffeur</th>
+                                <th className={tableStyles.cellCaption}>Status</th>
                             </tr>
                         </thead>
 
@@ -92,14 +94,14 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                                 bookingRows.map((booking) => 
                                 (
                                     <tr key={booking.id} className="border-b border-white/10">
-                                    <td className="p-4 text-slate-300"> {booking.pickup_location} </td>
-                                    <td className="p-4 text-slate-300"> {booking.destination} </td>
-                                    <td className="p-4 text-slate-300"> {booking.pickup_date} </td>
-                                    <td className="p-4 text-slate-300"> {booking.pickup_time} </td>
-                                    <td className="p-4 text-slate-300"> {booking.passengers} </td>
-                                    <td className="p-4 text-slate-300"> {booking.trip_type} </td>
-                                    <td className="p-4 text-slate-300"> {booking.chauffeurs?.name || "Unassigned"} </td>
-                                    <td className="p-4"> <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200"> {booking.status} </span> </td> </tr>
+                                    <td className={tableStyles.cell}> {booking.pickup_location} </td>
+                                    <td className={tableStyles.cell}> {booking.destination} </td>
+                                    <td className={tableStyles.cell}> {booking.pickup_date} </td>
+                                    <td className={tableStyles.cell}> {booking.pickup_time} </td>
+                                    <td className={tableStyles.cell}> {booking.passengers} </td>
+                                    <td className={tableStyles.cell}> {booking.trip_type} </td>
+                                    <td className={tableStyles.cell}> {booking.chauffeurs?.name || "Unassigned"} </td>
+                                    <td className={tableStyles.cellCaption}> <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200"> {booking.status} </span> </td> </tr>
                                 ))
                             }
 
