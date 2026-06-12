@@ -160,7 +160,7 @@ export default async function AdminBookingsPage() {
         <main className={pageStyles.main}>
         <div className={pageStyles.container}> 
             <Link  href="/admin" className={formStyles.link}  > ← Back to admin dashboard </Link>
-            <p className={pageStyles.pageLabel}> Admin </p>
+            <p className={pageStyles.pageLabelUpper}> Admin </p>
             <h1 className={pageStyles.pageTitle}>Booking requests</h1>
             <p className={pageStyles.pageDescription}>  Here you can see booking requests submitted through the website. </p>
 

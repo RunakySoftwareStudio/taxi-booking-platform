@@ -1,6 +1,8 @@
 export const formStyles = {
     form:                   "mt-8 rounded-2xl border border-cyan-400/30 bg-white/5 p-4",
     formDiv:                "mt-6 grid gap-5 md:grid-cols-3",
+    formInfoCellCaption:    "text-slate-300",
+    formInfoCell:           "block text-sm text-slate-400",
     inputWFull:             "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full", //with w-full 
     inputNumber:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-26",
     input:                  "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
@@ -18,6 +20,8 @@ export const formStyles = {
     span:                   "mb-2 block text-sm font-medium text-slate-300",
     formInputInfoCaption:    "text-md text-slate-400",
     formInputInfoValue:     "mt-2 font-medium",
+    sectionCardCyan:        "rounded-2xl border-3 border-cyan-400/30 bg-white/5 p-6 hover:bg-white/10",
+    formCaptionSmall:       "text-sm font-semibold tracking-[0.3em] text-cyan-300",
   
 };
 
@@ -27,8 +31,12 @@ export const pageStyles = {
     containerMedium :         "mx-auto max-w-6xl",
     containersmall:           "mx-auto max-w-4xl",
     sectionCard:              "rounded-2xl border border-white/10 bg-white/5 p-6",
-    pageLabel:                "text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300",
+    sectionCardCyan:          "rounded-2xl border-3 border-cyan-400/30 bg-white/5 p-6 hover:bg-white/10",
+    pageLabel:                "text-sm font-semibold tracking-[0.3em] text-cyan-300",
+    pageLabelUpper:           "text-sm font-semibold tracking-[0.3em] text-cyan-300 uppercase",
+    
     pageTitle:                "mt-3 text-3xl font-bold text-white",
+    
     pageDescription:          "mt-4 max-w-2xl text-slate-300",
     errorMessage:             "mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200",
 };

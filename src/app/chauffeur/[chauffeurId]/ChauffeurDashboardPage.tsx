@@ -113,7 +113,7 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
         <main className={pageStyles.main}>
             <div className={pageStyles.container}> 
                 <Link href="/admin/chauffeurs" className={formStyles.link}> ← Back to Chauffeurs </Link>
-                <p className={pageStyles.pageLabel}> Chauffeur </p>
+                <p className={pageStyles.pageLabelUpper}> Chauffeur </p>
                 <h1 className={pageStyles.pageTitle}> Welcome, {chauffeurRow.name} </h1>
                 <p className={pageStyles.pageDescription}> Here you can see bookings assigned to you. </p>
 
@@ -208,9 +208,7 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
                                         <form action={updateAssignedBookingStatus} className="flex items-center gap-2">
                                             <input type="hidden" name="bookingId" value={booking.id} />
                                             <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
-                                            <select
-                                                name="status" defaultValue={booking.status} 
-                                                className={tableStyles.selectTable}>
+                                            <select name="status" defaultValue={booking.status} className={tableStyles.selectTable}>
                                                 {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status} </option>  ))}
                                             </select>
 

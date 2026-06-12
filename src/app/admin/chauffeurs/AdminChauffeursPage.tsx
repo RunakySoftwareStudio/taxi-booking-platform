@@ -84,18 +84,36 @@ export default async function AdminChauffeursPage() {
         <main className={pageStyles.main}>
         <div className={pageStyles.container}> 
           <Link  href="/admin" className={formStyles.link} > ← Back to admin dashboard </Link>
-          <p className={pageStyles.pageLabel}> Admin </p>
+          <p className={pageStyles.pageLabelUpper}> Admin </p>
           <h1 className={pageStyles.pageTitle}>Chauffeurs</h1>
           <p className={pageStyles.pageDescription}> Add chauffeurs and view chauffeur accounts registered in the platform. </p>
 
                 <form action={addChauffeur} className={formStyles.form}>
                     <div className={formStyles.formDiv}>
-                        <input name="name" required placeholder="Name" className={formStyles.selectWFull}/>
-                        <input name="email" type="email" required placeholder="Email" className={formStyles.selectWFull}/>
-                        <input name="phone" required placeholder="Phone" className={formStyles.selectWFull}/>
-                        <input name="companyName" placeholder="Company name" className={formStyles.selectWFull}/>
-                        <input name="licenseNumber" placeholder="License number" className={formStyles.selectWFull}/>
-                        <input name="serviceArea" placeholder="Service area" className={formStyles.selectWFull}/>
+                        <label className="block">
+                            <span className={formStyles.span}> Name </span>
+                            <input name="name" required placeholder="Name" className={formStyles.selectWFull}/>
+                        </label>
+                        <label className="block">
+                            <span className={formStyles.span}> Email </span>
+                            <input name="email" type="email" required placeholder="Email" className={formStyles.selectWFull}/>
+                        </label>
+                        <label className="block">
+                            <span className={formStyles.span}> Phone </span>
+                            <input name="phone" required placeholder="Phone" className={formStyles.selectWFull}/>
+                        </label>
+                        <label className="block">
+                            <span className={formStyles.span}> Company name </span>
+                            <input name="companyName" placeholder="Company name" className={formStyles.selectWFull}/>
+                        </label>
+                        <label className="block">
+                            <span className={formStyles.span}> License number </span>
+                            <input name="licenseNumber" placeholder="License number" className={formStyles.selectWFull}/>
+                        </label>                       
+                        <label className="block">
+                            <span className={formStyles.span}> Service area </span>
+                            <input name="serviceArea" placeholder="Service area" className={formStyles.selectWFull}/>
+                        </label>
                     </div>
                     <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}> 
                         Add chauffeur 

@@ -73,7 +73,7 @@ export default async function ChauffeurAvailabilityPage({params}: ChauffeurAvail
     <main className={pageStyles.main}>
       <div className={pageStyles.container}> 
         <Link  href={`/chauffeur/${chauffeurId}`} className="text-sm text-cyan-300 hover:text-cyan-200" >  ← Back to dashboard </Link>
-        <p className={pageStyles.pageLabel}> Chauffeur </p>
+        <p className={pageStyles.pageLabelUpper}> Chauffeur </p>
         <h1 className={pageStyles.pageTitle}>  Availability for {chauffeurRow.name} </h1>
         <p className={pageStyles.pageDescription}> Add the times when you are available, busy, offline, or on holiday. </p>
 
@@ -122,8 +122,7 @@ export default async function ChauffeurAvailabilityPage({params}: ChauffeurAvail
 
             <tbody>
                 {
-                    availabilityRows.map((availability) => 
-                    {
+                    availabilityRows.map((availability) =>  {
                         //available → green, busy→ red,  offline → yellow, holiday → yellow
                         let statusColorClasses = tableStyles.statusRedClasses // "bg-yellow-600/25 text-yellow-50 ring-1 ring-yellow-500/40";
                         if (availability.status === "available") {statusColorClasses = tableStyles.statusGreenClasses; }
@@ -135,7 +134,11 @@ export default async function ChauffeurAvailabilityPage({params}: ChauffeurAvail
                                 <td className={tableStyles.cell}> {availability.start_time} </td>
                                 <td className={tableStyles.cell}> {availability.end_time} </td>
                                 <td className="p-4">
-                                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}> {availability.status} </span>
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                        className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} > {availability.status} </span>
+                                        {availability.status === "available" && (<span className="text-sm font-bold text-green-300" aria-hidden="true"> ✓ </span>)}
+                                    </div>
                                 </td>
                             </tr>  
                         );

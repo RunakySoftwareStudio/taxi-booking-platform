@@ -53,7 +53,7 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
             <div className={pageStyles.container}> 
                 
                 <Link href="/admin/clients" className={formStyles.link} > ← Back to clients </Link>
-                <p className={pageStyles.pageLabel}> Admin client</p>
+                <p className={pageStyles.pageLabelUpper}> Admin client</p>
                 <h1 className={pageStyles.pageTitle}>{clientRow.name}</h1>
 
                 <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -89,11 +89,17 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                             </tr>
                         </thead>
 
-                        <tbody>
-                            {
-                                bookingRows.map((booking) => 
-                                (
-                                    <tr key={booking.id} className="border-b border-white/10">
+                    <tbody>
+                    {
+                        bookingRows.map((booking) => {
+                            //	pending, accepted, rejected, confirmed, completed, cancelled
+                            //  accepted, completed → green, rejected,cancelled → red,  pending,confirmed → yellow, holiday → yellow
+                            let statusColorClasses = tableStyles.statusRedClasses // rejected,cancelled 
+                            if (booking.status === "accepted" || booking.status === "completed") {statusColorClasses = tableStyles.statusGreenClasses; }
+                            if (booking.status === "pending" || booking.status === "confirmed") { statusColorClasses = tableStyles.statusYellowClasses; }
+
+                            return (
+                                <tr key={booking.id} className="border-b border-white/10">
                                     <td className={tableStyles.cell}> {booking.pickup_location} </td>
                                     <td className={tableStyles.cell}> {booking.destination} </td>
                                     <td className={tableStyles.cell}> {booking.pickup_date} </td>
@@ -101,11 +107,18 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                                     <td className={tableStyles.cell}> {booking.passengers} </td>
                                     <td className={tableStyles.cell}> {booking.trip_type} </td>
                                     <td className={tableStyles.cell}> {booking.chauffeurs?.name || "Unassigned"} </td>
-                                    <td className={tableStyles.cellCaption}> <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200"> {booking.status} </span> </td> </tr>
-                                ))
-                            }
-
-                            {bookingRows.length === 0 && (<tr> <td className="p-4 text-slate-300" colSpan={8}> No bookings found for this client. </td></tr>)}
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-2">
+                                            <span
+                                            className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} > {booking.status} </span>
+                                            {booking.status === "completed" && (<span className="text-sm font-bold text-green-300" aria-hidden="true"> ✓ </span>)}
+                                        </div>
+                                    </td>
+                                </tr> 
+                            );
+                        })
+                    }
+                        {bookingRows.length === 0 && (<tr> <td className="p-4 text-slate-300" colSpan={8}> No bookings found for this client. </td></tr>)}
                         </tbody>
                     </table>
                 </div>

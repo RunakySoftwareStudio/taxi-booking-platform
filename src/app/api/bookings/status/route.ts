@@ -57,12 +57,12 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (bookingError || !booking) {
-      console.error("Booking lookup error:", bookingError);
+        console.error("Booking lookup error:", bookingError);
 
-      return NextResponse.json(
-        { message: "Booking not found." },
-        { status: 404 }
-      );
+        return NextResponse.json(
+          { message: "Booking not found." },
+          { status: 404 }
+        );
     }
 
     const bookingRow = booking as BookingRow;
@@ -91,19 +91,24 @@ export async function POST(request: Request) {
 
     let chauffeur = null;
 
-    if (bookingRow.chauffeur_id) {
-      const { data: chauffeurRow, error: chauffeurError } = await supabaseAdmin
+if (bookingRow.chauffeur_id) {
+      console.log("Booking chauffeur_id:", bookingRow.chauffeur_id);
+
+      const { data: chauffeurRows, error: chauffeurError } = await supabaseAdmin
         .from("chauffeurs")
-        .select("name, phone, availability")
+        .select("id, name, email, phone")
         .eq("id", bookingRow.chauffeur_id)
-        .maybeSingle();
+        .limit(1);
+
+      console.log("Chauffeur lookup rows:", chauffeurRows); // this error you can see in Visual Code Code terminal output
+      console.log("Chauffeur lookup error:", chauffeurError);
 
       if (chauffeurError) {
         console.error("Chauffeur lookup error:", chauffeurError);
       }
 
-      chauffeur = chauffeurRow;
-    }
+      chauffeur = chauffeurRows?.[0] ?? null;
+  }
 
     return NextResponse.json(
       {

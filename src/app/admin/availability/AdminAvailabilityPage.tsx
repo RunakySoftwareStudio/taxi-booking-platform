@@ -41,7 +41,7 @@ export default async function AdminAvailabilityPage()
         <main className={pageStyles.main}>
         <div className={pageStyles.container}> 
             <Link  href="/admin" className={formStyles.link}  > ← Back to admin dashboard </Link>
-            <p className={pageStyles.pageLabel}> Admin </p>
+            <p className={pageStyles.pageLabelUpper}> Admin </p>
             <h1 className={pageStyles.pageTitle}>Chauffeur availability</h1>
             <p className={pageStyles.pageDescription}>  View availability records added by chauffeurs.  </p>
             <div className={tableStyles.tableDiv}>
@@ -75,7 +75,11 @@ export default async function AdminAvailabilityPage()
                                     <td className={tableStyles.cell}> {availability.start_time} </td>
                                     <td className={tableStyles.cell}> {availability.end_time} </td>
                                     <td className="p-4">
-                                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}> {availability.status} </span>
+                                        <div className="flex items-center gap-2">
+                                            <span
+                                            className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} > {availability.status} </span>
+                                            {availability.status === "available" && (<span className="text-sm font-bold text-green-300" aria-hidden="true"> ✓ </span>)}
+                                        </div>
                                     </td>
                                 </tr>  
                             );

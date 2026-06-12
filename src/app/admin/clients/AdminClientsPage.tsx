@@ -41,7 +41,7 @@ export default async function AdminClientsPage()
     <main className={pageStyles.main}>
         <div className={pageStyles.container}> 
               <Link  href="/admin" className={formStyles.link}  > ← Back to admin dashboard </Link>
-              <p className={pageStyles.pageLabel}> Admin </p>
+              <p className={pageStyles.pageLabelUpper}> Admin </p>
               <h1 className={pageStyles.pageTitle}>Clients</h1>
               <p className={pageStyles.pageDescription}>  View clients who submitted booking requests through the website.  </p>
               <div className={tableStyles.tableDiv}>
@@ -66,7 +66,7 @@ export default async function AdminClientsPage()
                           <td className={tableStyles.cell}> {new Date(client.created_at).toLocaleString()}  </td>
                           <td className={tableStyles.cellCaption}>
                               <Link href={`/admin/clients/${client.id}`} className={formStyles.smallButton} >
-                                  Open
+                                  Open client details
                               </Link>
                           </td>
                       </tr>
