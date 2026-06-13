@@ -23,6 +23,7 @@ import { type FormEvent, useState } from "react";
       chauffeurs: {
         name: string;
         phone: string;
+        email: string;
         availability: string;
       } | null;
   };
@@ -102,10 +103,11 @@ export default function StatusPage() {
 
           {booking && (
             <section className={formStyles.form}>
-              <h2 className="text-2xl font-semibold text-white"> Booking found </h2>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <h3 className={formStyles.formH3SemiBold}> Booking found </h3>  
+              <div className={formStyles.formDivGridCol2}>
                   <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Status</span> {booking.status} </p>
                   <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Client</span> {booking.clients?.name} </p>
+                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Client phone</span> {booking.clients?.phone} </p>
                   <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Pickup</span> {booking.pickup_location} </p>
                   <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Destination</span> {booking.destination} </p>
                   <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Date</span> {booking.pickup_date} </p>
@@ -114,10 +116,11 @@ export default function StatusPage() {
                   <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Trip type</span>  {booking.trip_type}  </p>
               </div>
               {booking.chauffeurs? (
-                  <div className={formStyles.form}>
-                      <h3 className={formStyles.formCaptionSmall}> Assigned chauffeur  </h3>
+                  <div className={formStyles.formDivCyan}>
+                      <h3 className={formStyles.formLabel}> Assigned chauffeur  </h3>
                       <p className={formStyles.formInfoCellCaption}> Name:  {booking.chauffeurs?.name} </p>
                       <p className={formStyles.formInfoCellCaption}> Phone: {booking.chauffeurs?.phone}  </p>
+                      <p className={formStyles.formInfoCellCaption}> Email: {booking.chauffeurs?.email}  </p>
                   </div>
                   ) : ( <p className={pageStyles.errorMessage}>  No chauffeur has been assigned yet.  </p> )
               }

@@ -185,7 +185,7 @@ export default function BookingForm() {
                             Check booking status
                         </Link>
                     </div>
-                    <div className="mt-6 grid gap-4 text-sm text-slate-300 md:grid-cols-2">
+                    <div className={formStyles.formDivGridCol2}>
                         <p> <span className={formStyles.formInfoCellCaption}>Pickup:</span>{" "} {submittedBooking.pickup} </p>
                         <p> <span className={formStyles.formInfoCellCaption}>Destination:</span>{" "} {submittedBooking.destination} </p>
                         <p> <span className={formStyles.formInfoCellCaption}>Date:</span>{" "} {submittedBooking.date} </p>

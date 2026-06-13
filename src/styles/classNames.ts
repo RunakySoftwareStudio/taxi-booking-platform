@@ -1,6 +1,7 @@
 export const formStyles = {
     form:                   "mt-8 rounded-2xl border border-cyan-400/30 bg-white/5 p-4",
     formDivGridCol3:        "mt-6 grid gap-5 md:grid-cols-3",
+    formDivGridCol2:        "mt-6 grid gap-4 text-sm text-slate-300 md:grid-cols-2",
     formDivCyan:            "mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4",
     formInfoCellCaption:    "text-slate-300",
     formInfoCell:           "block text-sm text-slate-400",
@@ -23,7 +24,7 @@ export const formStyles = {
     formInputInfoCaption:    "text-md text-slate-400",
     formInputInfoValue:     "mt-2 font-medium",
     sectionCardCyan:        "rounded-2xl border-3 border-cyan-400/30 bg-white/5 p-6 hover:bg-white/10",
-    formCaptionSmall:       "text-sm font-semibold tracking-[0.3em] text-cyan-300",
+    formCaptionTracking03:  "text-sm font-semibold tracking-[0.3em] text-cyan-300",
     formP:                  "mt-2 text-sm text-slate-300",
     formLabel:              "text-sm font-semibold text-cyan-200",     
     formH3SemiBold:         "text-xl font-semibold text-white",            
