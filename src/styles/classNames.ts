@@ -4,6 +4,7 @@ export const formStyles = {
     formDivGridCol3:        "mt-6 grid gap-5 md:grid-cols-3",
     formDivGridCol2:        "mt-6 grid gap-4 text-sm text-slate-300 md:grid-cols-2",
     formDivCyan:            "mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4",
+    formDivFlex:            "flex items-start justify-between gap-4",
     formInfoCellCaption:    "text-slate-300",
     formInfoCell:           "block text-sm text-slate-400",
     inputWFull:             "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full", //with w-full 

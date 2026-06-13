@@ -1,13 +1,20 @@
-import { pageStyles, formStyles } from "@/styles/classNames";
 import Link from "next/link";
+import { pageStyles, formStyles } from "@/styles/classNames";
+import LogoutButton from "@/components/LogoutButton";
 
 export default function AdminDashboardPage() {
   return (
       <main className={pageStyles.main}>
         <div className={pageStyles.container}> 
           <Link  href="./" className={formStyles.link} > ← Back to home page </Link>
-          <p className={pageStyles.pageLabelUpper}> Admin </p>
-          <h1 className={pageStyles.pageTitle}>Admin dashboard</h1>
+          <div className={formStyles.formDivFlex}>
+                <div>
+                    <p className={pageStyles.pageLabelUpper}>Admin</p>
+                    <h1 className={pageStyles.pageTitle}>Admin dashboard</h1>
+                </div>
+                <LogoutButton />
+            </div>
+          
           <p className={pageStyles.pageDescription}> Manage bookings, chauffeurs, clients, and platform settings. </p>
 
             <div className="mt-10 grid gap-6 md:grid-cols-3">
