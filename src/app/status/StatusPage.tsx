@@ -60,7 +60,6 @@ export default function StatusPage() {
 
           const result = (await response.json()) as BookingStatusResponse;
           
-
           if (!response.ok || !result.booking) { throw new Error(result.message); }
 
           setBooking(result.booking);
@@ -77,13 +76,13 @@ export default function StatusPage() {
   return (
       <main className={pageStyles.main}>
       <div className={pageStyles.container}> 
-          <Link  href="/admin" className={formStyles.link} > ← Back to homepage </Link>
+          <Link  href="./" className={formStyles.link} > ← Back to homepage </Link>
           <p className={pageStyles.pageLabelUpper}> Booking status </p>
           <h1 className={pageStyles.pageTitle}>Check your taxi booking</h1>
           <p className={pageStyles.pageDescription}> Enter your booking id and email address to view the current status of your trip. </p>
       
           <form onSubmit={handleStatusSearch} className={formStyles.form}>
-              <div className={formStyles.formDiv}>
+              <div className={formStyles.formDivGridCol3}>
                 <label className="block">
                   <span className={formStyles.span}> Booking id </span>
                   <input name="bookingId" required placeholder="Paste your booking id" className={formStyles.inputWFull}/>

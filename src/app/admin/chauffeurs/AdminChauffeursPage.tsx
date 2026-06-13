@@ -89,7 +89,7 @@ export default async function AdminChauffeursPage() {
           <p className={pageStyles.pageDescription}> Add chauffeurs and view chauffeur accounts registered in the platform. </p>
 
                 <form action={addChauffeur} className={formStyles.form}>
-                    <div className={formStyles.formDiv}>
+                    <div className={formStyles.formDivGridCol3}>
                         <label className="block">
                             <span className={formStyles.span}> Name </span>
                             <input name="name" required placeholder="Name" className={formStyles.selectWFull}/>

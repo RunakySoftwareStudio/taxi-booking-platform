@@ -133,7 +133,7 @@ export default async function AdminVehiclesPage() {
           <p className={pageStyles.pageDescription}> Add vehicles and connect them to approved chauffeurs. </p>
 
           <form  action={addVehicle}  className={formStyles.form}>
-                <div className={formStyles.formDiv}>
+                <div className={formStyles.formDivGridCol3}>
                     <label className="block">
                         <span className={formStyles.span}> Chauffeur </span>
                         <select name="chauffeurId" required  className={formStyles.selectWFull} >

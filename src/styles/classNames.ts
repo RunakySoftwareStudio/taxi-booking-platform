@@ -1,6 +1,7 @@
 export const formStyles = {
     form:                   "mt-8 rounded-2xl border border-cyan-400/30 bg-white/5 p-4",
-    formDiv:                "mt-6 grid gap-5 md:grid-cols-3",
+    formDivGridCol3:        "mt-6 grid gap-5 md:grid-cols-3",
+    formDivCyan:            "mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4",
     formInfoCellCaption:    "text-slate-300",
     formInfoCell:           "block text-sm text-slate-400",
     inputWFull:             "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full", //with w-full 
@@ -17,12 +18,17 @@ export const formStyles = {
     primaryButtonDP:        "rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold leading-none text-cyan-100 hover:bg-cyan-400/20 mt-1 h-12 w-fit self-start ",//phone: full width, desktop: small width
     smallButton:            "rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     link:                   "text-sm text-cyan-300 hover:text-cyan-200",
+    linkHref:               "mt-4 inline-block rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     span:                   "mb-2 block text-sm font-medium text-slate-300",
     formInputInfoCaption:    "text-md text-slate-400",
     formInputInfoValue:     "mt-2 font-medium",
     sectionCardCyan:        "rounded-2xl border-3 border-cyan-400/30 bg-white/5 p-6 hover:bg-white/10",
     formCaptionSmall:       "text-sm font-semibold tracking-[0.3em] text-cyan-300",
-  
+    formP:                  "mt-2 text-sm text-slate-300",
+    formLabel:              "text-sm font-semibold text-cyan-200",     
+    formH3SemiBold:         "text-xl font-semibold text-white",            
+    formSemiBold:           "font-semibold text-white",   
+    formSuccessMsg:         "mt-8 rounded-2xl border border-green-400/30 bg-green-400/10 p-4 text-green-200",          
 };
 
 export const pageStyles = {
@@ -32,7 +38,8 @@ export const pageStyles = {
     containersmall:           "mx-auto max-w-4xl",
     sectionCard:              "rounded-2xl border border-white/10 bg-white/5 p-6",
     sectionCardCyan:          "rounded-2xl border-3 border-cyan-400/30 bg-white/5 p-6 hover:bg-white/10",
-    pageLabel:                "text-sm font-semibold tracking-[0.3em] text-cyan-300",
+    pageLabelTracking03:      "text-sm font-semibold tracking-[0.3em] text-cyan-300",
+    pageLabel:                "text-sm font-semibold text-cyan-200",
     pageLabelUpper:           "text-sm font-semibold tracking-[0.3em] text-cyan-300 uppercase",
     
     pageTitle:                "mt-3 text-3xl font-bold text-white",
@@ -63,5 +70,5 @@ export const tableStyles = {
     statusYellowClasses:      "bg-yellow-600/25 text-yellow-50 ring-1 ring-yellow-500/40",
     statusGreenClasses:       "bg-green-600/25 text-green-50 ring-1 ring-green-500/40",
     statusRedClasses:         "bg-red-600/25 text-red-50 ring-1 ring-red-500/40",
-    errorCell:                "mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"
+    errorCell:                "mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200",
 };
