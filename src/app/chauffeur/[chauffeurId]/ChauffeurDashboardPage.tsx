@@ -1,6 +1,7 @@
 
 
 import { createClient as createAuthClient } from "@/lib/supabase/server";
+import LogoutButton from "@/components/LogoutButton";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
@@ -131,28 +132,26 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}> 
-                <Link href={backLinkHref} className={formStyles.link}>  {backLinkText} </Link>
+                <div className="flex items-start justify-between gap-4">
+                    <Link href={backLinkHref} className={formStyles.link}> {backLinkText} </Link>
+                    <LogoutButton />
+                </div>
                 <p className={pageStyles.pageLabelUpper}> Chauffeur </p>
                 <h1 className={pageStyles.pageTitle}> Welcome, {chauffeurRow.name} </h1>
                 <p className={pageStyles.pageDescription}> Here you can see bookings assigned to you. </p>
-
                 <div className="mt-8 grid gap-4 md:grid-cols-3">
                     <div className={formStyles.info}>
                         <p className={formStyles.formInputInfoCaption}>Email</p>
                         <p className={formStyles.formInputInfoValue}>{chauffeurRow.email}</p>
                     </div>
-
                     <div className={formStyles.info}>
                         <p className={formStyles.formInputInfoCaption}>Phone</p>
                         <p className={formStyles.formInputInfoValue}>{chauffeurRow.phone}</p>
-
                     </div>
-
                     <div className={formStyles.info}>
                         <p className={formStyles.formInputInfoCaption}>Status</p>
                         <p className={formStyles.formInputInfoValue}>{chauffeurRow.account_status}</p>
                     </div>
-
                 </div>
                 <div className="mt-8">
                     <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className={formStyles.primaryButtonOutside}>
