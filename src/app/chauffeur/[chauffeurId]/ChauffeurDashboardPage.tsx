@@ -1,5 +1,3 @@
-
-
 import { createClient as createAuthClient } from "@/lib/supabase/server";
 import LogoutButton from "@/components/LogoutButton";
 import { revalidatePath } from "next/cache";

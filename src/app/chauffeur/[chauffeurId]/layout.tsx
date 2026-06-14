@@ -29,10 +29,11 @@ export default async function ChauffeurLayout({children, params}: ChauffeurLayou
         .eq("user_id", user.id)
         .maybeSingle();
 
-    if (error) { console.error("Chauffeur profile lookup error:", error); redirect("/login");  }
-    if (!profile) { redirect("/login"); }
+    if (error) { console.error("Chauffeur profile lookup error:", error);  redirect("/unauthorized");}
+    if (!profile) { redirect("/unauthorized");}
+
     if (profile.role === "admin") { return <>{children}</>; }
     if (profile.role === "chauffeur" && profile.chauffeur_id === chauffeurId) { return <>{children}</>; }
-    redirect("/login");
+    redirect("/unauthorized");
     
 }

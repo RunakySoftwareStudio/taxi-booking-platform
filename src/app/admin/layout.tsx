@@ -11,19 +11,18 @@ import { createClient } from "@/lib/supabase/server";
 type AdminLayoutProps = {children: ReactNode;};
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const supabase = await createClient();
-  const {data: { user }, } = await supabase.auth.getUser();
+    const supabase = await createClient();
+    const {data: { user }, } = await supabase.auth.getUser();
 
-  if (!user) { redirect("/login"); }
+    if (!user) { redirect("/login"); }
 
-  const { data: profile, error } = await supabase
-    .from("user_profiles")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle();
+    const { data: profile, error } = await supabase
+        .from("user_profiles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-  if (error) { console.error("Admin profile lookup error:", error); redirect("/login"); }
-  if (profile?.role !== "admin") { redirect("/login"); }
-
-  return <>{children}</>;
+    if (error) {console.error("Admin profile lookup error:", error); redirect("/unauthorized");}
+    if (profile?.role !== "admin") { redirect("/unauthorized");}
+    return <>{children}</>;
 }
