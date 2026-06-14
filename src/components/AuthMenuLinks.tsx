@@ -1,3 +1,14 @@
+/*================================================
+we improve the top menu authentication display.
+Right now the homepage menu may still show:
+    Login
+    Admin
+even when the user is already logged in, or when the user is a chauffeur. That works technically, but the UX is not professional.
+Better behavior:
+    Not logged in  → show Login
+    Admin logged in → show Admin + Logout
+    Chauffeur logged in → show Dashboard + Logout
+==================================================*/
 "use client";
 
 import Link from "next/link";
