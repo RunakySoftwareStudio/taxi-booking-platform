@@ -90,10 +90,9 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
     if (chauffeurError || !supabaseAdminChauffeur) 
     {   console.error("Could not load chauffeur:", chauffeurError);
         return (
-            <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-                <div className="mx-auto max-w-6xl">
-                    <h1 className="text-3xl font-bold">Chauffeur dashboard</h1>
-                    <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeur. </p>
+            <main className={pageStyles.main}>
+                <div className={pageStyles.containerMedium}>
+                    <p className={pageStyles.errorMessage}> Could not load chauffeur. </p>
                 </div>
             </main>
         );
@@ -241,6 +240,7 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
                             ))}
 
                             {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}>No assigned bookings found yet.</td></tr>)}
+
                         </tbody>
                     </table>
                 </div>
