@@ -259,7 +259,47 @@ AS $$
   WHERE t.typname = p_enum_type_name
     AND n.nspname = 'public';
 $$;
+/*===========================================================
+=============================================================*/
+DO $$
+BEGIN
+  CREATE TYPE app_role AS ENUM ('admin', 'chauffeur');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
+CREATE TABLE IF NOT EXISTS user_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+    role app_role NOT NULL,
+    chauffeur_id UUID REFERENCES chauffeurs(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
+
+  CONSTRAINT user_profiles_chauffeur_role_check
+    CHECK (
+      (role = 'admin' AND chauffeur_id IS NULL)
+      OR
+      (role = 'chauffeur' AND chauffeur_id IS NOT NULL)
+    )
+);
+
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can read own profile"
+ON user_profiles
+FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE TRIGGER update_user_profiles_updated_at
+BEFORE UPDATE ON user_profiles
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+/*===========================================================
+=============================================================*/
+
+/*===========================================================
+=============================================================*/
 /* ==========example trigger function=================
  -- When a chauffeur is assigned to a booking, automatically set status to assigned and update
 
