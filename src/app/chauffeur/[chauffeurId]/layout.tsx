@@ -6,6 +6,11 @@
         Admin user: can open any chauffeur dashboard
         Chauffeur user: can open only the dashboard where chauffeur_id matches their profile
         Wrong user: goes back to /login
+        Not logged in + /admin → /login
+        Chauffeur logged in + /admin → /unauthorized
+        Admin logged in + /admin → allowed
+        Chauffeur logged in + own /chauffeur/id → allowed
+        Chauffeur logged in + other chauffeur id → /unauthorized
     */
     import { type ReactNode } from "react";
     import { redirect } from "next/navigation";

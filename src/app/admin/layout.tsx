@@ -2,7 +2,12 @@
 wraps/protects all pages inside /admin:
     /admin,  /admin/bookings,    /admin/chauffeurs,    /admin/clients,    /admin/vehicles,    /admin/availability
 So it works like a security door:
-User opens /admin => layout.tsx checks: is user logged in? => layout.tsx checks: does user have admin role? => yes → show admin page no  => redirect to /login
+
+Not logged in + /admin → /login
+Chauffeur logged in + /admin → /unauthorized
+Admin logged in + /admin → allowed
+Chauffeur logged in + own /chauffeur/id → allowed
+Chauffeur logged in + other chauffeur id → /unauthorized
 ================================================*/
 import { type ReactNode } from "react";
 import { redirect } from "next/navigation";
