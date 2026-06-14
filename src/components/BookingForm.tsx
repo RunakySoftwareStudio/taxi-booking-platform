@@ -66,7 +66,7 @@ export default function BookingForm() {
                 booking: BookingSummary;
                 };
 
-            console.log("API response:", result);
+            //console.log("API response:", result);
 
             setSubmittedBooking(result.booking);
             setSubmitted(true);
