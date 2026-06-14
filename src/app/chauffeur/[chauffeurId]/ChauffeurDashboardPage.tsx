@@ -1,5 +1,6 @@
 
 
+import { createClient as createAuthClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
@@ -57,6 +58,25 @@ async function updateAssignedBookingStatus(formData: FormData)
 
 export default async function ChauffeurDashboardPage ({params}: TypePromiseChauffeurId) 
 {
+    /*========================================
+        default             → homepage
+        if user is admin    → admin chauffeurs page
+        if user is chauffeur → homepage
+    ===========================================*/
+    const authSupabase = await createAuthClient();
+    const { data: { user }, } = await authSupabase.auth.getUser();
+    let backLinkHref = "/";
+    let backLinkText = "← Back to homepage";
+
+    if (user) {
+        const { data: profile } = await authSupabase
+        .from("user_profiles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+        if (profile?.role === "admin") { backLinkHref = "/admin/chauffeurs";  backLinkText = "← Back to admin chauffeurs"; }
+    }
+
     const {chauffeurId} = await params;
 
     // get chauffeur data of this chauffeur id
@@ -112,7 +132,7 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}> 
-                <Link href="/admin/chauffeurs" className={formStyles.link}> ← Back to Chauffeurs </Link>
+                <Link href={backLinkHref} className={formStyles.link}>  {backLinkText} </Link>
                 <p className={pageStyles.pageLabelUpper}> Chauffeur </p>
                 <h1 className={pageStyles.pageTitle}> Welcome, {chauffeurRow.name} </h1>
                 <p className={pageStyles.pageDescription}> Here you can see bookings assigned to you. </p>
