@@ -21,17 +21,29 @@ export default function LoginPage() {
 
     setIsLoading(true);
     setErrorMessage("");
+    /*===============================
+    Admin logs in     → /admin
+    Chauffeur logs in → /chauffeur/their-id
+    Wrong setup       → error message
+    =================================*/
+    const { data: loginData, error } = await supabase.auth.signInWithPassword({email, password});
+    if (error) {setErrorMessage("Login failed. Please check your email and password."); setIsLoading(false); return; }
+    
+    const userId = loginData.user?.id;
+    if (!userId) {setErrorMessage("Login failed. User could not be found."); setIsLoading(false); return; }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password});
+    const { data: profile, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("role, chauffeur_id")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    if (error) {
-      setErrorMessage("Login failed. Please check your email and password.");
-      setIsLoading(false);
-      return;
-    }
+    if (profileError || !profile) {setErrorMessage("Login failed. No user profile was found."); setIsLoading(false); return; }
+    if (profile.role === "admin") {router.push("/admin"); router.refresh(); return; }
+    if (profile.role === "chauffeur" && profile.chauffeur_id) {router.push(`/chauffeur/${profile.chauffeur_id}`); router.refresh(); return;}
 
-    router.push("/admin");
-    router.refresh();
+    setErrorMessage("Login failed. Your account role is not configured correctly.");
+    setIsLoading(false);
   }
 
   return (
