@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { formStyles } from "@/styles/classNames";
+import { pageStyles } from "@/styles/classNames";
 
 export default function LogoutButton() {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function LogoutButton() {
   }
 
   return (
-    <button  type="button" onClick={handleLogout} disabled={isLoading} className={formStyles.smallButton} >
+    <button  type="button" onClick={handleLogout} disabled={isLoading} className={pageStyles.logButton} >
         {isLoading ? "Signing out..." : "Logout"}
     </button>
   );

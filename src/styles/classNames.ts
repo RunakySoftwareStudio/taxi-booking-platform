@@ -45,11 +45,12 @@ export const pageStyles = {
     pageLabelTracking03:      "text-sm font-semibold tracking-[0.3em] text-cyan-300",
     pageLabel:                "text-sm font-semibold text-cyan-200",
     pageLabelUpper:           "text-sm font-semibold tracking-[0.3em] text-cyan-300 uppercase",
-    
     pageTitle:                "mt-3 text-3xl font-bold text-white",
-    
     pageDescription:          "mt-4 max-w-2xl text-slate-300",
     errorMessage:             "mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200",
+    logButton:                "text-sm text-slate-300 hover:text-cyan-300",
+    loginButtonHome:          "rounded-full border border-yellow-400 px-5 py-2 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10",
+    divFlex:                  "flex items-start justify-between gap-4",
 };
 
 export const tableStyles = {
