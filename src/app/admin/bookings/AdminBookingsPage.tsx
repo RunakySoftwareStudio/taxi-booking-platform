@@ -18,6 +18,8 @@ import Link from "next/link";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
 
+type AdminBookingsPageProps = { searchParams: Promise<{success?: string; error?: string; }>;};
+
 // type  = creates a TypeScript rule/shape for data
 type BookingRow = 
 {
@@ -61,7 +63,7 @@ async function updateBookingStatus(formData: FormData)
 
     console.log("Updating booking status:", {bookingId,status,});
 
-    if (!bookingId || !status) { console.error("Missing bookingId or status"); return;}
+    if (!bookingId || !status) {  redirect("/admin/bookings?error=missing-fields");}
 
     const selectedBooking = await supabaseAdmin // data and error are property names returned by Supabase.
         .from("bookings")
@@ -70,12 +72,23 @@ async function updateBookingStatus(formData: FormData)
         .select("id, status") //This line forces Supabase to return the updated row:
         .single(); //.single(), Supabase returns one object: Without .single(), Supabase may return an array:
 
-    if (selectedBooking.error) { console.error("Could not update booking status:", selectedBooking.error);return;}
+    if (selectedBooking.error) { console.error("Could not update booking status:", selectedBooking.error);  redirect("/admin/bookings?error=status-update-failed");}
 
     console.log("Booking status updated:", selectedBooking.data);
 
-    revalidatePath("/admin/bookings"); //Refresh the admin bookings page data after the update.
-    redirect("/admin/bookings"); //And this line forces the admin page to reload:
+    
+    //So after you add/update/delete a booking, the page should show fresh data.
+    revalidatePath("/admin/bookings");
+
+    /*================================================
+        //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
+        This also sends the user back to the bookings page, but with an extra query parameter:
+        /admin/bookings?success=booking-added
+        The browser becomes:http://localhost:3000/admin/bookings?success=booking-added
+        This part: ?success=booking-added
+        can be used to show a success message. For example: {success === "booking-added" && ( <p >  Booking added successfully. </p>)}
+    =============================================*/
+    redirect("/admin/bookings?success=status-updated");
 }
 
 async function assignChauffeurToBooking(formData: FormData) {
@@ -84,8 +97,7 @@ async function assignChauffeurToBooking(formData: FormData) {
     const bookingId = String(formData.get("bookingId") || "");
     const chauffeurIdValue = String(formData.get("chauffeurId") || "");
 
-    if (!bookingId) { return; } // Stop the current function here if bookingId is missing. It does not stop the whole page. Leave this function now.
-
+    if (!bookingId) {  redirect("/admin/bookings?error=missing-fields");}
     const chauffeurId = chauffeurIdValue || null;
 
     const result = await supabaseAdmin
@@ -93,14 +105,15 @@ async function assignChauffeurToBooking(formData: FormData) {
         .update({ chauffeur_id: chauffeurId })
         .eq("id", bookingId);
 
-    // console.error = shows a red error message or marks it as an error.
-    if (result.error) { console.error("Could not assign chauffeur:", result.error); return; }
+        // console.error = shows a red error message or marks it as an error.
+        if (result.error) { console.error("Could not assign chauffeur:", result.error);  redirect("/admin/bookings?error=assign-failed");}
 
-    revalidatePath("/admin/bookings");
-    redirect("/admin/bookings");
-}
+        revalidatePath("/admin/bookings");
+        redirect("/admin/bookings?success=chauffeur-assigned");
+    }
 
-export default async function AdminBookingsPage() {
+export default async function AdminBookingsPage({ searchParams}: AdminBookingsPageProps) {
+  const pageMessage = await searchParams;
   const { data: bookings, error } = await supabaseAdmin // data: bookings= you are renaming data to bookings.
     .from("bookings")
     .select
@@ -163,6 +176,12 @@ export default async function AdminBookingsPage() {
             <p className={pageStyles.pageLabelUpper}> Admin </p>
             <h1 className={pageStyles.pageTitle}>Booking requests</h1>
             <p className={pageStyles.pageDescription}>  Here you can see booking requests submitted through the website. </p>
+            
+            {pageMessage.success === "chauffeur-assigned" && ( <p className={pageStyles.successMsgPage}>    Chauffeur assigned successfully. </p>)}
+            {pageMessage.success === "status-updated" && ( <p className={pageStyles.successMsgPage}>    Booking status updated successfully. </p>)}
+            {pageMessage.error === "missing-fields" && ( <p className={pageStyles.errorMsgPage}>    Please select the required booking information. </p>)}
+            {pageMessage.error === "assign-failed" && ( <p className={pageStyles.errorMsgPage}>    Could not assign chauffeur. Please try again. </p>)}
+            {pageMessage.error === "status-update-failed" && (  <p className={pageStyles.errorMsgPage}>    Could not update booking status. Please try again. </p>)}
 
             <div className={tableStyles.tableDiv}>
             <table className={tableStyles.table1000}>
