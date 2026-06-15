@@ -75,8 +75,19 @@ async function addVehicle(formData: FormData) {
     }
 
     console.log("Vehicle added:", data);
+
+    //So after you add/update/delete a vehicle, the page should show fresh data.
     revalidatePath("/admin/vehicles");
-    redirect("/admin/vehicles?success=vehicle-added");//This is useful because server actions cannot use useState directly. So we pass the result through the URL.
+
+    /*================================================
+        //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
+        This also sends the user back to the chauffeurs page, but with an extra query parameter:
+        /admin/vehicles?success=vehicle-added
+        The browser becomes:http://localhost:3000/admin/vehicles?success=vehicle-added
+        This part: ?success=vehicle-added
+        can be used to show a success message. For example: {pageMessage.success === "vehicle-added" && (<p > Vehicle added successfully. </p> )}
+    =============================================*/
+    redirect("/admin/vehicles?success=vehicle-added");
 }
 
 export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPageProps) {
@@ -110,7 +121,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
           <h1 className={pageStyles.pageTitle}>Vehicles</h1>
           <p className={pageStyles.pageDescription}> Add vehicles and connect them to approved chauffeurs. </p>
 
-          {pageMessage.success === "vehicle-added" && (<p className={pageStyles.errorMsgPageCaption}> Vehicle added successfully. </p> )}
+          {pageMessage.success === "vehicle-added" && (<p className={pageStyles.successMsgPage}> Vehicle added successfully. </p> )}
           {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> Please fill in all required vehicle fields.  </p> )}
           {pageMessage.error === "duplicate-license-plate" && (<p className={pageStyles.errorMsgPage}> A vehicle with this license plate already exists. </p>)}
           {pageMessage.error === "add-vehicle-failed" && ( <p className={pageStyles.errorMsgPage}> Could not add vehicle. Please try again. </p> )}

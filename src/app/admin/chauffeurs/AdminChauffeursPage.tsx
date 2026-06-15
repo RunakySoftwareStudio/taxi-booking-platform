@@ -6,6 +6,8 @@ import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
 //export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app/admin/chauffeurs/page.tsx 
 
+type AdminChauffeursPageProps = {  searchParams: Promise<{ success?: string;  error?: string; }>;};
+
 type ChauffeurRow = {
     id: string;
     name: string;
@@ -29,7 +31,7 @@ async function addChauffeur(formData: FormData) {
     const licenseNumber = String(formData.get("licenseNumber") || "").trim();
     const serviceArea = String(formData.get("serviceArea") || "").trim();
 
-    if (!name || !email || !phone) { return; }
+    if (!name || !email || !phone) {  redirect("/admin/chauffeurs?error=missing-fields");}
 
     const { error } = await supabaseAdmin.from("chauffeurs").insert({
         name,
@@ -41,10 +43,24 @@ async function addChauffeur(formData: FormData) {
         account_status: "pending_approval",
     });
 
-    if (error) { console.error("Could not add chauffeur:", error); return; }
+    if (error) {
+        console.error("Could not add chauffeur:", error);
+        if (error.code === "23505") { redirect("/admin/chauffeurs?error=duplicate-email");  }
+        redirect("/admin/chauffeurs?error=add-chauffeur-failed");
+    }
 
-    revalidatePath("/admin/chauffeurs");
-    redirect("/admin/chauffeurs");
+    //So after you add/update/delete a chauffeur, the page should show fresh data.
+    revalidatePath("/admin/chauffeurs"); 
+
+    /*================================================
+        //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
+        This also sends the user back to the chauffeurs page, but with an extra query parameter:
+        /admin/chauffeurs?success=chauffeur-added
+        The browser becomes:http://localhost:3000/admin/chauffeurs?success=chauffeur-added
+        This part: ?success=chauffeur-added
+        can be used to show a success message. For example: {success === "chauffeur-added" && ( <p >  Chauffeur added successfully. </p>)}
+    =============================================*/
+    redirect("/admin/chauffeurs?success=chauffeur-added");
 }
 
 async function updateChauffeurStatus(formData: FormData) {
@@ -66,7 +82,8 @@ async function updateChauffeurStatus(formData: FormData) {
     redirect("/admin/chauffeurs");
 }
 
-export default async function AdminChauffeursPage() {
+export default async function AdminChauffeursPage({ searchParams}: AdminChauffeursPageProps) {
+    const pageMessage = await searchParams;
     
     const { data: chauffeurs, error } = await supabaseAdmin
         .from("chauffeurs")
@@ -80,13 +97,16 @@ export default async function AdminChauffeursPage() {
     const chauffeurStatusOptions = (chauffeurStatuses ?? []) as string[];
 
     return (
-
         <main className={pageStyles.main}>
-        <div className={pageStyles.container}> 
-          <Link  href="/admin" className={formStyles.link} > ← Back to admin dashboard </Link>
-          <p className={pageStyles.pageLabelUpper}> Admin </p>
-          <h1 className={pageStyles.pageTitle}>Chauffeurs</h1>
-          <p className={pageStyles.pageDescription}> Add chauffeurs and view chauffeur accounts registered in the platform. </p>
+            <div className={pageStyles.container}> 
+                <Link  href="/admin" className={formStyles.link} > ← Back to admin dashboard </Link>
+                <p className={pageStyles.pageLabelUpper}> Admin </p>
+                <h1 className={pageStyles.pageTitle}>Chauffeurs</h1>
+                <p className={pageStyles.pageDescription}> Add chauffeurs and view chauffeur accounts registered in the platform. </p>
+                {pageMessage.success === "chauffeur-added" && (<p className={pageStyles.successMsgPage}> Chauffeur added successfully. </p> )}
+                {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}>  Please fill in all required chauffeur fields.</p> )}
+                {pageMessage.error === "duplicate-email" && ( <p className={pageStyles.errorMsgPage}> A chauffeur with this email address already exists. </p> )}
+                {pageMessage.error === "add-chauffeur-failed" && (<p className={pageStyles.errorMsgPage}> Could not add chauffeur. Please try again. </p> )}
 
                 <form action={addChauffeur} className={formStyles.form}>
                     <div className={formStyles.formDivGridCol3}>
@@ -120,7 +140,7 @@ export default async function AdminChauffeursPage() {
                     </button>
                 </form>
 
-                {error && (<p className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeurs. </p> )}
+                {error && (<p className={pageStyles.errorMsgPage}> Could not load chauffeurs. </p> )}
                 
                 <h3 className={tableStyles.headerTableSmall}>List of chauffeurs:</h3>
                 <div className={tableStyles.tableDiv}>
