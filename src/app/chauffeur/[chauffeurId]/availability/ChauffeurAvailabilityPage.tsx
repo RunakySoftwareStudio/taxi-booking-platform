@@ -6,31 +6,50 @@ import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/Availability/page.tsx 
 
-type AvailabilityRow = {id: string;  available_date: string;  start_time: string;  end_time: string;  status: string;  created_at: string;};
+type AvailabilityRow = {id: string;  available_date: string;  start_time: string;  end_time: string;  status: string;  created_at: string; notes: string;};
 type ChauffeurRow = {id: string;  name: string;};
-type ChauffeurAvailabilityPageProps = {params: Promise<{chauffeurId: string;}>; searchParams: Promise<{ success?: string; error?: string; }>;};
-
+type ChauffeurAvailabilityPageProps = {
+    params: Promise<{chauffeurId: string;}>; 
+    searchParams: Promise<{ 
+                  success?: string; error?: string; 
+                  availableDate?: string;  startTime?: string; endTime?: string;
+                  status?: string;  notes?: string; }>;
+};
 async function addAvailability(formData: FormData) 
 {  "use server";
 
-  const chauffeurId = String(formData.get("chauffeurId") || "");
-  const availableDate = String(formData.get("availableDate") || "");
-  const startTime = String(formData.get("startTime") || "");
-  const endTime = String(formData.get("endTime") || "");
-  const status = String(formData.get("status") || "available");
+    // read data from user input on form
+    const chauffeurId = String(formData.get("chauffeurId") || "");
+    const availableDate = String(formData.get("availableDate") || "");
+    const startTime = String(formData.get("startTime") || "");
+    const endTime = String(formData.get("endTime") || "");
+    const status = String(formData.get("status") || "available");
+    const notes = String(formData.get("notes") || "");
+    
+    // missing-fields check
+    const previousFormValues = new URLSearchParams({availableDate, startTime, endTime, status, notes});
+    const previousFormQuery = previousFormValues.toString();
+    if (!chauffeurId || !availableDate || !startTime || !endTime || !status) { redirect(`/chauffeur/${chauffeurId}/availability?error=missing-fields&${previousFormQuery}`); }
 
-  if (!chauffeurId || !availableDate || !startTime || !endTime || !status) {
-    redirect(`/chauffeur/${chauffeurId}/availability?error=missing-fields`);
-  }
+  //Time check
+  const [startHour, startMinute] = startTime.split(":").map(Number);
+  const [endHour, endMinute] = endTime.split(":").map(Number);
+  const startTotalMinutes = startHour * 60 + startMinute;
+  const endTotalMinutes = endHour * 60 + endMinute;
+  if (startTotalMinutes >= endTotalMinutes) { redirect(`/chauffeur/${chauffeurId}/availability?error=incorrect-time&${previousFormQuery}` ); }
+
+  // insert data
   const { error } = await supabaseAdmin
     .from("chauffeur_availability")
-    .insert({chauffeur_id: chauffeurId, available_date: availableDate, start_time: startTime, end_time: endTime, status, });
+    .insert({chauffeur_id: chauffeurId, available_date: availableDate, start_time: startTime, end_time: endTime, status, notes });
 
+  // insert data check
   if (error) {
     console.error("Could not add availability:", error);
-    redirect(`/chauffeur/${chauffeurId}/availability?error=add-availability-failed`);
+    redirect(`/chauffeur/${chauffeurId}/availability?error=add-availability-failed&${previousFormQuery}`);
   }
 
+  // refresh and redirect 
   revalidatePath(`/chauffeur/${chauffeurId}/availability`);
   redirect(`/chauffeur/${chauffeurId}/availability?success=availability-added`);
 }
@@ -38,6 +57,13 @@ async function addAvailability(formData: FormData)
 export default async function ChauffeurAvailabilityPage({params, searchParams}: ChauffeurAvailabilityPageProps) {
   const pageMessage = await searchParams;
   const { chauffeurId } = await params;
+  const formValues = {
+      availableDate: pageMessage.availableDate ?? "",
+      startTime: pageMessage.startTime ?? "",
+      endTime: pageMessage.endTime ?? "",
+      status: pageMessage.status ?? "",
+      notes: pageMessage.notes ?? "",
+    };
   const { data: chauffeur, error: chauffeurError } = await supabaseAdmin
     .from("chauffeurs")
     .select("id, name")
@@ -46,7 +72,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
 
   const { data: availabilityRecords, error: availabilityError } = await supabaseAdmin
       .from("chauffeur_availability")
-      .select("id, available_date, start_time, end_time, status, created_at")
+      .select("id, available_date, start_time,  end_time, status, notes, created_at, notes")
       .eq("chauffeur_id", chauffeurId)
       .order("available_date", { ascending: true })
       .order("start_time", { ascending: true });
@@ -57,10 +83,10 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
   if (chauffeurError || !chauffeur) 
   { console.error("Could not load chauffeur:", chauffeurError);
     return (
-      <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="text-3xl font-bold">Availability</h1>
-          <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200"> Could not load chauffeur. </p>
+      <main className={pageStyles.main}>
+        <div className={pageStyles.containerMedium}>
+          <h1 className={pageStyles.pageTitle}>Availability</h1>
+          <p className={pageStyles.errorMsg}> Could not load chauffeur. </p>
         </div>
       </main>
     );
@@ -84,32 +110,38 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
         {pageMessage.success === "availability-added" && (<p className={pageStyles.successMsgPage}> Availability added successfully. </p>)}
         {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> Please fill in all required availability fields. </p>)}
         {pageMessage.error === "add-availability-failed" && (<p className={pageStyles.errorMsgPage}> Could not add availability. Please try again.</p>)}
+        {pageMessage.error === "incorrect-time" && (<p className={pageStyles.errorMsgPage}> Start time must be earlier than end time.  </p>)}
 
         <form action={addAvailability}  className={formStyles.form} >
           <input type="hidden" name="chauffeurId" value={chauffeurId} />
           <div className="mt-6 grid gap-4 md:grid-cols-4">
             <label className="block">
               <span className={formStyles.span}>Date </span>
-              <input name="availableDate" type="date" required className={formStyles.inputWFull} />
+              <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min="2026-01-01" max="2099-12-31" className={formStyles.inputWFull} />
             </label>
 
             <label className="block">
               <span className={formStyles.span}> Start time </span>
-              <input  name="startTime"  type="time"  required className={formStyles.inputWFull} />
+              <input  name="startTime"  type="time"  required defaultValue={formValues.startTime} className={formStyles.inputWFull} />
             </label>
 
             <label className="block">
               <span className={formStyles.span}>End time </span>
-              <input name="endTime"  type="time"  required className={formStyles.inputWFull} />
+              <input name="endTime"  type="time"  required defaultValue={formValues.endTime}  className={formStyles.inputWFull} />
             </label>
 
             <label className="block">
               <span className={formStyles.span}>Status </span>
-              <select name="status" required className={formStyles.selectWFull} >
+              <select name="status" required defaultValue={formValues.status} className={formStyles.selectWFull} >
                 {availabilityStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
               </select>
             </label>
           </div>
+
+          <label className="block">
+              <span className={`mt-6 ${formStyles.span}}`} >Notes</span>             
+              <input name="notes"  type="string"  required defaultValue={formValues.notes}  className={formStyles.inputWFull} />
+          </label>
 
           <button  type="submit"  className={`mt-8 ${formStyles.primaryButtonDP}`}>  
               Add availability 
@@ -125,6 +157,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                 <th className="p-4">Start time</th>
                 <th className="p-4">End time</th>
                 <th className="p-4">Status</th>
+                <th className="p-4">Notes</th>
               </tr>
             </thead>
 
@@ -148,6 +181,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                                         {availability.status === "available" && (<span className="text-sm font-bold text-green-300" aria-hidden="true"> ✓ </span>)}
                                     </div>
                                 </td>
+                                <td className={tableStyles.cell}> {availability.notes || "—"} </td>
                             </tr>  
                         );
                     })

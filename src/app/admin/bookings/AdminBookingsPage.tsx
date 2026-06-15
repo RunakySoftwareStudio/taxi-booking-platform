@@ -25,7 +25,7 @@ type BookingRow =
 {
     id: string;  pickup_location: string;  destination: string;  pickup_date: string;
     pickup_time: string;  passengers: number;  luggage: number;  trip_type: string;
-    status: string;  created_at: string;
+    status: string;  created_at: string; notes: string;
     clients: {name: string;  email: string;  phone: string; } | null;
     chauffeur_id: string | null;
     chauffeurs: {  name: string; email: string; phone: string; } | null;
@@ -122,7 +122,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     .select
     ( `
         id, pickup_location, destination, pickup_date, pickup_time, 
-        passengers, luggage, trip_type, status, created_at,
+        passengers, luggage, trip_type, status, notes, created_at,
         clients (name, email, phone ),
         chauffeur_id,
         chauffeurs (name, email, phone ) `
@@ -197,6 +197,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                     <th className={tableStyles.cellCaption}>Time</th>
                     <th className={tableStyles.cellCaption}>Passengers</th>
                     <th className={tableStyles.cellCaption}>Trip type</th>
+                    <th className={tableStyles.cellCaption}>Notes</th>
                     <th className={tableStyles.cellCaption}>Assigned chauffeur</th>
                     <th className={tableStyles.cellCaption}>Status</th>
                 </tr>
@@ -217,7 +218,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                             <td className={tableStyles.cell}> {booking.pickup_time} </td>
                             <td className={tableStyles.cell}> {booking.passengers}  </td>
                             <td className={tableStyles.cell}> {booking.trip_type}   </td>
-
+                            <td className={tableStyles.cell}> {booking.notes}   </td>
                             <td className={tableStyles.cellCaption}>
                                 <form action={assignChauffeurToBooking} className="flex items-center gap-2">
                                     <input type="hidden" name="bookingId" value={booking.id} />
@@ -245,7 +246,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                         </tr>
                     ))}
 
-                    {bookingRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={9}>  No bookings found yet. </td> </tr>)}
+                    {bookingRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={10}>  No bookings found yet. </td> </tr>)}
                 </tbody>
             </table>
             </div>

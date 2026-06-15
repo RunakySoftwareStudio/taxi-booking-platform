@@ -95,21 +95,17 @@ CREATE TYPE availability_status AS ENUM (
 );
 
 -- Chauffeur availability schedule
-CREATE TABLE chauffeur_availability (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-  chauffeur_id UUID NOT NULL REFERENCES chauffeurs(id) ON DELETE CASCADE,
-
-  available_date DATE NOT NULL,
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-
-  status availability_status NOT NULL DEFAULT 'available',
-
-  created_at TIMESTAMP NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP NOT NULL DEFAULT now()
+CREATE TABLE IF NOT EXISTS chauffeur_availability (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chauffeur_id UUID NOT NULL REFERENCES chauffeurs(id) ON DELETE CASCADE,
+    available_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    status availability_status NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
-
 
 
 -- Taxi trip booking requests
