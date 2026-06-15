@@ -91,7 +91,7 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
         return (
             <main className={pageStyles.main}>
                 <div className={pageStyles.containerMedium}>
-                    <p className={pageStyles.errorMessage}> Could not load chauffeur. </p>
+                    <p className={pageStyles.errorMsg}> Could not load chauffeur. </p>
                 </div>
             </main>
         );

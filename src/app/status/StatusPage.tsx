@@ -122,7 +122,7 @@ export default function StatusPage() {
                       <p className={formStyles.formInfoCellCaption}> Phone: {booking.chauffeurs?.phone}  </p>
                       <p className={formStyles.formInfoCellCaption}> Email: {booking.chauffeurs?.email}  </p>
                   </div>
-                  ) : ( <p className={pageStyles.errorMessage}>  No chauffeur has been assigned yet.  </p> )
+                  ) : ( <p className={pageStyles.errorMsg}>  No chauffeur has been assigned yet.  </p> )
               }
             </section>
           )}

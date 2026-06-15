@@ -30,7 +30,7 @@ export default async function AdminAvailabilityPage()
             <main className={pageStyles.main}>
                 <div className={pageStyles.containerMedium}>
                     <h1 className={pageStyles.pageTitle}> Chauffeur availability</h1>
-                    <p className={pageStyles.errorMessage}> Could not load chauffeur availability. </p>
+                    <p className={pageStyles.errorMsg}> Could not load chauffeur availability. </p>
                 </div>
             </main>
         );

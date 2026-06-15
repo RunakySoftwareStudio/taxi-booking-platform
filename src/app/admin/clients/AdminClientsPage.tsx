@@ -29,7 +29,7 @@ export default async function AdminClientsPage()
             <main className={pageStyles.main}>
                 <div className={pageStyles.containerMedium}>
                     <h1 className={pageStyles.pageTitle}> Admin clients</h1>
-                    <p className={pageStyles.errorMessage}> Could not load clients. </p>
+                    <p className={pageStyles.errorMsg}> Could not load clients. </p>
                 </div>
             </main>
         );

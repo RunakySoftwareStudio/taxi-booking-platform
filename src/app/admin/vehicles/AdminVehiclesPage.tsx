@@ -6,12 +6,8 @@ import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/vehicles/page.tsx 
 
-
-type ChauffeurOption = {
-    id: string;
-    name: string;
-    email: string;
-  };
+type AdminVehiclesPageProps = { searchParams: Promise<{ success?: string; error?: string; }>;};
+type ChauffeurOption = { id: string; name: string;  email: string; };
 
 type VehicleRow = {
     id: string;
@@ -34,7 +30,9 @@ type VehicleRow = {
 
 async function addVehicle(formData: FormData) {
     "use server";
-  console.log("addVehicle function started");
+    
+    console.log("addVehicle function started");
+
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const model = String(formData.get("model") || "").trim();
     const brand = String(formData.get("brand") || "").trim();
@@ -46,63 +44,43 @@ async function addVehicle(formData: FormData) {
     const seats = Number(formData.get("seats") || 4);
     const luggageCapacity = Number(formData.get("luggageCapacity") || 2);
 
-    console.log("Vehicle form data:", {
-        chauffeurId,
+    // to see all the data in console
+    console.log("Vehicle form data:", {chauffeurId, brand, model, vehicleYear, vehicleColor, licensePlate, vehicleType, seats,  luggageCapacity, });
+
+    if (!chauffeurId || !brand || !model || !licensePlate || !vehicleType) {
+      redirect("/admin/vehicles?error=missing-fields");
+    }
+
+    // .select() we can read data inserted
+    const { data, error } = await supabaseAdmin
+    .from("vehicles")
+    .insert({
+        chauffeur_id: chauffeurId,
         brand,
         model,
-        vehicleYear,
-        vehicleColor,
-        licensePlate,
-        vehicleType,
+        vehicle_year: vehicleYear,
+        vehicle_color: vehicleColor || null,
+        license_plate: licensePlate,
+        vehicle_type: vehicleType,
         seats,
-        luggageCapacity,
-    });
+        luggage_capacity: luggageCapacity,
+      })
+    .select()
+    .single();
 
-    console.log("Vehicle form data:", {
-        chauffeurId,
-        brand,
-        model,
-        vehicleYear,
-        vehicleColor,
-        licensePlate,
-        vehicleType,
-        seats,
-        luggageCapacity,
-      });
+    if (error) { 
+        console.error("Could not add vehicle:", error);
+        if (error.code === "23505") { redirect("/admin/vehicles?error=duplicate-license-plate"); }
+        redirect("/admin/vehicles?error=add-vehicle-failed"); //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
+    }
 
-      if (!chauffeurId || !brand || !model || !licensePlate || !vehicleType) {
-        console.error("Missing required vehicle fields:", {
-          chauffeurId,
-          brand,
-          model,
-          licensePlate,
-          vehicleType,
-        });
-
-        return;
-      }
-
-    const { data, error } = await supabaseAdmin.from("vehicles").insert({
-          chauffeur_id: chauffeurId,
-          brand,
-          model,
-          vehicle_year: vehicleYear,
-          vehicle_color: vehicleColor || null,
-          license_plate: licensePlate,
-          vehicle_type: vehicleType,
-          seats,
-          luggage_capacity: luggageCapacity,
-    });
-
-    
-    if (error) { console.error("Could not add vehicle:", error); return; }
     console.log("Vehicle added:", data);
-
     revalidatePath("/admin/vehicles");
-    redirect("/admin/vehicles");
+    redirect("/admin/vehicles?success=vehicle-added");//This is useful because server actions cannot use useState directly. So we pass the result through the URL.
 }
 
-export default async function AdminVehiclesPage() {
+export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPageProps) {
+    const pageMessage = await searchParams;
     const { data: vehicles, error: vehiclesError } = await supabaseAdmin
       .from("vehicles")
       .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity, created_at, chauffeurs (name, email, phone )` )
@@ -131,6 +109,11 @@ export default async function AdminVehiclesPage() {
           <p className={pageStyles.pageLabelUpper}> Admin </p>
           <h1 className={pageStyles.pageTitle}>Vehicles</h1>
           <p className={pageStyles.pageDescription}> Add vehicles and connect them to approved chauffeurs. </p>
+
+          {pageMessage.success === "vehicle-added" && (<p className={pageStyles.errorMsgPageCaption}> Vehicle added successfully. </p> )}
+          {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> Please fill in all required vehicle fields.  </p> )}
+          {pageMessage.error === "duplicate-license-plate" && (<p className={pageStyles.errorMsgPage}> A vehicle with this license plate already exists. </p>)}
+          {pageMessage.error === "add-vehicle-failed" && ( <p className={pageStyles.errorMsgPage}> Could not add vehicle. Please try again. </p> )}
 
           <form  action={addVehicle}  className={formStyles.form}>
                 <div className={formStyles.formDivGridCol3}>
