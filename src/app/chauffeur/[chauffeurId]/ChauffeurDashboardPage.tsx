@@ -9,16 +9,16 @@ import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx 
 
 type TypeChauffeurRow = { id: string;  name: string;  email: string;  phone: string;  service_area: string | null;  account_status: string;};
-type TypeAssignedBookingRow = 
-{
+
+type TypeAssignedBookingRow = {
     id: string;  pickup_location: string;  destination: string;  
     pickup_date: string;  pickup_time: string;  passengers: number;  luggage: number;  
     trip_type: string;  status: string;  notes: string | null;
     clients: { name: string;  email: string;  phone: string; } | null;
 };
 
-type TypePromiseChauffeurId = { params: Promise<{ chauffeurId: string; }>;};
-
+//type TypePromiseChauffeurId = { params: Promise<{ chauffeurId: string; }>;};
+type ChauffeurDashboardPageProps = { params: Promise<{chauffeurId: string; }>;searchParams: Promise<{ success?: string; error?: string; }>;};
 type TypeVehicleRow = 
 {
     id: string;
@@ -41,7 +41,7 @@ async function updateAssignedBookingStatus(formData: FormData)
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const status = String(formData.get("status") || "");
 
-    if (!bookingId || !chauffeurId || !status) {  return;  }
+    if (!bookingId || !chauffeurId || !status) { redirect(`/chauffeur/${chauffeurId}?error=missing-fields`); }
 
     const { error } = await supabaseAdmin
         .from("bookings")
@@ -49,14 +49,18 @@ async function updateAssignedBookingStatus(formData: FormData)
         .eq("id", bookingId)
         .eq("chauffeur_id", chauffeurId);
 
-    if (error) { console.error("Could not update assigned booking status:", error); return; }
-
+    if (error) {
+        console.error("Could not update booking status:", error);
+        redirect(`/chauffeur/${chauffeurId}?error=status-update-failed`);
+    }
+    
     revalidatePath(`/chauffeur/${chauffeurId}`);
-    redirect(`/chauffeur/${chauffeurId}`);
+    redirect(`/chauffeur/${chauffeurId}?success=status-updated`);
 }
 
-export default async function ChauffeurDashboardPage ({params}: TypePromiseChauffeurId) 
-{
+export default async function ChauffeurDashboardPage({params,searchParams}: ChauffeurDashboardPageProps) {
+  const pageMessage = await searchParams;
+  const { chauffeurId } = await params;
     /*========================================
         default             → homepage
         if user is admin    → admin chauffeurs page
@@ -75,8 +79,6 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
         .maybeSingle();
         if (profile?.role === "admin") { backLinkHref = "/admin/chauffeurs";  backLinkText = "← Back to admin chauffeurs"; }
     }
-
-    const {chauffeurId} = await params;
 
     // get chauffeur data of this chauffeur id
     const { data: supabaseAdminChauffeur, error: chauffeurError } = await supabaseAdmin
@@ -137,6 +139,11 @@ export default async function ChauffeurDashboardPage ({params}: TypePromiseChauf
                 <p className={pageStyles.pageLabelUpper}> Chauffeur </p>
                 <h1 className={pageStyles.pageTitle}> Welcome, {chauffeurRow.name} </h1>
                 <p className={pageStyles.pageDescription}> Here you can see bookings assigned to you. </p>
+                
+                {pageMessage.success === "status-updated" && (<p className={pageStyles.successMsgPage}> Booking status updated successfully. </p>)}
+                {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> Please select the required booking information. </p>)}
+                {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> Could not update booking status. Please try again.</p>)}
+
                 <div className="mt-8 grid gap-4 md:grid-cols-3">
                     <div className={formStyles.info}>
                         <p className={formStyles.formInputInfoCaption}>Email</p>
