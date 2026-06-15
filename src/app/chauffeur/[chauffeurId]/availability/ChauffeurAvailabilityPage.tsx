@@ -8,7 +8,7 @@ import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
 type AvailabilityRow = {id: string;  available_date: string;  start_time: string;  end_time: string;  status: string;  created_at: string;};
 type ChauffeurRow = {id: string;  name: string;};
-type ChauffeurAvailabilityPageProps = {params: Promise<{chauffeurId: string;}>;};
+type ChauffeurAvailabilityPageProps = {params: Promise<{chauffeurId: string;}>; searchParams: Promise<{ success?: string; error?: string; }>;};
 
 async function addAvailability(formData: FormData) 
 {  "use server";
@@ -19,20 +19,24 @@ async function addAvailability(formData: FormData)
   const endTime = String(formData.get("endTime") || "");
   const status = String(formData.get("status") || "available");
 
-  if (!chauffeurId || !availableDate || !startTime || !endTime || !status) { return; }
-
+  if (!chauffeurId || !availableDate || !startTime || !endTime || !status) {
+    redirect(`/chauffeur/${chauffeurId}/availability?error=missing-fields`);
+  }
   const { error } = await supabaseAdmin
     .from("chauffeur_availability")
     .insert({chauffeur_id: chauffeurId, available_date: availableDate, start_time: startTime, end_time: endTime, status, });
 
-  if (error) {console.error("Could not add availability:", error); return; }
+  if (error) {
+    console.error("Could not add availability:", error);
+    redirect(`/chauffeur/${chauffeurId}/availability?error=add-availability-failed`);
+  }
 
   revalidatePath(`/chauffeur/${chauffeurId}/availability`);
-  redirect(`/chauffeur/${chauffeurId}/availability`);
+  redirect(`/chauffeur/${chauffeurId}/availability?success=availability-added`);
 }
 
-export default async function ChauffeurAvailabilityPage({params}: ChauffeurAvailabilityPageProps) 
-{
+export default async function ChauffeurAvailabilityPage({params, searchParams}: ChauffeurAvailabilityPageProps) {
+  const pageMessage = await searchParams;
   const { chauffeurId } = await params;
   const { data: chauffeur, error: chauffeurError } = await supabaseAdmin
     .from("chauffeurs")
@@ -76,6 +80,10 @@ export default async function ChauffeurAvailabilityPage({params}: ChauffeurAvail
         <p className={pageStyles.pageLabelUpper}> Chauffeur </p>
         <h1 className={pageStyles.pageTitle}>  Availability for {chauffeurRow.name} </h1>
         <p className={pageStyles.pageDescription}> Add the times when you are available, busy, offline, or on holiday. </p>
+        
+        {pageMessage.success === "availability-added" && (<p className={pageStyles.successMsgPage}> Availability added successfully. </p>)}
+        {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> Please fill in all required availability fields. </p>)}
+        {pageMessage.error === "add-availability-failed" && (<p className={pageStyles.errorMsgPage}> Could not add availability. Please try again.</p>)}
 
         <form action={addAvailability}  className={formStyles.form} >
           <input type="hidden" name="chauffeurId" value={chauffeurId} />
