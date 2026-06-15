@@ -69,17 +69,20 @@ async function updateChauffeurStatus(formData: FormData) {
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const accountStatus = String(formData.get("accountStatus") || "");
 
-    if (!chauffeurId || !accountStatus) { return; }
+    if (!chauffeurId || !accountStatus) { redirect("/admin/chauffeurs?error=missing-fields");}
 
     const { error } = await supabaseAdmin
     .from("chauffeurs")
     .update({ account_status: accountStatus })
     .eq("id", chauffeurId);
 
-    if (error) { console.error("Could not update chauffeur status:", error); return; }
+    if (error) { 
+        console.error("Could not update chauffeur status:", error);
+        redirect("/admin/chauffeurs?error=status-update-failed");
+    }
 
     revalidatePath("/admin/chauffeurs");
-    redirect("/admin/chauffeurs");
+    redirect("/admin/chauffeurs?success=status-updated");
 }
 
 export default async function AdminChauffeursPage({ searchParams}: AdminChauffeursPageProps) {
@@ -104,9 +107,11 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 <h1 className={pageStyles.pageTitle}>Chauffeurs</h1>
                 <p className={pageStyles.pageDescription}> Add chauffeurs and view chauffeur accounts registered in the platform. </p>
                 {pageMessage.success === "chauffeur-added" && (<p className={pageStyles.successMsgPage}> Chauffeur added successfully. </p> )}
+                {pageMessage.success === "status-updated" && ( <p className={pageStyles.successMsgPage}> Chauffeur status updated successfully. </p>)}
                 {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}>  Please fill in all required chauffeur fields.</p> )}
                 {pageMessage.error === "duplicate-email" && ( <p className={pageStyles.errorMsgPage}> A chauffeur with this email address already exists. </p> )}
                 {pageMessage.error === "add-chauffeur-failed" && (<p className={pageStyles.errorMsgPage}> Could not add chauffeur. Please try again. </p> )}
+                {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> Could not update chauffeur status.</p> )}
 
                 <form action={addChauffeur} className={formStyles.form}>
                     <div className={formStyles.formDivGridCol3}>

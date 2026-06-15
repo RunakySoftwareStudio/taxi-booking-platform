@@ -6,7 +6,21 @@ import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/vehicles/page.tsx 
 
-type AdminVehiclesPageProps = { searchParams: Promise<{ success?: string; error?: string; }>;};
+type AdminVehiclesPageProps = {
+  searchParams: Promise<{
+    success?: string;
+    error?: string;
+    chauffeurId?: string;
+    vehicleType?: string;
+    brand?: string;
+    model?: string;
+    licensePlate?: string;
+    seats?: string;
+    luggageCapacity?: string;
+    vehicleYear?: string;
+    vehicleColor?: string;
+  }>;
+};
 type ChauffeurOption = { id: string; name: string;  email: string; };
 
 type VehicleRow = {
@@ -40,15 +54,28 @@ async function addVehicle(formData: FormData) {
     const vehicleYear = vehicleYearValue ? Number(vehicleYearValue) : null;
     const vehicleColor = String(formData.get("vehicleColor") || "").trim();
     const licensePlate = String(formData.get("licensePlate") || "").trim().toUpperCase();
-    const vehicleType = String(formData.get("vehicleType") || "standard");
+    const vehicleType = String(formData.get("vehicleType") || "");
     const seats = Number(formData.get("seats") || 4);
     const luggageCapacity = Number(formData.get("luggageCapacity") || 2);
+    const previousFormValues = new URLSearchParams({
+      chauffeurId,
+      vehicleType,
+      brand,
+      model,
+      licensePlate,
+      seats: String(seats),
+      luggageCapacity: String(luggageCapacity),
+      vehicleYear: vehicleYearValue,
+      vehicleColor,
+    });
+
+    const previousFormQuery = previousFormValues.toString();
 
     // to see all the data in console
     console.log("Vehicle form data:", {chauffeurId, brand, model, vehicleYear, vehicleColor, licensePlate, vehicleType, seats,  luggageCapacity, });
 
     if (!chauffeurId || !brand || !model || !licensePlate || !vehicleType) {
-      redirect("/admin/vehicles?error=missing-fields");
+      redirect(`/admin/vehicles?error=missing-fields&${previousFormQuery}`);
     }
 
     // .select() we can read data inserted
@@ -70,8 +97,8 @@ async function addVehicle(formData: FormData) {
 
     if (error) { 
         console.error("Could not add vehicle:", error);
-        if (error.code === "23505") { redirect("/admin/vehicles?error=duplicate-license-plate"); }
-        redirect("/admin/vehicles?error=add-vehicle-failed"); //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
+        if (error.code === "23505") { redirect(`/admin/vehicles?error=duplicate-license-plate&${previousFormQuery}`);; }
+        redirect(`/admin/vehicles?error=add-vehicle-failed&${previousFormQuery}`);; //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
     }
 
     console.log("Vehicle added:", data);
@@ -92,6 +119,17 @@ async function addVehicle(formData: FormData) {
 
 export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPageProps) {
     const pageMessage = await searchParams;
+    const formValues = {
+        chauffeurId: pageMessage.chauffeurId ?? "",
+        vehicleType: pageMessage.vehicleType ?? "",
+        brand: pageMessage.brand ?? "",
+        model: pageMessage.model ?? "",
+        licensePlate: pageMessage.licensePlate ?? "",
+        seats: pageMessage.seats ?? "4",
+        luggageCapacity: pageMessage.luggageCapacity ?? "4",
+        vehicleYear: pageMessage.vehicleYear ?? "",
+        vehicleColor: pageMessage.vehicleColor ?? "",
+    };
     const { data: vehicles, error: vehiclesError } = await supabaseAdmin
       .from("vehicles")
       .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity, created_at, chauffeurs (name, email, phone )` )
@@ -130,7 +168,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                 <div className={formStyles.formDivGridCol3}>
                     <label className="block">
                         <span className={formStyles.span}> Chauffeur </span>
-                        <select name="chauffeurId" required  className={formStyles.selectWFull} >
+                        <select name="chauffeurId" required defaultValue={formValues.chauffeurId} className={formStyles.selectWFull} >
                             <option value="">Select chauffeur</option>
                             {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} - {chauffeur.email} </option> ))}
                         </select>
@@ -138,7 +176,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     
                     <label className="block">
                         <span className={formStyles.span}> Vehicle type </span>
-                        <select  name="vehicleType"  required  className={formStyles.selectWFull}>
+                        <select  name="vehicleType"  required defaultValue={formValues.vehicleType} className={formStyles.selectWFull}>
                             <option value="">Select vehicle type</option>
                             {vehicleTypeOptions.map((vehicleType) => ( <option key={vehicleType} value={vehicleType}> {vehicleType} </option> ))}
                         </select>
@@ -146,38 +184,38 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     
                     <label className="block">
                         <span className={formStyles.span}> Brand </span>
-                        <input name="brand"  required  placeholder="Brand, example Mercedes" className={formStyles.inputWFull} />
+                        <input name="brand"  required defaultValue={formValues.brand} placeholder="Brand, example Mercedes" className={formStyles.inputWFull} />
                     </label>
 
                     <label className="block">
                         <span className={formStyles.span}> Model </span>
-                        <input name="model"  required  placeholder="Model, example E-Class" className={formStyles.inputWFull} />
+                        <input name="model"  required defaultValue={formValues.model} placeholder="Model, example E-Class" className={formStyles.inputWFull} />
                     </label>
 
                     <label className="block">
                         <span className={formStyles.span}> License Plate </span>
-                        <input name="licensePlate"  required placeholder="License plate"  className={formStyles.inputWFull} />
+                        <input name="licensePlate"  required defaultValue={formValues.licensePlate} placeholder="License plate"  className={formStyles.inputWFull} />
                     </label>
                     
                     <label className="block">
                         <span className={formStyles.span}> Seats </span>
-                        <input  name="seats" type="number"  min="1" defaultValue="4" required  placeholder="Example: 4" className={formStyles.inputNumber} />
+                        <input  name="seats" type="number"  min="1" defaultValue={formValues.seats} required  placeholder="Example: 4" className={formStyles.inputNumber} />
                     </label>
 
                     <label className="block">
                         <span className={formStyles.span}> Luggage capacity </span>
-                        <input  name="luggageCapacity" type="number"  min="0" defaultValue="4" required  placeholder="Example: 2" className={formStyles.inputNumber} />
+                        <input  name="luggageCapacity" type="number"  min="0" defaultValue={formValues.luggageCapacity} required  placeholder="Example: 2" className={formStyles.inputNumber} />
                     </label>        
                     
                     <label className="block">
                         <span className={formStyles.span}> Year </span>
-                        <input  name="vehicleYear"  type="number"  min="1980"  max="2100"  placeholder="Ex: 2026"  className={formStyles.input} />
+                        <input  name="vehicleYear"  type="number"  min="1980"  max="2100" defaultValue={formValues.vehicleYear} placeholder="Ex: 2026"  className={formStyles.input} />
                             
                     </label>      
                     
                      <label className="block">
                         <span className={formStyles.span}> Color</span>
-                        <input  name="vehicleColor"  placeholder="Example: black"  className={formStyles.inputWFull} />
+                        <input  name="vehicleColor"  defaultValue={formValues.vehicleColor} placeholder="Example: black"  className={formStyles.inputWFull} />
                     </label>     
                 </div>
 

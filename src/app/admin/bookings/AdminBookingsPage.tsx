@@ -72,7 +72,10 @@ async function updateBookingStatus(formData: FormData)
         .select("id, status") //This line forces Supabase to return the updated row:
         .single(); //.single(), Supabase returns one object: Without .single(), Supabase may return an array:
 
-    if (selectedBooking.error) { console.error("Could not update booking status:", selectedBooking.error);  redirect("/admin/bookings?error=status-update-failed");}
+    if (selectedBooking.error) { 
+            console.error("Could not update booking status:", selectedBooking.error);  
+            redirect("/admin/bookings?error=status-update-failed");
+        }
 
     console.log("Booking status updated:", selectedBooking.data);
 
@@ -176,7 +179,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
             <p className={pageStyles.pageLabelUpper}> Admin </p>
             <h1 className={pageStyles.pageTitle}>Booking requests</h1>
             <p className={pageStyles.pageDescription}>  Here you can see booking requests submitted through the website. </p>
-            
+
             {pageMessage.success === "chauffeur-assigned" && ( <p className={pageStyles.successMsgPage}>    Chauffeur assigned successfully. </p>)}
             {pageMessage.success === "status-updated" && ( <p className={pageStyles.successMsgPage}>    Booking status updated successfully. </p>)}
             {pageMessage.error === "missing-fields" && ( <p className={pageStyles.errorMsgPage}>    Please select the required booking information. </p>)}
