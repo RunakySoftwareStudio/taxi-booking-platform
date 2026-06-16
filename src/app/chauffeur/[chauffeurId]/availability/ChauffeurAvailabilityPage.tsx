@@ -183,7 +183,8 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                   <th className={tableStyles.cellCaption}>End time</th>
                   <th className={tableStyles.cellCaption}>Status</th>
                   <th className={tableStyles.cellCaption}>Notes</th>
-                  <th className={tableStyles.cellCaption}>Actions</th>
+                  <th className={tableStyles.cellCaption}>Edit</th>
+                  <th className={tableStyles.cellCaption}>Delete</th>
                 </tr>
               </thead>
 
@@ -207,7 +208,13 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                                       </div>
                                   </td>
                                   <td className={tableStyles.cell}> {availability.notes || "—"} </td>
+                                  <td> 
+                                    <Link  href={`/chauffeur/${chauffeurId}/availability/${availability.id}`} className={formStyles.smallButton}>
+                                        Edit
+                                    </Link>
+                                  </td>
                                   <td className={tableStyles.cell}>
+
                                     <form action={deleteAvailability}>
                                         <input type="hidden" name="chauffeurId" value={chauffeurId} />
                                         <input type="hidden" name="availabilityId" value={availability.id} />
@@ -219,7 +226,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                       })
                   }
 
-                  {availabilityRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={6}> No availability records found yet. </td> </tr> )}
+                  {availabilityRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={7}> No availability records found yet. </td> </tr> )}
               </tbody>
             </table>
           </div>
