@@ -70,6 +70,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
     const { data: { user }, } = await authSupabase.auth.getUser();
     let backLinkHref = "/";
     let backLinkText = "← Back to homepage";
+    let isAdminUser = false;
 
     if (user) {
         const { data: profile } = await authSupabase
@@ -77,7 +78,8 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
         .select("role")
         .eq("user_id", user.id)
         .maybeSingle();
-        if (profile?.role === "admin") { backLinkHref = "/admin/chauffeurs";  backLinkText = "← Back to admin chauffeurs"; }
+
+        if (profile?.role === "admin") { backLinkHref = "/admin/chauffeurs";  backLinkText = "← Back to admin chauffeurs";  isAdminUser = true;}
     }
 
     // get chauffeur data of this chauffeur id
@@ -158,45 +160,56 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         <p className={formStyles.formInputInfoValue}>{chauffeurRow.account_status}</p>
                     </div>
                 </div>
-                <div className="mt-8">
-                    <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className={formStyles.primaryButtonOutside}>
+                {/*====================================                
+                → shows chauffeur information
+                → has button: Manage availability
+                → if admin is viewing: also show Edit chauffeur details
+                ==========================================*/}
+                <div className="mt-8 flex flex-wrap items-center gap-4">
+                    <Link  href={`/chauffeur/${chauffeurRow.id}/availability`} className={formStyles.primaryButtonOutside}  >
                         Manage availability
                     </Link>
+
+                    {isAdminUser && ( 
+                        <Link  href={`/admin/chauffeurs/${chauffeurRow.id}`} className={formStyles.primaryButtonOutside}  >
+                            Edit chauffeur details
+                        </Link>
+                    )}
                 </div>
 
-            <h3 className={tableStyles.headerTableSmall}>My vehicles</h3>
-            <div className={tableStyles.tableDiv}>
-                <table className={tableStyles.table1000}>
-                    <thead className={tableStyles.tableHeaderCyan}>
-                        <tr>
-                            <th className={tableStyles.cellCaption}>Brand</th>
-                            <th className={tableStyles.cellCaption}>Model</th>
-                            <th className={tableStyles.cellCaption}>License plate</th>
-                            <th className={tableStyles.cellCaption}>Type</th>
-                            <th className={tableStyles.cellCaption}>Seats</th>
-                            <th className={tableStyles.cellCaption}>Luggage</th>
-                            <th className={tableStyles.cellCaption}>Year</th>
-                            <th className={tableStyles.cellCaption}>Color</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {vehicleRows.map((vehicle) => (
-                            <tr key={vehicle.id} className={tableStyles.rowCyan}>
-                                <td className={tableStyles.cell}>{vehicle.brand}</td>
-                                <td className={tableStyles.cell}>{vehicle.model}</td>
-                                <td className={tableStyles.cell}>{vehicle.license_plate}</td>
-                                <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
-                                <td className={tableStyles.cell}>{vehicle.seats}</td>
-                                <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
-                                <td className={tableStyles.cell}>{vehicle.vehicle_year}</td>
-                                <td className={tableStyles.cell}>{vehicle.vehicle_color}</td>
+                <h3 className={tableStyles.headerTableSmall}>My vehicles</h3>
+                <div className={tableStyles.tableDiv}>
+                    <table className={tableStyles.table1000}>
+                        <thead className={tableStyles.tableHeaderCyan}>
+                            <tr>
+                                <th className={tableStyles.cellCaption}>Brand</th>
+                                <th className={tableStyles.cellCaption}>Model</th>
+                                <th className={tableStyles.cellCaption}>License plate</th>
+                                <th className={tableStyles.cellCaption}>Type</th>
+                                <th className={tableStyles.cellCaption}>Seats</th>
+                                <th className={tableStyles.cellCaption}>Luggage</th>
+                                <th className={tableStyles.cellCaption}>Year</th>
+                                <th className={tableStyles.cellCaption}>Color</th>
                             </tr>
-                        ))}
-                        {vehicleRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}>No vehicles connected to this chauffeur yet.</td></tr>)}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+
+                        <tbody>
+                            {vehicleRows.map((vehicle) => (
+                                <tr key={vehicle.id} className={tableStyles.rowCyan}>
+                                    <td className={tableStyles.cell}>{vehicle.brand}</td>
+                                    <td className={tableStyles.cell}>{vehicle.model}</td>
+                                    <td className={tableStyles.cell}>{vehicle.license_plate}</td>
+                                    <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
+                                    <td className={tableStyles.cell}>{vehicle.seats}</td>
+                                    <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
+                                    <td className={tableStyles.cell}>{vehicle.vehicle_year}</td>
+                                    <td className={tableStyles.cell}>{vehicle.vehicle_color}</td>
+                                </tr>
+                            ))}
+                            {vehicleRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}>No vehicles connected to this chauffeur yet.</td></tr>)}
+                        </tbody>
+                    </table>
+                </div>
                 <h3 className={tableStyles.headerTableSmall}>My Bookings</h3>
                 <div className={tableStyles.tableDiv}>
                     <table className={tableStyles.table1000}>
