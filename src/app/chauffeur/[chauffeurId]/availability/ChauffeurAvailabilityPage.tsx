@@ -176,8 +176,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                                 <td className={tableStyles.cell}> {availability.end_time} </td>
                                 <td className="p-4">
                                     <div className="flex items-center gap-2">
-                                        <span
-                                        className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} > {availability.status} </span>
+                                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} > {availability.status} </span>
                                         {availability.status === "available" && (<span className="text-sm font-bold text-green-300" aria-hidden="true"> ✓ </span>)}
                                     </div>
                                 </td>

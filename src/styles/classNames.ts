@@ -32,7 +32,8 @@ export const formStyles = {
     formLabel:              "text-sm font-semibold text-cyan-200",     
     formH3SemiBold:         "text-xl font-semibold text-white",            
     formSemiBold:           "font-semibold text-white",   
-    formSuccessMsg:         "mt-8 rounded-2xl border border-green-400/30 bg-green-400/10 p-4 text-green-200",          
+    formSuccessMsg:         "mt-8 rounded-2xl border border-green-400/30 bg-green-400/10 p-4 text-green-200",    
+    sectionCard:            "rounded-2xl border border-white/10 bg-white/5 p-6",      
 };
 
 export const pageStyles = {
