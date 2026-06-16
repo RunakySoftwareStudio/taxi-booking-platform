@@ -59,37 +59,40 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`${formStyles.sectionCard} mt-8`}>
-      {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p> )}
-      {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
+    <main>
+        <div >
+            {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p> )}
+            {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
+        </div>
+        <form onSubmit={handleSubmit} className={`${formStyles.sectionCard} mt-8`}>
+          <div className="grid gap-5 md:grid-cols-2">
+            <label className={formStyles.label}> Name
+              <input value={name} onChange={(event) => setName(event.target.value)} required className={formStyles.inputWFull} />
+            </label>
 
-      <div className="grid gap-5 md:grid-cols-2">
-        <label className={formStyles.label}> Name
-          <input value={name} onChange={(event) => setName(event.target.value)} required className={formStyles.inputWFull} />
-        </label>
+            <label className={formStyles.label}>  Email
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required className={formStyles.inputWFull} />
+            </label>
 
-        <label className={formStyles.label}>  Email
-          <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required className={formStyles.inputWFull} />
-        </label>
+            <label className={formStyles.label}> Phone
+              <input value={phone}  onChange={(event) => setPhone(event.target.value)} required  className={formStyles.inputWFull}/>
+            </label>
 
-        <label className={formStyles.label}> Phone
-          <input value={phone}  onChange={(event) => setPhone(event.target.value)} required  className={formStyles.inputWFull}/>
-        </label>
+            <label className={formStyles.label}>  Service area
+              <input  value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} placeholder="Example: Amsterdam" className={formStyles.inputWFull} />
+            </label>
 
-        <label className={formStyles.label}>  Service area
-          <input  value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} placeholder="Example: Amsterdam" className={formStyles.inputWFull} />
-        </label>
+            <label className={formStyles.label}>  Account status
+              <select value={accountStatus} onChange={(event) => setAccountStatus(event.target.value)} required className={formStyles.selectWFull} >
+                {accountStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option>  ))}
+              </select>
+            </label>
+          </div>
 
-        <label className={formStyles.label}>  Account status
-          <select value={accountStatus} onChange={(event) => setAccountStatus(event.target.value)} required className={formStyles.selectWFull} >
-            {accountStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option>  ))}
-          </select>
-        </label>
-      </div>
-
-      <button type="submit" disabled={isSaving}  className={`${formStyles.primaryButtonOutside} mt-6`} >
-        {isSaving ? "Saving..." : "Save chauffeur details"}
-      </button>
-    </form>
+          <button type="submit" disabled={isSaving}  className={`${formStyles.primaryButtonOutside} mt-6`} >
+            {isSaving ? "Saving..." : "Save chauffeur details"}
+          </button>
+        </form>
+    </main>
   );
 }

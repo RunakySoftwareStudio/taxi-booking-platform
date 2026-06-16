@@ -209,8 +209,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     
                     <label className="block">
                         <span className={formStyles.span}> Year </span>
-                        <input  name="vehicleYear"  type="number"  min="1980"  max="2100" defaultValue={formValues.vehicleYear} placeholder="Ex: 2026"  className={formStyles.input} />
-                            
+                        <input  name="vehicleYear"  type="number"  min="1980"  max="2100" defaultValue={formValues.vehicleYear} placeholder="Ex: 2026"  className={formStyles.input} />                           
                     </label>      
                     
                      <label className="block">
@@ -238,6 +237,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                   <th className={tableStyles.cellCaption}>Type</th>
                   <th className={tableStyles.cellCaption}>Seats</th>
                   <th className={tableStyles.cellCaption}>Luggage</th>
+                  <th className={tableStyles.cellCaption}>Actions</th>
                 </tr>
               </thead>
 
@@ -249,7 +249,6 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                       <div className={tableStyles.cellInfo}> {vehicle.chauffeurs?.email}  </div>
                       <div className={tableStyles.cellInfo}> {vehicle.chauffeurs?.phone}  </div>
                     </td>
-
                     <td className={tableStyles.cell}> {vehicle.brand}</td>
                     <td className={tableStyles.cell}> {vehicle.model}</td>
                     <td className={tableStyles.cell}> {vehicle.vehicle_year || "-"}</td>
@@ -258,9 +257,9 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     <td className={tableStyles.cell}> {vehicle.vehicle_type}  </td>
                     <td className={tableStyles.cell}> {vehicle.seats}</td>
                     <td className={tableStyles.cell}> {vehicle.luggage_capacity} </td>
+                    <td className={tableStyles.cell}> <Link href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton} > Edit  </Link> </td>
                   </tr>
                 ))}
-
                 {vehicleRows.length === 0 && ( <tr>  <td className={tableStyles.cellEmpty} colSpan={9}>  No vehicles found yet. </td> </tr> )}
               </tbody>
             </table>

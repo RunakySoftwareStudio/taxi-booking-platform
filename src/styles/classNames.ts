@@ -7,15 +7,14 @@ export const formStyles = {
     formDivFlex:            "flex items-start justify-between gap-4",
     formInfoCellCaption:    "text-slate-300",
     formInfoCell:           "block text-sm text-slate-400",
-    inputWFull:             "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full", //with w-full 
-    inputNumber:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-26",
-    input:                  "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
-    selectWFull:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full",
+    input:                  "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
+    inputWFull:             "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full", //with w-full 
+    inputNumber:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-26",  
+    selectWFull:            "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full",  //with w-full 
     selectForm:             "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
     label:                  "block text-sm font-medium text-slate-200",
     info:                   "rounded-2xl border-3 border-cyan-400/30 bg-slate-950 p-5",
     textarea:               "rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
-    //primaryButtonOutside:   "rounded-xl border border-cyan-400/30 bg-cyan-400/10 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20 px-7 py-5 mt-6 ",
     primaryButtonOutside:   "inline-flex h-10 w-fit items-center justify-center rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     primaryButtonInside:    "rounded-xl border-3 border-cyan-400/30 bg-cyan-400/10 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20 px-5 py-3 ",
     primaryButtonDP:        "rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold leading-none text-cyan-100 hover:bg-cyan-400/20 mt-1 h-12 w-fit self-start ",//phone: full width, desktop: small width
@@ -33,7 +32,7 @@ export const formStyles = {
     formH3SemiBold:         "text-xl font-semibold text-white",            
     formSemiBold:           "font-semibold text-white",   
     formSuccessMsg:         "mt-8 rounded-2xl border border-green-400/30 bg-green-400/10 p-4 text-green-200",    
-    sectionCard:            "rounded-2xl border border-white/10 bg-white/5 p-6",      
+    sectionCard:            "rounded-2xl border-4 border-white/10 bg-white/5 p-6",      
 };
 
 export const pageStyles = {
@@ -49,8 +48,8 @@ export const pageStyles = {
     pageTitle:                "mt-3 text-3xl font-bold text-white",
     pageDescription:          "mt-4 max-w-2xl text-slate-300",
     errorMsg:                 "mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200",
-    errorMsgPage:             "mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200",
-    successMsgPage:           "mt-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-200",
+    errorMsgPage:             "mt-6 rounded-xl border-3 border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200",
+    successMsgPage:           "mt-6 rounded-xl border-3 border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-200",
     logButton:                "text-sm text-slate-300 hover:text-cyan-300",
     loginButtonHome:          "rounded-full border border-yellow-400 px-5 py-2 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10",
     divFlex:                  "flex items-start justify-between gap-4",
