@@ -260,7 +260,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     <td className={tableStyles.cell}> <Link href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton} > Edit  </Link> </td>
                   </tr>
                 ))}
-                {vehicleRows.length === 0 && ( <tr>  <td className={tableStyles.cellEmpty} colSpan={9}>  No vehicles found yet. </td> </tr> )}
+                {vehicleRows.length === 0 && ( <tr>  <td className={tableStyles.cellEmpty} colSpan={10}>  No vehicles found yet. </td> </tr> )}
               </tbody>
             </table>
           </div>
