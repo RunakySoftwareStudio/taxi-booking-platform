@@ -109,10 +109,9 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
                     <tr className={formStyles.formInfoCellCaption}> Color
                         <input value={vehicleColor} onChange={(event) => setVehicleColor(event.target.value)} className={formStyles.input}/>
                     </tr>
-                    <label className="block">
-                        <span className={formStyles.span}> Year </span>
-                        <input  value={vehicleYear}  onChange={(event) => setVehicleYear(event.target.value)} type="number" min="1980"  max="2100"  className={formStyles.input}/>                           
-                    </label>  
+                    <tr className={formStyles.formInfoCellCaption}> Year
+                        <input  value={vehicleYear}  onChange={(event) => setVehicleYear(event.target.value)} type="number" min="1980"  max="2100"  className={formStyles.input}/>   
+                    </tr>
                 </div>
             </div>
             <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`} >

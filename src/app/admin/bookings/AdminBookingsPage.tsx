@@ -200,6 +200,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                     <th className={tableStyles.cellCaption}>Notes</th>
                     <th className={tableStyles.cellCaption}>Assigned chauffeur</th>
                     <th className={tableStyles.cellCaption}>Status</th>
+                    <th className={tableStyles.cellCaption}>Edit</th>
                 </tr>
                 </thead>
 
@@ -238,15 +239,16 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                     <select name="status"  defaultValue={booking.status}  className={tableStyles.selectTable}>
                                         {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status}</option> ))} 
                                     </select>
-                                    <button type="submit" className={formStyles.smallButton}>
-                                        Save
-                                    </button>                                
+                                    <button type="submit" className={formStyles.smallButton}> Save </button>                                
                                 </form>
+                            </td>
+                            <td className={tableStyles.cell}>
+                                <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton}> Edit </Link>
                             </td>
                         </tr>
                     ))}
 
-                    {bookingRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={10}>  No bookings found yet. </td> </tr>)}
+                    {bookingRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={11}>  No bookings found yet. </td> </tr>)}
                 </tbody>
             </table>
             </div>

@@ -58,6 +58,7 @@ export const tableStyles = {
     wrapper:                  "mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5",
     table900:                 "w-full min-w-[900px] text-left text-sm",
     table1000:                "w-full min-w-[1000px] text-left text-sm",
+    table1200:                "w-full min-w-[1200px] text-left text-sm",
     tableDiv:                 "mt-6 overflow-x-auto rounded-2xl border border-cyan-400/30 bg-white/5",
     tableWide:                "w-full min-w-[1200px] text-left text-sm",
     header:                   "border-b border-white/10 bg-white/10 text-slate-300",
