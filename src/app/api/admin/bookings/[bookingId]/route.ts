@@ -1,3 +1,15 @@
+/*==========================================
+    1. Check admin user
+    2. Read form body
+    3. Validate fields
+    4. Check allowed booking status
+    5. Check allowed trip type
+    6. Load existing booking to get client_id
+    7. Update clients table
+    8. Update bookings table
+    9. Revalidate pages
+    10. Return success
+=================================================*/
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -21,6 +33,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (profile?.role !== "admin") {  return NextResponse.json({ message: "Not allowed." }, { status: 403 });  }
 
     const body = await request.json();
+    const clientName = String(body.clientName || "").trim();
+    const clientEmail = String(body.clientEmail || "").trim();
+    const clientPhone = String(body.clientPhone || "").trim();
     const pickupLocation = String(body.pickupLocation || "").trim();
     const destination = String(body.destination || "").trim();
     const pickupDate = String(body.pickupDate || "").trim();
@@ -33,7 +48,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const passengerCount = Number(body.passengers);
     const luggageCount = Number(body.luggage);
 
-    if (!pickupLocation ||!destination ||!pickupDate ||!pickupTime ||!tripType ||!status) {return NextResponse.json( { message: "Please fill in all required fields." }, { status: 400 }); }
+    if (!clientName ||!clientEmail || !clientPhone ||!pickupLocation ||!destination ||!pickupDate ||!pickupTime ||!tripType ||!status) {return NextResponse.json( { message: "Please fill in all required fields." }, { status: 400 }); }
     if (!Number.isInteger(passengerCount) || passengerCount < 1) { return NextResponse.json(  { message: "Passengers must be at least 1." },  { status: 400 });    }
     if (!Number.isInteger(luggageCount) || luggageCount < 0) { return NextResponse.json(  { message: "Luggage cannot be negative." },  { status: 400 });  }
 
@@ -46,12 +61,34 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const { data: allowedTripTypes } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "trip_type"});
     const tripTypeOptions = (allowedTripTypes ?? []) as string[];
 
-    if (!tripTypeOptions.includes(tripType)) {
-        return NextResponse.json( { message: "Invalid trip type." }, { status: 400 } );}
+    if (!tripTypeOptions.includes(tripType)) { return NextResponse.json( { message: "Invalid trip type." }, { status: 400 } );}
+
+    const { data: existingBooking, error: existingBookingError } =
+        await supabaseAdmin
+            .from("bookings")
+            .select("client_id")
+            .eq("id", bookingId)
+            .single();
+
+    if (existingBookingError || !existingBooking) { 
+        console.error("Could not load booking before update:", existingBookingError);       
+        return NextResponse.json( { message: "Booking was not found." }, { status: 404 });
+    }
+
+    const { error: clientUpdateError } = await supabaseAdmin
+        .from("clients")
+        .update({name: clientName, email: clientEmail, phone: clientPhone,})
+        .eq("id", existingBooking.client_id);
+
+    if (clientUpdateError) { 
+        console.error("Could not update client:", clientUpdateError);
+        if (clientUpdateError.code === "23505") {return NextResponse.json({ message: "A client with this email already exists." }, { status: 409 } ); }
+        return NextResponse.json( { message: "Could not update client information." }, { status: 500 });
+    }
 
     const { error } = await supabaseAdmin
         .from("bookings")
-        .update({ 
+        .update({
                 pickup_location: pickupLocation,
                 destination,
                 pickup_date: pickupDate,

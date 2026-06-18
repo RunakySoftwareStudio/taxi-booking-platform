@@ -4,6 +4,10 @@
 =============================================================*/
 import StatusPage from "./StatusPage";
 
-export default function Page() {
-  return <StatusPage />;
+type PageProps = { searchParams: Promise<{ bookingId?: string; }>;};
+
+export default async function Page({ searchParams }: PageProps) {
+  const pageSearchParams = await searchParams;
+  return <StatusPage initialBookingId={pageSearchParams.bookingId ?? ""} />;
 }
+

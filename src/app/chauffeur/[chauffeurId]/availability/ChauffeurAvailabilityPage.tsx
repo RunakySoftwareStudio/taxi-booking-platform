@@ -15,6 +15,16 @@ type ChauffeurAvailabilityPageProps = {
                   availableDate?: string;  startTime?: string; endTime?: string;
                   status?: string;  notes?: string; }>;
 };
+
+function getTodayDateInputValue() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
 async function addAvailability(formData: FormData) {  
     "use server";
     // read data from user input on form
@@ -120,8 +130,8 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
     const chauffeurRow = chauffeur as ChauffeurRow;
     const availabilityRows = (availabilityRecords ?? []) as AvailabilityRow[];
     const availabilityStatusOptions = (availabilityStatuses ?? []) as string[];
-
-    
+    const todayDate = getTodayDateInputValue();
+   
     return (
       <main className={pageStyles.main}>
         <div className={pageStyles.container}> 
@@ -142,7 +152,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
             <div className="mt-6 grid gap-4 md:grid-cols-4">
               <label className="block">
                 <span className={formStyles.span}>Date </span>
-                <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min="2026-01-01" max="2099-12-31" className={formStyles.inputWFull} />
+                <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min={todayDate} max="2099-12-31" className={formStyles.inputWFull} />
               </label>
 
               <label className="block">

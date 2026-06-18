@@ -28,13 +28,13 @@ import { type FormEvent, useState } from "react";
       } | null;
   };
 
-  type BookingStatusResponse = {
-      message: string;
-      booking?: BookingStatusResult;
-  };
+  type BookingStatusResponse = {message: string; booking?: BookingStatusResult; };
+  type StatusPageProps = { initialBookingId?: string;};
 
-export default function StatusPage() {
+export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
+
     const [booking, setBooking] = useState<BookingStatusResult | null>(null);
+    const safeInitialBookingId = initialBookingId ?? "";
     const [errorMessage, setErrorMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
@@ -42,7 +42,6 @@ export default function StatusPage() {
       event.preventDefault();
 
       const formData = new FormData(event.currentTarget);
-
       const statusRequest = {
         bookingId: String(formData.get("bookingId") || ""),
         email: String(formData.get("email") || ""),
@@ -51,7 +50,7 @@ export default function StatusPage() {
       setIsLoading(true);
       setErrorMessage("");
       setBooking(null);
-
+  
       try {
           const response = await fetch("/api/bookings/status", {
               method: "POST",
@@ -59,19 +58,15 @@ export default function StatusPage() {
               body: JSON.stringify(statusRequest)
           });
 
-          const result = (await response.json()) as BookingStatusResponse;
-          
+          const result = (await response.json()) as BookingStatusResponse;       
           if (!response.ok || !result.booking) { throw new Error(result.message); }
-
           setBooking(result.booking);
       } 
       catch (error) {
           console.error("Could not find booking:", error);
           setErrorMessage("Booking not found. Please check your booking id and email.");
       } 
-      finally {
-          setIsLoading(false);
-      }
+      finally { setIsLoading(false);  }
     }
 
   return (
@@ -86,7 +81,8 @@ export default function StatusPage() {
               <div className={formStyles.formDivGridCol3}>
                 <label className="block">
                   <span className={formStyles.span}> Booking id </span>
-                  <input name="bookingId" required placeholder="Paste your booking id" className={formStyles.inputWFull}/>
+                  {/*defaultValue= The browser controls the value after the first load. */}
+                  <input name="bookingId" defaultValue={safeInitialBookingId} required placeholder="Paste your booking id" className={formStyles.inputWFull}/>
                 </label>
 
                 <label className="block">

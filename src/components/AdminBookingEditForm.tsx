@@ -39,11 +39,17 @@ type AdminBookingEditFormProps = {
 
 //function formatTimeForInput(timeValue: string) { return timeValue.slice(0, 5);}
 function formatTimeForInput(timeValue?: string | null) { if (!timeValue) { return ""; }  return timeValue.slice(0, 5);}
+function getTodayDateInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
 
 export default function AdminBookingEditForm({booking, chauffeurs, bookingStatusOptions, tripTypeOptions}: AdminBookingEditFormProps) {
-  const router = useRouter();
-
-  //const [location, setPickup] = useState(booking.pickup_location);
+    const router = useRouter();
     const [pickupLocation, setPickupLocation] = useState( booking.pickup_location ?? "");
     const [destination, setDestination] = useState(booking.destination);
     const [pickupDate, setPickupDate] = useState(booking.pickup_date ?? "");
@@ -54,10 +60,20 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     const [notes, setNotes] = useState(booking.notes ?? "");
     const [status, setStatus] = useState(booking.status);
     const [chauffeurId, setChauffeurId] = useState(booking.chauffeur_id ?? "");
+    const [clientName, setClientName] = useState(booking.clients?.name ?? "");
+    const [clientEmail, setClientEmail] = useState(booking.clients?.email ?? "");
+    const [clientPhone, setClientPhone] = useState(booking.clients?.phone ?? "");
 
     const [successMessage, setSuccessMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
     const [isSaving, setIsSaving] = useState(false);
+
+    /*=======================================================================================
+        If pickupDate exists AND pickupDate is earlier than today,use pickupDate as the minimum date.
+         Otherwise,use todayDate as the minimum date.
+    =======================================================================================*/
+    const todayDate = getTodayDateInputValue();
+    const minimumPickupDate = booking.pickup_date && booking.pickup_date < todayDate ? booking.pickup_date : todayDate;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,8 +86,8 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
       const response = await fetch(`/api/admin/bookings/${booking.id}`, {
         method: "PATCH",
         headers: {"Content-Type": "application/json", },
-        body: JSON.stringify({pickupLocation, destination, pickupDate, pickupTime,passengers, luggage,tripType,notes,status, chauffeurId, }), });
-        
+        body: JSON.stringify({clientName, clientEmail, clientPhone, pickupLocation, destination, pickupDate, pickupTime,passengers, luggage,tripType,notes,status, chauffeurId, }), });
+
       const result = await response.json();
       if (!response.ok) {setErrorMessage(result.message || "Could not update booking."); return; }
 
@@ -89,15 +105,20 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     <form onSubmit={handleSubmit} className={`${formStyles.sectionCard} mt-8`}>
       {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p>)}
       {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
-
-      <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-5">
+        <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-5">
         <h2 className="text-lg font-semibold text-white">Client information</h2>
-        <p className="mt-2 text-sm text-slate-300">
-            {booking.clients?.name ?? "Unknown client"} —{" "}
-            {booking.clients?.email ?? "No email"} —{" "}
-            {booking.clients?.phone ?? "No phone"}
-        </p>
-      </section>
+        <div className="mt-5 grid gap-5 md:grid-cols-3">
+                <label className={formStyles.label}> Client name
+                <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={formStyles.inputWFull} />
+                </label>
+                <label className={formStyles.label}>  Client email
+                <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={formStyles.inputWFull} />
+                </label>
+                <label className={formStyles.label}>  Client phone 
+                    <input value={clientPhone}  onChange={(event) => setClientPhone(event.target.value)} required  className={formStyles.inputWFull}  />
+                </label>
+        </div>
+        </section>
 
       <div className="grid gap-5 md:grid-cols-2">
             <div className={formStyles.formInfoCellCaption}> Pickup
@@ -109,7 +130,7 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
             </div>
 
             <div className={formStyles.formInfoCellCaption}> Date
-                <input type="date" value={pickupDate} onChange={(event) => setPickupDate(event.target.value)} required className={formStyles.inputWFull}/>
+                <input type="date" value={pickupDate} onChange={(event) => setPickupDate(event.target.value)} required  min={minimumPickupDate} max="2099-12-31" className={formStyles.inputWFull}/>
             </div>
 
             <div className={formStyles.formInfoCellCaption}> Time
@@ -150,10 +171,10 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                 <span className={formStyles.span}> Notes </span>
                 <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder="Optional booking notes" className={formStyles.textarea} />
             </div>
-        </div>
+      </div>
 
       <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`}  >
-        {isSaving ? "Saving..." : "Save booking"}
+            {isSaving ? "Saving..." : "Save booking"}
       </button>
     </form>
   );

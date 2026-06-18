@@ -26,6 +26,15 @@ function timeToMinutes(timeValue: string) {
   return hour * 60 + minute;
 }
 
+function getTodayDateInputValue() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
 export default function ChauffeurAvailabilityEditForm({ chauffeurId, availability, statusOptions,}: ChauffeurAvailabilityEditFormProps) {
   const router = useRouter();
 
@@ -38,6 +47,17 @@ export default function ChauffeurAvailabilityEditForm({ chauffeurId, availabilit
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+    /*=======================================================================================
+        If AvailableDate exists AND AvailableDate is earlier than today,use AvailableDate as the minimum date.
+        Otherwise,use todayDate as the minimum date.
+        availability.available_date is the original date from the database. It does not change while you type.
+    =======================================================================================*/
+    const todayDate = getTodayDateInputValue();
+    //const minimumAvailableDate =  availableDate && availableDate < todayDate ? availableDate : todayDate;
+    const minimumAvailableDate =   availability.available_date && availability.available_date < todayDate
+        ? availability.available_date
+        : todayDate;
+        
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -79,7 +99,7 @@ export default function ChauffeurAvailabilityEditForm({ chauffeurId, availabilit
         <form onSubmit={handleSubmit} className={`${formStyles.sectionCard} mt-8`}>
             <div className="grid gap-5 md:grid-cols-2">
                 <label className={formStyles.label}> Date
-                    <input type="date" value={availableDate} onChange={(event) => setAvailableDate(event.target.value)} required min="2026-01-01" max="2099-12-31"  className={formStyles.inputWFull}/>
+                    <input type="date" value={availableDate} onChange={(event) => setAvailableDate(event.target.value)} required  min={minimumAvailableDate} max="2099-12-31"  className={formStyles.inputWFull}/>
                 </label>
 
                 <label className={formStyles.label}> Start time

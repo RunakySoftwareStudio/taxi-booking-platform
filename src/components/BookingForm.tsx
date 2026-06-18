@@ -1,17 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type BookingRequest } from "@/types/bookingType";
 import { type BookingSummary } from "@/types/bookingSummaryType";
 import { tripTypes } from "@/data/tripTypeData";
 import { formStyles, tableStyles } from "@/styles/classNames";
 
+function getTodayDateInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
 
 export default function BookingForm() {
     const [submitted, setSubmitted] = useState(false);
     const [submittedBooking, setSubmittedBooking] = useState<BookingSummary | null>(null);
     const [errorMessage, setErrorMessage] = useState("");
+    const todayDate = getTodayDateInputValue();
+    const bookingResultRef = useRef<HTMLDivElement | null>(null);
+    
+    //When submittedBooking changes from null to a real booking,scroll smoothly to the result area.
+    useEffect(() => {
+        if (submittedBooking) { bookingResultRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+            });
+        }
+    }, [submittedBooking]);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) 
     {
@@ -104,7 +123,7 @@ export default function BookingForm() {
 
                     <div>
                         <label htmlFor="date" className="mb-2 block text-sm font-medium"> Date </label>
-                        <input id="date" name="date" type="date" min="2026-01-01" max="2099-12-31" required 
+                        <input id="date" name="date" type="date" min={todayDate} max="2099-12-31" required 
                         className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400" />
                     </div>
 
@@ -175,25 +194,29 @@ export default function BookingForm() {
             }
 
             {submittedBooking && (
-                <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950 p-6">
-                    <h3 className={formStyles.formH3SemiBold}> Booking summary </h3>                   
-                    <div className={formStyles.formDivCyan}>
-                        <p className={formStyles.formLabel}> Your booking reference </p>
-                        <p className={formStyles.formP}> {submittedBooking.id} </p>
-                        <p className={formStyles.formP}> Save this booking reference. You can use it later together with your email address to check your booking status. </p>
-                        <Link href="/status" className={formStyles.linkHref}>
-                            Check booking status
-                        </Link>
-                    </div>
-                    <div className={formStyles.formDivGridCol2}>
-                        <p> <span className={formStyles.formInfoCellCaption}>Pickup:</span>{" "} {submittedBooking.pickup} </p>
-                        <p> <span className={formStyles.formInfoCellCaption}>Destination:</span>{" "} {submittedBooking.destination} </p>
-                        <p> <span className={formStyles.formInfoCellCaption}>Date:</span>{" "} {submittedBooking.date} </p>
-                        <p> <span className={formStyles.formInfoCellCaption}>Time:</span>{" "} {submittedBooking.time} </p>
-                        <p><span className={formStyles.formInfoCellCaption}>Passengers:</span>{" "}{submittedBooking.passengers} </p>
-                        <p> <span className={formStyles.formInfoCellCaption}>Trip type:</span>{" "}{submittedBooking.tripType} </p>
-                        <p> <span className={formStyles.formInfoCellCaption}>Client:</span>{" "} {submittedBooking.name} </p>
-                        <p> <span className={formStyles.formInfoCellCaption}>Status:</span>{" "} {submittedBooking.status} </p>
+                <div ref={bookingResultRef}>
+                    <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950 p-6">
+                        <h3 className={formStyles.formH3SemiBold}> Booking summary </h3>                   
+                        <div className={formStyles.formDivCyan}>
+                            <p className={formStyles.formLabel}> Your booking reference </p>
+                            <p className={formStyles.formP}> {submittedBooking.id} </p>
+                            <p className={formStyles.formP}> Save this booking reference. You can use it later together with your email address to check your booking status. </p>
+                                                        {/* explanation: Now the booking ID goes to the status page through the URL. */}
+                            <Link href={`/status?bookingId=${submittedBooking.id}`} className={formStyles.linkHref} > 
+                                Check booking status
+                            </Link>
+
+                        </div>
+                        <div className={formStyles.formDivGridCol2}>
+                            <p> <span className={formStyles.formInfoCellCaption}>Pickup:</span>{" "} {submittedBooking.pickup} </p>
+                            <p> <span className={formStyles.formInfoCellCaption}>Destination:</span>{" "} {submittedBooking.destination} </p>
+                            <p> <span className={formStyles.formInfoCellCaption}>Date:</span>{" "} {submittedBooking.date} </p>
+                            <p> <span className={formStyles.formInfoCellCaption}>Time:</span>{" "} {submittedBooking.time} </p>
+                            <p><span className={formStyles.formInfoCellCaption}>Passengers:</span>{" "}{submittedBooking.passengers} </p>
+                            <p> <span className={formStyles.formInfoCellCaption}>Trip type:</span>{" "}{submittedBooking.tripType} </p>
+                            <p> <span className={formStyles.formInfoCellCaption}>Client:</span>{" "} {submittedBooking.name} </p>
+                            <p> <span className={formStyles.formInfoCellCaption}>Status:</span>{" "} {submittedBooking.status} </p>
+                        </div>
                     </div>
                 </div>)
             }

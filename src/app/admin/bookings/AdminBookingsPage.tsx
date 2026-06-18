@@ -78,7 +78,6 @@ async function updateBookingStatus(formData: FormData)
         }
 
     console.log("Booking status updated:", selectedBooking.data);
-
     
     //So after you add/update/delete a booking, the page should show fresh data.
     revalidatePath("/admin/bookings");
@@ -186,71 +185,69 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
             {pageMessage.error === "assign-failed" && ( <p className={pageStyles.errorMsgPage}>    Could not assign chauffeur. Please try again. </p>)}
             {pageMessage.error === "status-update-failed" && (  <p className={pageStyles.errorMsgPage}>    Could not update booking status. Please try again. </p>)}
 
-            <div className={tableStyles.tableDiv}>
-            <table className={tableStyles.table1000}>
-                <thead className={tableStyles.tableHeaderCyan}>
-                <tr>
-                    <th className={tableStyles.cellCaption}>Client</th>
-                    <th className={tableStyles.cellCaption}>Pickup</th>
-                    <th className={tableStyles.cellCaption}>Destination</th>
-                    <th className={tableStyles.cellCaption}>Date</th>
-                    <th className={tableStyles.cellCaption}>Time</th>
-                    <th className={tableStyles.cellCaption}>Passengers</th>
-                    <th className={tableStyles.cellCaption}>Trip type</th>
-                    <th className={tableStyles.cellCaption}>Notes</th>
-                    <th className={tableStyles.cellCaption}>Assigned chauffeur</th>
-                    <th className={tableStyles.cellCaption}>Status</th>
-                    <th className={tableStyles.cellCaption}>Edit</th>
-                </tr>
-                </thead>
-
-                <tbody>
-                    { bookingRows.map((booking) => (
-                        <tr key={booking.id} className={tableStyles.rowCyan}>
-                            <td className={tableStyles.cellCaption}>
-                                <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"} </div>
-                                <div className={tableStyles.cellInfo}> {booking.clients?.email} </div>
-                                <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
-                            </td>
-
-                            <td className={tableStyles.cell}> {booking.pickup_location} </td>
-                            <td className={tableStyles.cell}> {booking.destination} </td>
-                            <td className={tableStyles.cell}> {booking.pickup_date} </td>
-                            <td className={tableStyles.cell}> {booking.pickup_time} </td>
-                            <td className={tableStyles.cell}> {booking.passengers}  </td>
-                            <td className={tableStyles.cell}> {booking.trip_type}   </td>
-                            <td className={tableStyles.cell}> {booking.notes}   </td>
-                            <td className={tableStyles.cellCaption}>
-                                <form action={assignChauffeurToBooking} className="flex items-center gap-2">
-                                    <input type="hidden" name="bookingId" value={booking.id} />
-                                    <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""} className={tableStyles.selectTable}>
-                                        <option value="">Unassigned</option>
-                                        {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} </option> ))}
-                                    </select>
-
-                                    <button type="submit" className={formStyles.smallButton}>
-                                        Save
-                                    </button>   
-                                </form>
-                            </td>
-                            <td className={tableStyles.cellCaption}>
-                                <form action={updateBookingStatus} className="flex items-center gap-2">
-                                    <input type="hidden" name="bookingId" value={booking.id} />
-                                    <select name="status"  defaultValue={booking.status}  className={tableStyles.selectTable}>
-                                        {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status}</option> ))} 
-                                    </select>
-                                    <button type="submit" className={formStyles.smallButton}> Save </button>                                
-                                </form>
-                            </td>
-                            <td className={tableStyles.cell}>
-                                <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton}> Edit </Link>
-                            </td>
+            <div className="mt-8 overflow-x-auto rounded-2xl border border-cyan-500/30">
+                 <table className={`${tableStyles.table1000} min-w-[1250px]`}>
+                    <thead className={tableStyles.tableHeaderCyan}>
+                        <tr>
+                            <th className={tableStyles.cellCaption}>Client</th>
+                            <th className={tableStyles.cellCaption}>Pickup</th>
+                            <th className={tableStyles.cellCaption}>Destination</th>
+                            <th className={tableStyles.cellCaption}>Date</th>
+                            <th className={tableStyles.cellCaption}>Time</th>
+                            <th className={tableStyles.cellCaption}>Passengers</th>
+                            <th className={tableStyles.cellCaption}>Trip type</th>
+                            <th className={tableStyles.cellCaption}>Notes</th>
+                            <th className={tableStyles.cellCaption}>Assigned chauffeur</th>
+                            <th className={tableStyles.cellCaption}>Status</th>
                         </tr>
-                    ))}
+                    </thead>
 
-                    {bookingRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={11}>  No bookings found yet. </td> </tr>)}
-                </tbody>
-            </table>
+                    <tbody>
+                        { bookingRows.map((booking) => (
+                            <tr key={booking.id} className={tableStyles.rowCyan}>
+                                <td className={tableStyles.cellCaption}>
+                                    <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"} </div>
+                                    <div className={tableStyles.cellInfo}> {booking.clients?.email} </div>
+                                    <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
+                                    <div className="mt-3">
+                                        <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} > Edit </Link>
+                                    </div>
+                                </td>
+                                <td className={tableStyles.cell}> {booking.pickup_location} </td>
+                                <td className={tableStyles.cell}> {booking.destination} </td>
+                                <td className={tableStyles.cell}> {booking.pickup_date} </td>
+                                <td className={tableStyles.cell}> {booking.pickup_time} </td>
+                                <td className={tableStyles.cell}> {booking.passengers}  </td>
+                                <td className={tableStyles.cell}> {booking.trip_type}   </td>
+                                <td className={tableStyles.cell}> {booking.notes}   </td>
+                                <td className={tableStyles.cellCaption}>
+                                    <form action={assignChauffeurToBooking} className="flex items-center gap-2">
+                                        <input type="hidden" name="bookingId" value={booking.id} />
+                                        <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""} className={tableStyles.selectTable}>
+                                            <option value="">Unassigned</option>
+                                            {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} </option> ))}
+                                        </select>
+
+                                        <button type="submit" className={formStyles.smallButton}>
+                                            Save
+                                        </button>   
+                                    </form>
+                                </td>
+                                <td className={tableStyles.cellCaption}>
+                                    <form action={updateBookingStatus} className="flex items-center gap-2">
+                                        <input type="hidden" name="bookingId" value={booking.id} />
+                                        <select name="status"  defaultValue={booking.status}  className={tableStyles.selectTable}>
+                                            {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status}</option> ))} 
+                                        </select>
+                                        <button type="submit" className={formStyles.smallButton}> Save </button>                                
+                                    </form>
+                                </td>
+                            </tr>
+                        ))}
+
+                        {bookingRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={10}>  No bookings found yet. </td> </tr>)}
+                    </tbody>
+                </table>
             </div>
         </div>
         </main>
