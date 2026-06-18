@@ -32,7 +32,7 @@ export default function BookingForm() {
         }
     }, [submittedBooking]);
 
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) 
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) 
     {
         event.preventDefault();                 // Normally, when you submit a form, the browser refreshes the page.
                                                 // So instead of refreshing the page, React/Next.js can handle the form submission with JavaScript.
