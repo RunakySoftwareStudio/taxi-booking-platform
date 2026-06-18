@@ -1,6 +1,11 @@
 import Link from "next/link";
 import AuthMenuLinks from "@/components/AuthMenuLinks";
-
+/*
+  jump to the right section:
+    <a href="#how-it-works"> this is important to jumpt to the right section when we click on the href. 
+    so in HowItWorks.tsx we should have a section id with exact the same name.
+    in HowItWorks.tsx  we have:  return ( <section id="how-it-works" className="bg-slate-900 px-6 py-24 text-white">
+*/
 export default function TopMenu() 
 {
   return (
@@ -8,7 +13,6 @@ export default function TopMenu()
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="text-xl font-bold text-white"> TaxiPlatform  </Link>
         <nav className="hidden items-center gap-8 text-sm text-slate-300 md:flex">
-          {/*<a href="#" className="transition hover:text-white"> Home </a> */}
           <Link href="/" className="text-xl font-bold text-white"> Home  </Link>
           <a href="#how-it-works" className="transition hover:text-white"> How it works </a>
           <a href="#chauffeurs" className="transition hover:text-white"> Chauffeurs </a>
