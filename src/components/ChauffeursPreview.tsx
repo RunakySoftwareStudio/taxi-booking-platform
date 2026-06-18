@@ -38,7 +38,7 @@ export default async function ChauffeursPreview() {
     .select("id, name, service_area, account_status")
     .eq("account_status", "approved")
     .order("name", { ascending: true })
-    .limit(8);
+    .limit(6);
 
   if (chauffeursError) { console.error("Could not load chauffeurs preview:", chauffeursError);}
 
