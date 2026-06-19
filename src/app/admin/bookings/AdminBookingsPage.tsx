@@ -151,7 +151,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
             {pageMessage.error === "booking-update-failed" && (  <p className={pageStyles.errorMsgPage}> Could not update booking. Please try again.  </p>)}
 
             <div className={tableStyles.DivCyanList}>
-                 <table className={`${tableStyles.table1000} min-w-[1250px]`}>
+                 <table className={`${tableStyles.table1000} min-w-312.5`}>
                     <thead className={tableStyles.tableHeaderCyan}>
                         <tr>
                             <th className={tableStyles.cellCaption}>Client</th>
@@ -185,7 +185,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 <td className={tableStyles.cell}> {booking.trip_type}   </td>
                                 <td className={tableStyles.cell}> {booking.notes}   </td>
                                 <td className={tableStyles.cell}>
-                                <form action={updateBookingAdminFields} className="flex min-w-[300px] flex-wrap items-center gap-3" >
+                                <form action={updateBookingAdminFields} className="flex min-w-75 flex-wrap items-center gap-3" >
                                     <input type="hidden" name="bookingId" value={booking.id} />
                                     <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""} className={formStyles.selectForm} >
                                     <option value="">Unassigned</option>
