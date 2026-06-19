@@ -96,7 +96,7 @@ export default function ChauffeurAvailabilityEditForm({ chauffeurId, availabilit
            {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p> )}
             {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
         </div>
-        <form onSubmit={handleSubmit} className={`${formStyles.sectionCard} mt-8`}>
+        <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
             <div className="grid gap-5 md:grid-cols-2">
                 <label className={formStyles.label}> Date
                     <input type="date" value={availableDate} onChange={(event) => setAvailableDate(event.target.value)} required  min={minimumAvailableDate} max="2099-12-31"  className={formStyles.inputWFull}/>

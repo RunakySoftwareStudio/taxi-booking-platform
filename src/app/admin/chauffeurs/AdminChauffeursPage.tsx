@@ -5,6 +5,12 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
 
 //export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app/admin/chauffeurs/page.tsx 
+/*=====================================================================
+pending_approval → chauffeur applied / waiting for approval
+approved         → active chauffeur, can appear on homepage and assignment lists
+suspended        → temporarily blocked
+inactive         → removed/deactivated from normal use
+=========================================================================*/
 
 type AdminChauffeursPageProps = {  searchParams: Promise<{ success?: string;  error?: string; }>;};
 
@@ -20,6 +26,29 @@ type ChauffeurRow = {
     rating: number;
     created_at: string;
 };
+async function changeChauffeurActiveStatus(formData: FormData) {
+    "use server";
+
+    const chauffeurId = String(formData.get("chauffeurId") || "");
+    const nextAccountStatus = String(formData.get("nextAccountStatus") || "");
+
+    if (!chauffeurId || !nextAccountStatus) { redirect("/admin/chauffeurs?error=missing-fields");  }
+    if (nextAccountStatus !== "approved" && nextAccountStatus !== "inactive") { redirect("/admin/chauffeurs?error=invalid-status");  }
+
+    const { error } = await supabaseAdmin
+        .from("chauffeurs")
+        .update({account_status: nextAccountStatus,})
+        .eq("id", chauffeurId);
+
+    if (error) {
+        console.error("Could not change chauffeur active status:", error);
+        redirect("/admin/chauffeurs?error=chauffeur-status-change-failed");
+    }
+
+    revalidatePath("/admin/chauffeurs");
+    if (nextAccountStatus === "approved") {redirect("/admin/chauffeurs?success=chauffeur-activated");  }
+    redirect("/admin/chauffeurs?success=chauffeur-deactivated");
+}
 
 async function addChauffeur(formData: FormData) {
     "use server";
@@ -94,7 +123,18 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
         .order("created_at", { ascending: false });
 
     const chauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
-    
+
+    /*=============================================
+        If first chauffeur is inactive, move it down.
+        If second chauffeur is inactive, keep first one above.
+        If both have same kind of status, sort by name.
+    =============================================*/
+    const sortedChauffeurRows = (chauffeurRows ?? []).sort((firstChauffeur, secondChauffeur) => {
+        if (firstChauffeur.account_status === "inactive" && secondChauffeur.account_status !== "inactive" ) { return 1; }
+        if (firstChauffeur.account_status !== "inactive" && secondChauffeur.account_status === "inactive" ) { return -1; }
+        return firstChauffeur.name.localeCompare(secondChauffeur.name);
+    });
+      
     const { data: chauffeurStatuses, error: chauffeurStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status",  });
     if (chauffeurStatusError) { console.error("Could not load chauffeur statuses:", chauffeurStatusError); }
     const chauffeurStatusOptions = (chauffeurStatuses ?? []) as string[];
@@ -112,6 +152,10 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 {pageMessage.error === "duplicate-email" && ( <p className={pageStyles.errorMsgPage}> A chauffeur with this email address already exists. </p> )}
                 {pageMessage.error === "add-chauffeur-failed" && (<p className={pageStyles.errorMsgPage}> Could not add chauffeur. Please try again. </p> )}
                 {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> Could not update chauffeur status.</p> )}
+                {pageMessage.success === "chauffeur-activated" && (<p className={pageStyles.successMsgPage}> Chauffeur activated successfully. </p>)}
+                {pageMessage.error === "deactivate-chauffeur-failed" && (<p className={pageStyles.errorMsgPage}> Could not deactivate chauffeur. Please try again. </p>)}
+                {pageMessage.success === "chauffeur-deactivated" && (<p className={pageStyles.successMsgPage}> Chauffeur deactivated successfully.</p>)}
+                {pageMessage.error === "chauffeur-status-change-failed" && ( <p className={pageStyles.errorMsgPage}> Could not change chauffeur status. Please try again. </p>)}
 
                 <form action={addChauffeur} className={formStyles.form}>
                     <div className={formStyles.formDivGridCol3}>
@@ -126,10 +170,6 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                         <label className="block">
                             <span className={formStyles.span}> Phone </span>
                             <input name="phone" required placeholder="Phone" className={formStyles.selectWFull}/>
-                        </label>
-                        <label className="block">
-                            <span className={formStyles.span}> Company name </span>
-                            <input name="companyName" placeholder="Company name" className={formStyles.selectWFull}/>
                         </label>
                         <label className="block">
                             <span className={formStyles.span}> License number </span>
@@ -148,28 +188,26 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 {error && (<p className={pageStyles.errorMsgPage}> Could not load chauffeurs. </p> )}
                 
                 <h3 className={tableStyles.headerTableSmall}>List of chauffeurs:</h3>
-                <div className={tableStyles.tableDiv}>
+                <div className={tableStyles.DivCyanList}>
                     <table className={tableStyles.table1000}>
                         <thead className={tableStyles.tableHeaderCyan}>
                             <tr>
                                 <th className={tableStyles.cellCaption}>Name</th>
                                 <th className={tableStyles.cellCaption}>Email</th>
                                 <th className={tableStyles.cellCaption}>Phone</th>
-                                <th className={tableStyles.cellCaption}>Company</th>
                                 <th className={tableStyles.cellCaption}>Service area</th>
                                 <th className={tableStyles.cellCaption}>Rating</th>
                                 <th className={tableStyles.cellCaption}>Status</th>
-                                <th className={tableStyles.cellCaption}>Dashboard</th>
+                                <th className={tableStyles.cellCaption}>Actions</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {chauffeurRows.map((chauffeur) => (
-                                <tr key={chauffeur.id} className={tableStyles.rowCyan}>
-                                    <td className="p-4 font-medium text-white"> {chauffeur.name} </td>
+                            {sortedChauffeurRows.map((chauffeur) => (
+                                <tr key={chauffeur.id}  className={ chauffeur.account_status === "inactive" ? `${tableStyles.rowCyan} opacity-50` : tableStyles.rowCyan } >
+                                  <td className="p-4 font-medium text-white"> {chauffeur.name} </td>
                                     <td className={tableStyles.cell}>{chauffeur.email}</td>
                                     <td className={tableStyles.cell}>{chauffeur.phone}</td>
-                                    <td className={tableStyles.cell}> {chauffeur.company_name || "-"} </td>
                                     <td className={tableStyles.cell}> {chauffeur.service_area || "-"} </td>
                                     <td className={tableStyles.cell}>{chauffeur.rating}</td>
                                     <td className={tableStyles.cellCaption}>
@@ -190,18 +228,26 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                                 Save
                                             </button>
                                         </form>
-                                    </td>
-
-                                    
+                                    </td>                                   
                                     <td className={tableStyles.cellCaption}>
-                                        <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
-                                            Open chauffeur details
-                                        </Link>
-                                    </td>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
+                                                Details
+                                            </Link>
+                                            <form action={changeChauffeurActiveStatus}>
+                                                <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+                                                <input type="hidden" name="nextAccountStatus" value={chauffeur.account_status === "inactive" ? "approved" : "inactive"} />
+                                                <button type="submit" 
+                                                    className={chauffeur.account_status === "inactive" ? formStyles.activateButton : formStyles.deActiveDeleteButton } >
+                                                    {chauffeur.account_status === "inactive" ? "Activate" : "Deactivate" }
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>                                   
                                 </tr>
                             ))}
 
-                            {chauffeurRows.length === 0 && ( <tr> <td className={tableStyles.cell} colSpan={8}> No chauffeurs found yet. </td> </tr> )}
+                            {chauffeurRows.length === 0 && ( <tr> <td className={tableStyles.cell} colSpan={7}> No chauffeurs found yet. </td> </tr> )}
 
                         </tbody>
                     </table>

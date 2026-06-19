@@ -102,17 +102,17 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`${formStyles.sectionCard} mt-8`}>
+    <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
       {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p>)}
       {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
         <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-5">
         <h2 className="text-lg font-semibold text-white">Client information</h2>
         <div className="mt-5 grid gap-5 md:grid-cols-3">
                 <label className={formStyles.label}> Client name
-                <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={formStyles.inputWFull} />
+                    <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={formStyles.inputWFull} />
                 </label>
                 <label className={formStyles.label}>  Client email
-                <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={formStyles.inputWFull} />
+                    <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={formStyles.inputWFull} />
                 </label>
                 <label className={formStyles.label}>  Client phone 
                     <input value={clientPhone}  onChange={(event) => setClientPhone(event.target.value)} required  className={formStyles.inputWFull}  />

@@ -76,43 +76,43 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
            {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p> )}
             {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
         </div>
-        <form onSubmit={handleSubmit} className={`${formStyles.sectionCard} mt-8`}>
-        <div className="grid gap-5 md:grid-cols-2">
-                <tr className={formStyles.formInfoCellCaption}>  Chauffeur
-                    <select value={chauffeurId}  onChange={(event) => setChauffeurId(event.target.value)} required  className={formStyles.selectWFull} >
-                        {chauffeurs.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status}) </option>  ))}
-                    </select>
-                </tr>
-                <tr className={formStyles.formInfoCellCaption}> Vehicle type
-                    <select value={vehicleType} onChange={(event) => setVehicleType(event.target.value)} required className={formStyles.selectWFull} >
-                        {vehicleTypeOptions.map((typeOption) => ( <option key={typeOption} value={typeOption}>  {typeOption} </option> ))}
-                    </select>
-                </tr>
-                <tr className={formStyles.formInfoCellCaption}> Brand
-                    <input value={brand} onChange={(event) => setBrand(event.target.value)}  required className={formStyles.inputWFull} />
-                </tr>
-                <tr className={formStyles.formInfoCellCaption}> Model
-                    <input value={model} onChange={(event) => setModel(event.target.value)} required className={formStyles.inputWFull}/>
-                </tr>
-                <tr className={formStyles.formInfoCellCaption}> License plate
-                    <input value={licensePlate} onChange={(event) => setLicensePlate(event.target.value)} required className={formStyles.inputWFull} />
-                </tr>
-                <div className="grid gap-5 md:grid-cols-2"> 
-                    <tr className={formStyles.formInfoCellCaption}> Seats
-                        <input value={seats} onChange={(event) => setSeats(event.target.value)} type="number" min="1" required className={formStyles.inputWFull}/>
-                    </tr>
-                    <tr className={formStyles.formInfoCellCaption}> Luggage capacity
-                        <input value={luggageCapacity} onChange={(event) => setLuggageCapacity(event.target.value)} type="number"  min="0" required className={formStyles.inputWFull} />
-                    </tr>
-                </div>
-                <div className="grid gap-5 md:grid-cols-2"> 
-                    <tr className={formStyles.formInfoCellCaption}> Color
-                        <input value={vehicleColor} onChange={(event) => setVehicleColor(event.target.value)} className={formStyles.input}/>
-                    </tr>
-                    <tr className={formStyles.formInfoCellCaption}> Year
-                        <input  value={vehicleYear}  onChange={(event) => setVehicleYear(event.target.value)} type="number" min="1980"  max="2100"  className={formStyles.input}/>   
-                    </tr>
-                </div>
+        <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
+            <div className="grid gap-5 md:grid-cols-2">
+                    <label  className={formStyles.formInfoCellCaption}>  Chauffeur
+                        <select value={chauffeurId}  onChange={(event) => setChauffeurId(event.target.value)} required  className={formStyles.selectWFull} >
+                            {chauffeurs.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status}) </option>  ))}
+                        </select>
+                    </label >
+                    <label  className={formStyles.formInfoCellCaption}> Vehicle type
+                        <select value={vehicleType} onChange={(event) => setVehicleType(event.target.value)} required className={formStyles.selectWFull} >
+                            {vehicleTypeOptions.map((typeOption) => ( <option key={typeOption} value={typeOption}>  {typeOption} </option> ))}
+                        </select>
+                    </label >
+                    <label  className={formStyles.formInfoCellCaption}> Brand
+                        <input value={brand} onChange={(event) => setBrand(event.target.value)}  required className={formStyles.inputWFull} />
+                    </label >
+                    <label  className={formStyles.formInfoCellCaption}> Model
+                        <input value={model} onChange={(event) => setModel(event.target.value)} required className={formStyles.inputWFull}/>
+                    </label >
+                    <label  className={formStyles.formInfoCellCaption}> License plate
+                        <input value={licensePlate} onChange={(event) => setLicensePlate(event.target.value)} required className={formStyles.inputWFull} />
+                    </label >
+                    <div className="grid gap-5 md:grid-cols-2"> 
+                        <label  className={formStyles.formInfoCellCaption}> Seats
+                            <input value={seats} onChange={(event) => setSeats(event.target.value)} type="number" min="1" required className={formStyles.inputWFull}/>
+                        </label >
+                        <label  className={formStyles.formInfoCellCaption}> Luggage capacity
+                            <input value={luggageCapacity} onChange={(event) => setLuggageCapacity(event.target.value)} type="number"  min="0" required className={formStyles.inputWFull} />
+                        </label >
+                    </div>
+                    <div className="grid gap-5 md:grid-cols-2"> 
+                        <label  className={formStyles.formInfoCellCaption}> Color
+                            <input value={vehicleColor} onChange={(event) => setVehicleColor(event.target.value)} className={formStyles.input}/>
+                        </label >
+                        <label  className={formStyles.formInfoCellCaption}> Year
+                            <input  value={vehicleYear}  onChange={(event) => setVehicleYear(event.target.value)} type="number" min="1980"  max="2100"  className={formStyles.input}/>   
+                        </label >
+                    </div>
             </div>
             <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`} >
                 {isSaving ? "Saving..." : "Save vehicle details"}

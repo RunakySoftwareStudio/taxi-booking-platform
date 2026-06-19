@@ -19,6 +19,8 @@ export const formStyles = {
     primaryButtonInside:    "rounded-xl border-3 border-cyan-400/30 bg-cyan-400/10 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20 px-5 py-3 ",
     primaryButtonDP:        "rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold leading-none text-cyan-100 hover:bg-cyan-400/20 mt-1 h-12 w-fit self-start ",//phone: full width, desktop: small width
     smallButton:            "rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
+    activateButton:         "rounded-full border border-cyan-400/30  px-4 py-2 text-sm font-semibold text-green-200 hover:bg-green-500/10",
+    deActiveDeleteButton:   "rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/10" ,
     link:                   "text-sm text-cyan-300 hover:text-cyan-200",
     linkHref:               "mt-4 inline-block rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     span:                   "mb-2 block text-sm font-medium text-slate-300",
@@ -32,7 +34,8 @@ export const formStyles = {
     formH3SemiBold:         "text-xl font-semibold text-white",            
     formSemiBold:           "font-semibold text-white",   
     formSuccessMsg:         "mt-8 rounded-2xl border border-green-400/30 bg-green-400/10 p-4 text-green-200",    
-    sectionCard:            "rounded-2xl border-4 border-white/10 bg-white/5 p-6",      
+    sectionCardBorder4:     "rounded-2xl border-4 border-white/10 bg-white/5 p-6",   
+    sectionCard:            "rounded-2xl border border-cyan-500/30 bg-white/5 p-5"   
 };
 
 export const pageStyles = {
@@ -53,6 +56,7 @@ export const pageStyles = {
     logButton:                "text-sm text-slate-300 hover:text-cyan-300",
     loginButtonHome:          "rounded-full border border-yellow-400 px-5 py-2 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10",
     divFlex:                  "flex items-start justify-between gap-4",
+
 };
 export const tableStyles = {
     wrapper:                  "mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5",
@@ -78,4 +82,5 @@ export const tableStyles = {
     statusGreenClasses:       "bg-green-600/25 text-green-50 ring-1 ring-green-500/40",
     statusRedClasses:         "bg-red-600/25 text-red-50 ring-1 ring-red-500/40",
     errorCell:                "mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200",
+    DivCyanList:              "mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4",
 };

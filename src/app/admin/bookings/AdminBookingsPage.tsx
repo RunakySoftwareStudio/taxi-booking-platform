@@ -54,65 +54,28 @@ type ChauffeurOption = { id: string;  name: string;  email: string;  account_sta
     :   = type annotation OR object property value
     ::  = not TypeScript; usually PostgreSQL type cast
 ====================================*/
-async function updateBookingStatus(formData: FormData) 
-{
+async function updateBookingAdminFields(formData: FormData) {
     "use server";
 
     const bookingId = String(formData.get("bookingId") || "");
+    const chauffeurId = String(formData.get("chauffeurId") || "");
     const status = String(formData.get("status") || "");
 
-    console.log("Updating booking status:", {bookingId,status,});
+    if (!bookingId || !status) {   redirect("/admin/bookings?error=missing-fields");  }
 
-    if (!bookingId || !status) {  redirect("/admin/bookings?error=missing-fields");}
-
-    const selectedBooking = await supabaseAdmin // data and error are property names returned by Supabase.
+    const { error } = await supabaseAdmin
         .from("bookings")
-        .update({ status })
-        .eq("id", bookingId) // Find only the row where the column id is equal to bookingId.
-        .select("id, status") //This line forces Supabase to return the updated row:
-        .single(); //.single(), Supabase returns one object: Without .single(), Supabase may return an array:
-
-    if (selectedBooking.error) { 
-            console.error("Could not update booking status:", selectedBooking.error);  
-            redirect("/admin/bookings?error=status-update-failed");
-        }
-
-    console.log("Booking status updated:", selectedBooking.data);
-    
-    //So after you add/update/delete a booking, the page should show fresh data.
-    revalidatePath("/admin/bookings");
-
-    /*================================================
-        //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
-        This also sends the user back to the bookings page, but with an extra query parameter:
-        /admin/bookings?success=booking-added
-        The browser becomes:http://localhost:3000/admin/bookings?success=booking-added
-        This part: ?success=booking-added
-        can be used to show a success message. For example: {success === "booking-added" && ( <p >  Booking added successfully. </p>)}
-    =============================================*/
-    redirect("/admin/bookings?success=status-updated");
-}
-
-async function assignChauffeurToBooking(formData: FormData) {
-    "use server";
-
-    const bookingId = String(formData.get("bookingId") || "");
-    const chauffeurIdValue = String(formData.get("chauffeurId") || "");
-
-    if (!bookingId) {  redirect("/admin/bookings?error=missing-fields");}
-    const chauffeurId = chauffeurIdValue || null;
-
-    const result = await supabaseAdmin
-        .from("bookings")
-        .update({ chauffeur_id: chauffeurId })
+        .update({ chauffeur_id: chauffeurId || null,status, })
         .eq("id", bookingId);
 
-        // console.error = shows a red error message or marks it as an error.
-        if (result.error) { console.error("Could not assign chauffeur:", result.error);  redirect("/admin/bookings?error=assign-failed");}
-
-        revalidatePath("/admin/bookings");
-        redirect("/admin/bookings?success=chauffeur-assigned");
+    if (error) {
+        console.error("Could not update booking admin fields:", error);
+        redirect("/admin/bookings?error=booking-update-failed");
     }
+
+    revalidatePath("/admin/bookings");
+    redirect("/admin/bookings?success=booking-updated");
+}
 
 export default async function AdminBookingsPage({ searchParams}: AdminBookingsPageProps) {
   const pageMessage = await searchParams;
@@ -184,8 +147,10 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
             {pageMessage.error === "missing-fields" && ( <p className={pageStyles.errorMsgPage}>    Please select the required booking information. </p>)}
             {pageMessage.error === "assign-failed" && ( <p className={pageStyles.errorMsgPage}>    Could not assign chauffeur. Please try again. </p>)}
             {pageMessage.error === "status-update-failed" && (  <p className={pageStyles.errorMsgPage}>    Could not update booking status. Please try again. </p>)}
+            {pageMessage.success === "booking-updated" && ( <p className={pageStyles.successMsgPage}> Booking updated successfully. </p>)}
+            {pageMessage.error === "booking-update-failed" && (  <p className={pageStyles.errorMsgPage}> Could not update booking. Please try again.  </p>)}
 
-            <div className="mt-8 overflow-x-auto rounded-2xl border border-cyan-500/30">
+            <div className={tableStyles.DivCyanList}>
                  <table className={`${tableStyles.table1000} min-w-[1250px]`}>
                     <thead className={tableStyles.tableHeaderCyan}>
                         <tr>
@@ -197,8 +162,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                             <th className={tableStyles.cellCaption}>Passengers</th>
                             <th className={tableStyles.cellCaption}>Trip type</th>
                             <th className={tableStyles.cellCaption}>Notes</th>
-                            <th className={tableStyles.cellCaption}>Assigned chauffeur</th>
-                            <th className={tableStyles.cellCaption}>Status</th>
+                            <th className={tableStyles.cellCaption}>Actions</th>
                         </tr>
                     </thead>
 
@@ -220,27 +184,22 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 <td className={tableStyles.cell}> {booking.passengers}  </td>
                                 <td className={tableStyles.cell}> {booking.trip_type}   </td>
                                 <td className={tableStyles.cell}> {booking.notes}   </td>
-                                <td className={tableStyles.cellCaption}>
-                                    <form action={assignChauffeurToBooking} className="flex items-center gap-2">
-                                        <input type="hidden" name="bookingId" value={booking.id} />
-                                        <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""} className={tableStyles.selectTable}>
-                                            <option value="">Unassigned</option>
-                                            {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} </option> ))}
-                                        </select>
+                                <td className={tableStyles.cell}>
+                                <form action={updateBookingAdminFields} className="flex min-w-[300px] flex-wrap items-center gap-3" >
+                                    <input type="hidden" name="bookingId" value={booking.id} />
+                                    <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""} className={formStyles.selectForm} >
+                                    <option value="">Unassigned</option>
+                                        {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} </option>))}
+                                    </select>
 
-                                        <button type="submit" className={formStyles.smallButton}>
-                                            Save
-                                        </button>   
-                                    </form>
-                                </td>
-                                <td className={tableStyles.cellCaption}>
-                                    <form action={updateBookingStatus} className="flex items-center gap-2">
-                                        <input type="hidden" name="bookingId" value={booking.id} />
-                                        <select name="status"  defaultValue={booking.status}  className={tableStyles.selectTable}>
-                                            {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status}</option> ))} 
-                                        </select>
-                                        <button type="submit" className={formStyles.smallButton}> Save </button>                                
-                                    </form>
+                                    <select name="status" defaultValue={booking.status} className={formStyles.selectForm}  >
+                                        {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
+                                    </select>
+
+                                    <button type="submit" className={formStyles.smallButton}>
+                                        Save
+                                    </button>
+                                </form>
                                 </td>
                             </tr>
                         ))}

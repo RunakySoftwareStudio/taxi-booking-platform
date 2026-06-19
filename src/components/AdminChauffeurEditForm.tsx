@@ -64,7 +64,7 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
             {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p> )}
             {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
         </div>
-        <form onSubmit={handleSubmit} className={`${formStyles.sectionCard} mt-8`}>
+        <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
           <div className="grid gap-5 md:grid-cols-2">
             <label className={formStyles.label}> Name
               <input value={name} onChange={(event) => setName(event.target.value)} required className={formStyles.inputWFull} />

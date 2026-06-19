@@ -116,6 +116,25 @@ async function addVehicle(formData: FormData) {
     =============================================*/
     redirect("/admin/vehicles?success=vehicle-added");
 }
+async function deleteVehicle(formData: FormData) {
+    "use server";
+
+    const vehicleId = String(formData.get("vehicleId") || "");
+    if (!vehicleId) { redirect("/admin/vehicles?error=missing-fields"); }
+
+    const { error } = await supabaseAdmin
+      .from("vehicles")
+      .delete()
+      .eq("id", vehicleId);
+
+    if (error) {
+      console.error("Could not delete vehicle:", error);
+      redirect("/admin/vehicles?error=delete-vehicle-failed");
+    }
+
+    revalidatePath("/admin/vehicles");
+    redirect("/admin/vehicles?success=vehicle-deleted");
+  }
 
 export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPageProps) {
     const pageMessage = await searchParams;
@@ -133,7 +152,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
     const { data: vehicles, error: vehiclesError } = await supabaseAdmin
       .from("vehicles")
       .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity, created_at, chauffeurs (name, email, phone )` )
-      .order("created_at", { ascending: false });
+      .order("chauffeur_id,created_at", { ascending: false });
 
     const { data: approvedChauffeurs, error: chauffeursError } = await supabaseAdmin
       .from("chauffeurs")
@@ -148,6 +167,16 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
     if (vehicleTypesError) { console.error("Could not load vehicle types:", vehicleTypesError); }
 
     const vehicleRows = (vehicles ?? []) as unknown as VehicleRow[];
+    //group vehicles by chaffeus, This groups all vehicles that have the same chauffeur_id.
+    const vehicleGroups = vehicleRows.reduce< { chauffeurId: string; chauffeurName: string; chauffeurEmail: string;  chauffeurPhone: string;  vehicles: VehicleRow[]; }[]>
+      (
+        (groups, vehicle) => { const existingGroup = groups.find(  (group) => group.chauffeurId === vehicle.chauffeur_id  );
+        if (existingGroup) { existingGroup.vehicles.push(vehicle); return groups;}
+        groups.push({chauffeurId: vehicle.chauffeur_id, chauffeurName: vehicle.chauffeurs?.name || "Unknown chauffeur",
+        chauffeurEmail: vehicle.chauffeurs?.email || "", chauffeurPhone: vehicle.chauffeurs?.phone || "", vehicles: [vehicle], });
+        return groups;}, []
+      );
+
     const chauffeurOptions = (approvedChauffeurs ?? []) as unknown as ChauffeurOption[];
     const vehicleTypeOptions = (vehicleTypes ?? []) as string[];
 
@@ -163,6 +192,8 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
           {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> Please fill in all required vehicle fields.  </p> )}
           {pageMessage.error === "duplicate-license-plate" && (<p className={pageStyles.errorMsgPage}> A vehicle with this license plate already exists. </p>)}
           {pageMessage.error === "add-vehicle-failed" && ( <p className={pageStyles.errorMsgPage}> Could not add vehicle. Please try again. </p> )}
+          {pageMessage.success === "vehicle-deleted" && ( <p className={pageStyles.successMsgPage}> Vehicle deleted successfully.  </p>)}
+          {pageMessage.error === "delete-vehicle-failed" && (<p className={pageStyles.errorMsgPage}> Could not delete vehicle. Please try again. </p>)}
 
           <form  action={addVehicle}  className={formStyles.form}>
                 <div className={formStyles.formDivGridCol3}>
@@ -223,46 +254,64 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                 </button>
           </form>
 
-          <h3 className={tableStyles.headerTableSmall}>List of chauffeurs linked to a vehicle</h3>
-          <div className={tableStyles.tableDiv}>
-            <table className={tableStyles.table1000}>
-              <thead className={tableStyles.tableHeaderCyan}>
-                <tr>
-                  <th className={tableStyles.cellCaption}>Chauffeur</th>
-                  <th className={tableStyles.cellCaption}>Brand</th>
-                  <th className={tableStyles.cellCaption}>Model</th>
-                  <th className={tableStyles.cellCaption}>Year</th>
-                  <th className={tableStyles.cellCaption}>Color</th>
-                  <th className={tableStyles.cellCaption}>License plate</th>
-                  <th className={tableStyles.cellCaption}>Type</th>
-                  <th className={tableStyles.cellCaption}>Seats</th>
-                  <th className={tableStyles.cellCaption}>Luggage</th>
-                  <th className={tableStyles.cellCaption}>Actions</th>
-                </tr>
-              </thead>
+          <h3 className={tableStyles.headerTableSmall}> List of vehicles grouped by chauffeur</h3>
 
-              <tbody>
-                {vehicleRows.map((vehicle) => (
-                  <tr key={vehicle.id} className={tableStyles.rowCyan}>
-                    <td className="p-2">
-                      <div className={tableStyles.cellCaptionGroup}> {vehicle.chauffeurs?.name || "Unknown chauffeur"} </div>
-                      <div className={tableStyles.cellInfo}> {vehicle.chauffeurs?.email}  </div>
-                      <div className={tableStyles.cellInfo}> {vehicle.chauffeurs?.phone}  </div>
-                    </td>
-                    <td className={tableStyles.cell}> {vehicle.brand}</td>
-                    <td className={tableStyles.cell}> {vehicle.model}</td>
-                    <td className={tableStyles.cell}> {vehicle.vehicle_year || "-"}</td>
-                    <td className={tableStyles.cell}> {vehicle.vehicle_color || "-"}</td>
-                    <td className={tableStyles.cell}> {vehicle.license_plate} </td>
-                    <td className={tableStyles.cell}> {vehicle.vehicle_type}  </td>
-                    <td className={tableStyles.cell}> {vehicle.seats}</td>
-                    <td className={tableStyles.cell}> {vehicle.luggage_capacity} </td>
-                    <td className={tableStyles.cell}> <Link href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton} > Edit  </Link> </td>
-                  </tr>
-                ))}
-                {vehicleRows.length === 0 && ( <tr>  <td className={tableStyles.cellEmpty} colSpan={10}>  No vehicles found yet. </td> </tr> )}
-              </tbody>
-            </table>
+          <div className="mt-8 space-y-8">
+            {vehicleGroups.map((group) => (
+              <section key={group.chauffeurId} className={formStyles.sectionCardBorder4} >
+                <div className="mb-4">
+                  <h2 className="text-lg font-bold text-white"> {"Chauffeur: " + group.chauffeurName}  </h2>
+                  <p className="text-sm text-slate-300">{"Email: " + group.chauffeurEmail}</p>
+                  <p className="text-sm text-slate-300">{"Phone: " + group.chauffeurPhone}</p>
+                  <p className="mt-2 text-sm font-semibold text-cyan-200"> Vehicles: {group.vehicles.length} </p>
+                </div>
+
+                <div className={tableStyles.tableDiv}>
+                  <table className={tableStyles.table1000}>
+                    <thead className={tableStyles.tableHeaderCyan}>
+                      <tr>
+                        <th className={tableStyles.cellCaption}>Brand</th>
+                        <th className={tableStyles.cellCaption}>Model</th>
+                        <th className={tableStyles.cellCaption}>Year</th>
+                        <th className={tableStyles.cellCaption}>Color</th>
+                        <th className={tableStyles.cellCaption}>License plate</th>
+                        <th className={tableStyles.cellCaption}>Type</th>
+                        <th className={tableStyles.cellCaption}>Seats</th>
+                        <th className={tableStyles.cellCaption}>Luggage</th>
+                        <th className={tableStyles.cellCaption}>Actions</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {group.vehicles.map((vehicle) => (
+                        <tr key={vehicle.id} className={tableStyles.rowCyan}>
+                          <td className={tableStyles.cell}>{vehicle.brand}</td>
+                          <td className={tableStyles.cell}>{vehicle.model}</td>
+                          <td className={tableStyles.cell}> {vehicle.vehicle_year || "-"} </td>
+                          <td className={tableStyles.cell}> {vehicle.vehicle_color || "-"} </td>
+                          <td className={tableStyles.cell}> {vehicle.license_plate}  </td>
+                          <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
+                          <td className={tableStyles.cell}>{vehicle.seats}</td>
+                          <td className={tableStyles.cell}> {vehicle.luggage_capacity} </td>
+                          <td className={tableStyles.cell}>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <Link  href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton} > Details </Link>
+                              <form action={deleteVehicle}>
+                                <input type="hidden"  name="vehicleId"  value={vehicle.id} />
+                                <button type="submit" className={formStyles.deActiveDeleteButton}  >
+                                  Delete
+                                </button>
+                              </form>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ))}
+            {vehicleGroups.length === 0 && ( <p className={tableStyles.cellEmpty}>No vehicles found yet.</p> )}
           </div>
         </div>
       </main>

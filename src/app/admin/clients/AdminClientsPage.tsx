@@ -39,44 +39,43 @@ export default async function AdminClientsPage()
 
   return (
     <main className={pageStyles.main}>
-        <div className={pageStyles.container}> 
-              <Link  href="/admin" className={formStyles.link}  > ← Back to admin dashboard </Link>
-              <p className={pageStyles.pageLabelUpper}> Admin </p>
-              <h1 className={pageStyles.pageTitle}>Clients</h1>
-              <p className={pageStyles.pageDescription}>  View clients who submitted booking requests through the website.  </p>
-              <div className={tableStyles.tableDiv}>
-              <table className={tableStyles.table1000}>
+      <div className={pageStyles.container}> 
+        <Link  href="/admin" className={formStyles.link}  > ← Back to admin dashboard </Link>
+        <p className={pageStyles.pageLabelUpper}> Admin </p>
+        <h1 className={pageStyles.pageTitle}>Clients</h1>
+        <p className={pageStyles.pageDescription}>  View clients who submitted booking requests through the website.  </p>
+        <div className={tableStyles.DivCyanList}>
+          <table className={tableStyles.table1000}>
+            <thead className={tableStyles.tableHeaderCyan}>
+              <tr>
+                <th className={tableStyles.cellCaption}>Name</th>
+                <th className={tableStyles.cellCaption}>Email</th>
+                <th className={tableStyles.cellCaption}>Phone</th>
+                <th className={tableStyles.cellCaption}>Created at</th>
+                <th className={tableStyles.cellCaption}>Details</th>
+              </tr>
+            </thead>
 
-              <thead className={tableStyles.tableHeaderCyan}>
-                <tr>
-                  <th className={tableStyles.cellCaption}>Name</th>
-                  <th className={tableStyles.cellCaption}>Email</th>
-                  <th className={tableStyles.cellCaption}>Phone</th>
-                  <th className={tableStyles.cellCaption}>Created at</th>
-                  <th className={tableStyles.cellCaption}>Details</th>
-                </tr>
-              </thead>
+            <tbody>
+                {clientRows.map((client) => (
+                    <tr key={client.id} className={tableStyles.rowCyan}>
+                        <td className={tableStyles.cell}>{client.name}</td>
+                        <td className={tableStyles.cell}> {client.email}</td>
+                        <td className={tableStyles.cell}> {client.phone}</td>
+                        <td className={tableStyles.cell}> {new Date(client.created_at).toLocaleString()}  </td>
+                        <td className={tableStyles.cellCaption}>
+                            <Link href={`/admin/clients/${client.id}`} className={formStyles.smallButton} >
+                                Open client details
+                            </Link>
+                        </td>
+                    </tr>
+                ))}
 
-              <tbody>
-                  {clientRows.map((client) => (
-                      <tr key={client.id} className={tableStyles.rowCyan}>
-                          <td className={tableStyles.cell}>{client.name}</td>
-                          <td className={tableStyles.cell}> {client.email}</td>
-                          <td className={tableStyles.cell}> {client.phone}</td>
-                          <td className={tableStyles.cell}> {new Date(client.created_at).toLocaleString()}  </td>
-                          <td className={tableStyles.cellCaption}>
-                              <Link href={`/admin/clients/${client.id}`} className={formStyles.smallButton} >
-                                  Open client details
-                              </Link>
-                          </td>
-                      </tr>
-                  ))}
-
-                {clientRows.length === 0 && (<tr> <td className={tableStyles.cell} colSpan={5}>  No clients found yet. </td> </tr> )}
-              </tbody>
-            </table>
-          </div>
+              {clientRows.length === 0 && (<tr> <td className={tableStyles.cell} colSpan={5}>  No clients found yet. </td> </tr> )}
+            </tbody>
+          </table>
         </div>
+      </div>
     </main>
   );
 }
