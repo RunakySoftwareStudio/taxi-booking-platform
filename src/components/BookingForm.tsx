@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { type BookingRequest } from "@/types/bookingType";
 import { type BookingSummary } from "@/types/bookingSummaryType";
 import { tripTypes } from "@/data/tripTypeData";
-import { formStyles, tableStyles } from "@/styles/classNames";
+import { formStyles, pageStyles, tableStyles } from "@/styles/classNames";
 
 function getTodayDateInputValue() {
   const today = new Date();
@@ -27,8 +27,7 @@ export default function BookingForm() {
     useEffect(() => {
         if (submittedBooking) { bookingResultRef.current?.scrollIntoView({
             behavior: "smooth",
-            block: "start",
-            });
+            block: "start", });
         }
     }, [submittedBooking]);
 
@@ -85,14 +84,11 @@ export default function BookingForm() {
                 booking: BookingSummary;
                 };
 
-            //console.log("API response:", result);
-
             setSubmittedBooking(result.booking);
             setSubmitted(true);
             form.reset();
         } 
-        catch (error) 
-        { 
+        catch (error) {   
             console.error("Could not submit booking:", error);
             setErrorMessage("Something went wrong. Please try again.");
         }
@@ -107,91 +103,72 @@ export default function BookingForm() {
                 <p className="mt-4 text-slate-300"> Enter your trip details and the platform will help connect you with an available chauffeur. </p>
             </div>
              
-            <form onSubmit={handleSubmit} className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-6">
+            <form onSubmit={handleSubmit} className="mt-12 rounded-2xl border-2 border-white/10 bg-white/5 p-6">
                 <div className="grid gap-6 md:grid-cols-2">
                     <div>
                         <label htmlFor="pickup" className="mb-2 block text-sm font-medium"> Pickup location </label>
-                        <input id="pickup" name="pickup" type="text" required placeholder="Amsterdam Central Station"  
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400" />
+                        <input id="pickup" name="pickup" type="text" required placeholder="Amsterdam Central Station" className={formStyles.inputUserPage} />
                     </div>
 
                     <div>
                         <label htmlFor="destination" className="mb-2 block text-sm font-medium" > Destination </label>
-                        <input id="destination" name="destination" type="text" required placeholder="Schiphol Airport"  
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400" />
+                        <input id="destination" name="destination" type="text" required placeholder="Schiphol Airport" className={formStyles.inputUserPage} />
                     </div>
 
                     <div>
                         <label htmlFor="date" className="mb-2 block text-sm font-medium"> Date </label>
-                        <input id="date" name="date" type="date" min={todayDate} max="2099-12-31" required 
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400" />
+                        <input id="date" name="date" type="date" min={todayDate} max="2099-12-31" required className={formStyles.inputDateUserPage} />
                     </div>
 
                     <div>
                         <label htmlFor="time" className="mb-2 block text-sm font-medium"> Time </label>
-                        <input id="time" name="time" type="time" required 
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400" />
+                        <input id="time" name="time" type="time" required className={formStyles.inputDateUserPage} />
                     </div>
 
                     <div>
                         <label htmlFor="passengers"  className="mb-2 block text-sm font-medium"> Passengers </label>
-                        <input id="passengers" name="passengers" type="number" min="1" required placeholder="2" 
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400" />
+                        <input id="passengers" name="passengers" type="number" min="1" required placeholder="2" className={formStyles.inputUserPage} />
                     </div>
 
                     <div>
                         <label htmlFor="luggage" className="mb-2 block text-sm font-medium"> Luggage </label>
-                        <input id="luggage" name="luggage" type="number"  min="0" placeholder="1" 
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"/>
+                        <input id="luggage" name="luggage" type="number"  min="0" placeholder="1" className={formStyles.inputUserPage}/>
                     </div>
 
                     <div>
-                    <label htmlFor="name" className="mb-2 block text-sm font-medium"> Your name</label>
-                    <input id="name" name="name" type="text" required placeholder="Your full name"
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"
-                    />
+                        <label htmlFor="name" className="mb-2 block text-sm font-medium"> Your name</label>
+                        <input id="name" name="name" type="text" required placeholder="Your full name" className={formStyles.inputUserPage} />
                     </div>
 
                     <div>
                         <label htmlFor="phone" className="mb-2 block text-sm font-medium"> Phone number </label>
-                        <input id="phone" name="phone" type="tel" required inputMode="tel" pattern="\+?[0-9 ]{7,20}" title="Please enter a valid phone number. Use numbers, +, spaces, or - only." placeholder="+31 6 12345678"
-                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"/>
+                        <input id="phone" name="phone" type="tel" required inputMode="tel" pattern="\+?[0-9 ]{7,20}" title="Please enter a valid phone number. Use numbers, +, spaces, or - only." placeholder="+31 6 12345678" className={formStyles.inputUserPage}/>
                     </div>
 
                     <div>
                         <label htmlFor="email" className="mb-2 block text-sm font-medium"> Email address </label>
-                        <input id="email" name="email" type="email" required placeholder="client@example.com"
-                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"/>
+                        <input id="email" name="email" type="email" required placeholder="client@example.com"  className={formStyles.inputUserPage}/>
                     </div>
 
                     <div>
                         <label htmlFor="tripType" className="mb-2 block text-sm font-medium"> Trip type </label>
-                        <select id="tripType" name="tripType" required
-                            className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400" >
-                                <option value=""> Select trip type </option>  {/* <option value="one-way">One-way trip</option> */}
-                                {tripTypes.map((tripType) => ( <option key={tripType.value} value={tripType.value}> {tripType.label} </option>))}
+                        <select id="tripType" name="tripType" required className={formStyles.inputDateUserPage} >
+                            <option value=""> Select trip type </option>  {/* <option value="one-way">One-way trip</option> */}
+                            {tripTypes.map((tripType) => ( <option key={tripType.value} value={tripType.value}> {tripType.label} </option>))}
                         </select>
                     </div>
-
                 </div>
 
                 <div className="md:col-span-2">
                     <label htmlFor="notes" className="mb-2 block text-sm font-medium"> Extra notes </label>
-                    <textarea id="notes" name="notes"  rows={4} placeholder="Flight number, child seat request, exact pickup point, or other information..."
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400"/>
+                    <textarea id="notes" name="notes"  rows={4} placeholder="Flight number, child seat request, exact pickup point, or other information..."  className={formStyles.inputUserPage}/>
                 </div>
 
-                <button type="submit" className="mt-8 rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300">
-                    Send booking request
-                </button>
+                <button type="submit" className={formStyles.submitButtonUserPage}> Send booking request </button>
             </form>
 
             {errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
-            {submitted && (
-                <div className={formStyles.formSuccessMsg}>
-                    Your booking request has been received. We will connect you with an available chauffeur.
-                </div>)
-            }
+            {submitted && (<div className={pageStyles.successMsgPage}> Your booking request has been received. We will connect you with an available chauffeur. </div>) }
 
             {submittedBooking && (
                 <div ref={bookingResultRef}>
@@ -201,7 +178,7 @@ export default function BookingForm() {
                             <p className={formStyles.formLabel}> Your booking reference </p>
                             <p className={formStyles.formP}> {submittedBooking.id} </p>
                             <p className={formStyles.formP}> Save this booking reference. You can use it later together with your email address to check your booking status. </p>
-                                                        {/* explanation: Now the booking ID goes to the status page through the URL. */}
+                            {/* explanation: Now the booking ID goes to the status page through the URL. */}
                             <Link href={`/status?bookingId=${submittedBooking.id}`} className={formStyles.linkHref} > 
                                 Check booking status
                             </Link>

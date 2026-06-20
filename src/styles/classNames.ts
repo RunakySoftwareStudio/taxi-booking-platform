@@ -1,6 +1,5 @@
 export const formStyles = {
     form:                   "mt-8 rounded-2xl border border-cyan-400/30 bg-white/5 p-4",
-    formMt10:               "mt-10 rounded-2xl border border-cyan-400/30 bg-white/5 p-6",
     formDivGridCol3:        "mt-6 grid gap-5 md:grid-cols-3",
     formDivGridCol2:        "mt-6 grid gap-4 text-sm text-slate-300 md:grid-cols-2",
     formDivCyan:            "mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4",
@@ -16,7 +15,6 @@ export const formStyles = {
     info:                   "rounded-2xl border-3 border-cyan-400/30 bg-slate-950 p-5",
     textarea:               "rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full",
     primaryButtonOutside:   "inline-flex h-10 w-fit items-center justify-center rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
-    primaryButtonInside:    "rounded-xl border-3 border-cyan-400/30 bg-cyan-400/10 text-base font-semibold text-cyan-100 hover:bg-cyan-400/20 px-5 py-3 ",
     primaryButtonDP:        "rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold leading-none text-cyan-100 hover:bg-cyan-400/20 mt-1 h-12 w-fit self-start ",//phone: full width, desktop: small width
     smallButton:            "rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     activateButton:         "rounded-full border border-cyan-400/30  px-4 py-2 text-sm font-semibold text-green-200 hover:bg-green-500/10",
@@ -26,16 +24,14 @@ export const formStyles = {
     span:                   "mb-2 block text-sm font-medium text-slate-300",
     formInputInfoCaption:    "text-md text-slate-400",
     formInputInfoValue:     "mt-2 font-medium",
-    sectionCardCyan:        "rounded-2xl border-3 border-cyan-400/30 bg-white/5 p-6 hover:bg-white/10",
-    formCaptionTracking03:  "text-sm font-semibold tracking-[0.3em] text-cyan-300",
-    formCaptionUpTracking03:"font-semibold uppercase tracking-[0.3em] text-cyan-300",
-    formP:                  "mt-2 text-sm text-slate-300",
     formLabel:              "text-sm font-semibold text-cyan-200",     
     formH3SemiBold:         "text-xl font-semibold text-white",            
-    formSemiBold:           "font-semibold text-white",   
-    formSuccessMsg:         "mt-8 rounded-2xl border border-green-400/30 bg-green-400/10 p-4 text-green-200",    
     sectionCardBorder4:     "rounded-2xl border-4 border-white/10 bg-white/5 p-6",   
-    sectionCard:            "rounded-2xl border border-cyan-500/30 bg-white/5 p-5"   
+    formP:                  "mt-2 text-sm text-slate-300",
+    formCaptionUpTracking03:"font-semibold uppercase tracking-[0.3em] text-cyan-300",
+    inputUserPage:          "w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400",
+    inputDateUserPage:      "w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400",
+    submitButtonUserPage:   "mt-8 rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300",
 };
 
 export const pageStyles = {

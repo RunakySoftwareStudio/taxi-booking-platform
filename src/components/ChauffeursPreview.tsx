@@ -1,44 +1,26 @@
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
-type ChauffeurRow = {
-  id: string;
-  name: string;
-  service_area: string | null;
-  account_status: string;
-};
-
-type VehicleRow = {
-  id: string;
-  chauffeur_id: string;
-  brand: string;
-  model: string;
-  vehicle_type: string;
-};
-
-type AvailabilityRow = {
-  id: string;
-  chauffeur_id: string;
-  available_date: string;
-  status: string;
-};
+type ChauffeurRow = {id: string;  name: string;  service_area: string | null;  account_status: string;};
+type VehicleRow = {id: string; chauffeur_id: string; brand: string; model: string; vehicle_type: string;};
+type AvailabilityRow = {id: string; chauffeur_id: string; available_date: string; status: string;};
 
 function getTodayDateInputValue() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
 
-  return `${year}-${month}-${day}`;
+    return `${year}-${month}-${day}`;
 }
 
 export default async function ChauffeursPreview() {
   const todayDate = getTodayDateInputValue();
   const { data: chauffeurRows, error: chauffeursError } = await supabaseAdmin
-    .from("chauffeurs")
-    .select("id, name, service_area, account_status")
-    .eq("account_status", "approved")
-    .order("name", { ascending: true })
-    .limit(6);
+      .from("chauffeurs")
+      .select("id, name, service_area, account_status")
+      .eq("account_status", "approved")
+      .order("name", { ascending: true })
+      .limit(6);
 
   if (chauffeursError) { console.error("Could not load chauffeurs preview:", chauffeursError);}
 
@@ -76,7 +58,6 @@ export default async function ChauffeursPreview() {
         <p className="text-sm font-bold uppercase tracking-[0.4em] text-yellow-400">  Chauffeurs </p>
         <h2 className="mt-4 text-3xl font-bold md:text-4xl">  View available chauffeurs before booking  </h2>
         <p className="mt-4 max-w-2xl text-slate-300">  Clients can compare approved chauffeurs by vehicle, service area, and availability before sending a booking request.  </p>
-
         {
           chauffeurs.length === 0 ? 
             (<p className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-300"> No approved chauffeurs are available yet.  </p> ) 
