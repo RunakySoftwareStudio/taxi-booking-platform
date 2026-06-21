@@ -95,7 +95,7 @@ export default function BookingForm() {
     }
     
   return (
-    <section id="booking" className="bg-slate-900 px-6 py-24 text-white">
+    <section id="booking" className="bg-slate-900 px-4 py-16 text-white sm:px-6 sm:py-24">
         <div className="mx-auto max-w-6xl">
             <div className="max-w-2xl">
                 <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"> Booking </p>
@@ -103,8 +103,8 @@ export default function BookingForm() {
                 <p className="mt-4 text-slate-300"> Enter your trip details and the platform will help connect you with an available chauffeur. </p>
             </div>
              
-            <form onSubmit={handleSubmit} className="mt-12 rounded-2xl border-2 border-white/10 bg-white/5 p-6">
-                <div className="grid gap-6 md:grid-cols-2">
+            <form onSubmit={handleSubmit} className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
+                <div className="grid gap-5 sm:gap-6 md:grid-cols-2">
                     <div>
                         <label htmlFor="pickup" className="mb-2 block text-sm font-medium"> Pickup location </label>
                         <input id="pickup" name="pickup" type="text" required placeholder="Amsterdam Central Station" className={formStyles.inputUserPage} />
@@ -159,7 +159,7 @@ export default function BookingForm() {
                     </div>
                 </div>
 
-                <div className="md:col-span-2">
+                <div className="mt-5 sm:mt-6">
                     <label htmlFor="notes" className="mb-2 block text-sm font-medium"> Extra notes </label>
                     <textarea id="notes" name="notes"  rows={4} placeholder="Flight number, child seat request, exact pickup point, or other information..."  className={formStyles.inputUserPage}/>
                 </div>
@@ -176,7 +176,8 @@ export default function BookingForm() {
                         <h3 className={formStyles.formH3SemiBold}> Booking summary </h3>                   
                         <div className={formStyles.formDivCyan}>
                             <p className={formStyles.formLabel}> Your booking reference </p>
-                            <p className={formStyles.formP}> {submittedBooking.id} </p>
+                            {/* explanation: This is important because booking IDs are long. On mobile, break-all allows the ID to wrap safely instead of pushing the layout wider. */}
+                            <p className={`${formStyles.formP} break-all`}> {submittedBooking.id} </p>
                             <p className={formStyles.formP}> Save this booking reference. You can use it later together with your email address to check your booking status. </p>
                             {/* explanation: Now the booking ID goes to the status page through the URL. */}
                             <Link href={`/status?bookingId=${submittedBooking.id}`} className={formStyles.linkHref} > 
