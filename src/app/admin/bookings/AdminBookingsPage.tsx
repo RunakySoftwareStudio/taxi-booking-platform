@@ -212,8 +212,8 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                         </div>
 
                                         <div>
-                                            <p className="uppercase font-semibold text-white">  Notes  </p>
-                                            <p className="text-xs tracking-widest text-cyan-300 break-words"> {booking.notes || "No notes"} </p>
+                                            <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">  Notes  </p>
+                                            <p className="mt-1 wrap-break-word text-white"> {booking.notes || "No notes"} </p>
                                         </div>
                                 </div>
 
