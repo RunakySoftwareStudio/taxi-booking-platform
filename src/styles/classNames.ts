@@ -16,9 +16,11 @@ export const formStyles = {
     textarea:               "rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full",
     primaryButtonOutside:   "inline-flex h-10 w-fit items-center justify-center rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     primaryButtonDP:        "rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold leading-none text-cyan-100 hover:bg-cyan-400/20 mt-1 h-12 w-fit self-start ",//phone: full width, desktop: small width
-    smallButton:            "rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
+    smallButton:            "shrink-0 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     activateButton:         "rounded-full border border-cyan-400/30  px-4 py-2 text-sm font-semibold text-green-200 hover:bg-green-500/10",
+    sctivateButtonPhone:     "rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white opacity-50" ,
     deActiveDeleteButton:   "rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/10" ,
+    deActivateButtonPhone:  "rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" ,
     link:                   "text-sm text-cyan-300 hover:text-cyan-200",
     linkHref:               "mt-4 inline-block rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     span:                   "mb-2 block text-sm font-medium text-slate-300",

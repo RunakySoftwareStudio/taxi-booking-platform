@@ -188,7 +188,74 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 {error && (<p className={pageStyles.errorMsgPage}> Could not load chauffeurs. </p> )}
                 
                 <h3 className={tableStyles.headerTableSmall}>List of chauffeurs:</h3>
-                <div className={tableStyles.DivCyanList}>
+                {/*================= Mobile chauffeur cards ======================*/}
+                <div className="mt-6 grid gap-4 lg:hidden">
+                {sortedChauffeurRows.map((chauffeur) => (
+                    <article key={chauffeur.id}
+                    className={ chauffeur.account_status === "inactive" ? formStyles.deActivateButtonPhone : formStyles.deActivateButtonPhone   } >
+                    <div className="border-b border-white/10 pb-4">
+                        <p className="mt-1">
+                            <span className= "font-semibold text-white">Name: </span>
+                            <span className= "text-cyan-300" >{chauffeur.name}</span>
+                        </p>
+                        <p className="mt-1">
+                            <span className= "font-semibold text-white">Email: </span>
+                            <span className= "text-cyan-200" >{chauffeur.email}</span>
+                        </p>
+                        <p className="mt-1">
+                            <span className= "font-semibold text-white">Phone: </span>
+                            <span className= "text-cyan-200" >{chauffeur.phone}</span>
+                        </p>
+                    </div>
+
+                    <div className="mt-4 grid gap-3">
+                        <div>
+                            <p className="mt-1">
+                                <span className= "font-semibold text-white">Service area: </span>
+                                <span className= "text-cyan-300" >{chauffeur.service_area || "- - -"}</span>
+                            </p>
+
+                            <p className="mt-1">
+                                <span className= "font-semibold text-white">Rating: </span>
+                                <span className= "text-cyan-300" >{chauffeur.rating}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-5">
+                        <p className="font-semibold text-white"> Status </p>
+                        <form action={updateChauffeurStatus} className="mt-2 grid gap-3">
+                        <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+                        <select name="accountStatus" defaultValue={chauffeur.account_status} className={`${formStyles.selectForm} w-full`} >
+                            {chauffeurStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
+                        </select>
+                        <button type="submit" className={formStyles.smallButton}>
+                            Save
+                        </button>
+                        </form>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                        <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
+                            Details
+                        </Link>
+
+                        <form action={changeChauffeurActiveStatus}>
+                        <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+                        <input type="hidden" name="nextAccountStatus" value={chauffeur.account_status === "inactive" ? "approved" : "inactive"} />
+                        <button type="submit" className={ chauffeur.account_status === "inactive" ? formStyles.activateButton : formStyles.deActiveDeleteButton } >
+                            {chauffeur.account_status === "inactive" ? "Activate" : "Deactivate"}
+                        </button>
+                        </form>
+                    </div>
+                    </article>
+                ))}
+
+                {chauffeurRows.length === 0 && ( <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white"> No chauffeurs found yet.</div> )}
+                </div>
+
+                {/* =================Desktop chauffeur table ==========================*/}
+                <div className={`${tableStyles.DivCyanList} hidden lg:block`}>
                     <table className={tableStyles.table1000}>
                         <thead className={tableStyles.tableHeaderCyan}>
                             <tr>
@@ -205,7 +272,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                         <tbody>
                             {sortedChauffeurRows.map((chauffeur) => (
                                 <tr key={chauffeur.id}  className={ chauffeur.account_status === "inactive" ? `${tableStyles.rowCyan} opacity-50` : tableStyles.rowCyan } >
-                                  <td className="p-4 font-medium text-white"> {chauffeur.name} </td>
+                                <td className="p-4 font-medium text-white"> {chauffeur.name} </td>
                                     <td className={tableStyles.cell}>{chauffeur.email}</td>
                                     <td className={tableStyles.cell}>{chauffeur.phone}</td>
                                     <td className={tableStyles.cell}> {chauffeur.service_area || "-"} </td>
@@ -215,7 +282,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                             <input type="hidden" name="chauffeurId" value={chauffeur.id} />
 
                                             <select name="accountStatus" defaultValue={chauffeur.account_status} className={formStyles.selectForm}>
-                                                 {/* This is normal selection of status options
+                                                {/* This is normal selection of status options
                                                     <option value="pending_approval">pending_approval</option> 
                                                     <option value="approved">approved</option>
                                                     <option value="suspended">suspended</option>

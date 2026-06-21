@@ -38,19 +38,14 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
 
     return (
         <main className={pageStyles.main}>
-        <div className={pageStyles.containerMedium}>
-            <Link href="/admin/bookings" className={formStyles.link}>
-            ← Back to admin bookings
-            </Link>
+            <div className={pageStyles.containerMedium}>
+                <Link href="/admin/bookings" className={formStyles.link}>  ← Back to admin bookings  </Link>
+                <p className={pageStyles.pageLabelUpper}>Admin</p>
+                <h1 className={pageStyles.pageTitle}>Edit booking</h1>
+                <p className={pageStyles.pageDescription}>  Update booking details, status, and assigned chauffeur.  </p>
 
-            <p className={pageStyles.pageLabelUpper}>Admin</p>
-            <h1 className={pageStyles.pageTitle}>Edit booking</h1>
-            <p className={pageStyles.pageDescription}>
-            Update booking details, status, and assigned chauffeur.
-            </p>
-
-            <AdminBookingEditForm   booking={bookingForEdit}  chauffeurs={chauffeurs ?? []}  bookingStatusOptions={(bookingStatuses ?? []) as string[]} tripTypeOptions={(tripTypes ?? []) as string[]} />
-        </div>
+                <AdminBookingEditForm  booking={bookingForEdit} chauffeurs={chauffeurs ?? []} bookingStatusOptions={(bookingStatuses ?? []) as string[]} tripTypeOptions={(tripTypes ?? []) as string[]} />
+            </div>
         </main>
     );
 }

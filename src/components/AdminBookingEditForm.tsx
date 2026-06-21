@@ -105,19 +105,19 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
       {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p>)}
       {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
-        <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-5">
-        <h2 className="text-lg font-semibold text-white">Client information</h2>
-        <div className="mt-5 grid gap-5 md:grid-cols-3">
-                <label className={formStyles.label}> Client name
-                    <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={formStyles.inputWFull} />
-                </label>
-                <label className={formStyles.label}>  Client email
-                    <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={formStyles.inputWFull} />
-                </label>
-                <label className={formStyles.label}>  Client phone 
-                    <input value={clientPhone}  onChange={(event) => setClientPhone(event.target.value)} required  className={formStyles.inputWFull}  />
-                </label>
-        </div>
+        <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h2 className="text-lg font-semibold text-white">Client information</h2>
+            <div className="mt-5 grid gap-5 md:grid-cols-3">
+                    <label className={formStyles.label}> Client name
+                        <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={formStyles.inputWFull} />
+                    </label>
+                    <label className={formStyles.label}>  Client email
+                        <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={formStyles.inputWFull} />
+                    </label>
+                    <label className={formStyles.label}>  Client phone 
+                        <input value={clientPhone}  onChange={(event) => setClientPhone(event.target.value)} required  className={formStyles.inputWFull}  />
+                    </label>
+            </div>
         </section>
 
       <div className="grid gap-5 md:grid-cols-2">
@@ -161,10 +161,7 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
             <div className={formStyles.formInfoCellCaption}>  Assigned chauffeur
                 <select  value={chauffeurId} onChange={(event) => setChauffeurId(event.target.value)} className={formStyles.selectWFull} >
                     <option value="">No chauffeur assigned</option>
-                        {chauffeurs.map((chauffeur) => ( 
-                            <option key={chauffeur.id} value={chauffeur.id}>
-                                {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status})
-                            </option>  ))  }
+                        {chauffeurs.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status}) </option> ))  }
                 </select>
             </div>
             <div className="md:col-span-2"> 
