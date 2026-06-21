@@ -34,6 +34,7 @@ export const formStyles = {
     inputUserPage:          "w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400",
     inputDateUserPage:      "w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400",
     submitButtonUserPage:   "mt-8 rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300",
+    formMt10: "mt-10 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:p-6",
 };
 
 export const pageStyles = {
