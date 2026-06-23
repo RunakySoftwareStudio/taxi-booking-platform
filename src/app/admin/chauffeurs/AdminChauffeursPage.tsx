@@ -195,15 +195,15 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                     className={ chauffeur.account_status === "inactive" ? formStyles.deActivateButtonPhone : formStyles.deActivateButtonPhone   } >
                     <div className="border-b border-white/10 pb-4">
                         <p className="mt-1">
-                            <span className= "font-semibold text-white">Name: </span>
+                            <span className= "text-sm tracking-tight text-white">Name: </span>
                             <span className= "text-cyan-300" >{chauffeur.name}</span>
                         </p>
                         <p className="mt-1">
-                            <span className= "font-semibold text-white">Email: </span>
+                            <span className= "text-sm tracking-tight text-white">Email: </span>
                             <span className= "text-cyan-200" >{chauffeur.email}</span>
                         </p>
                         <p className="mt-1">
-                            <span className= "font-semibold text-white">Phone: </span>
+                            <span className= "text-sm tracking-tight text-white">Phone: </span>
                             <span className= "text-cyan-200" >{chauffeur.phone}</span>
                         </p>
                     </div>
@@ -211,19 +211,19 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                     <div className="mt-4 grid gap-3">
                         <div>
                             <p className="mt-1">
-                                <span className= "font-semibold text-white">Service area: </span>
+                                <span className= "text-sm tracking-tight text-white">Service area: </span>
                                 <span className= "text-cyan-300" >{chauffeur.service_area || "- - -"}</span>
                             </p>
 
                             <p className="mt-1">
-                                <span className= "font-semibold text-white">Rating: </span>
+                                <span className= "text-sm tracking-tight text-white">Rating: </span>
                                 <span className= "text-cyan-300" >{chauffeur.rating}</span>
                             </p>
                         </div>
                     </div>
 
                     <div className="mt-5">
-                        <p className="font-semibold text-white"> Status </p>
+                        <p className="text-sm tracking-tight text-white"> Status </p>
                         <form action={updateChauffeurStatus} className="mt-2 grid gap-3">
                         <input type="hidden" name="chauffeurId" value={chauffeur.id} />
                         <select name="accountStatus" defaultValue={chauffeur.account_status} className={`${formStyles.selectForm} w-full`} >

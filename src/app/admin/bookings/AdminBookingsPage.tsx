@@ -167,63 +167,66 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <p className="mt-1">
-                                            <span className="uppercase font-semibold text-white">Name: </span>
+                                            <span className="text-sm tracking-tight text-white">Name: </span>
                                             <span className="text-cyan-300">{booking.clients?.name}</span>
                                         </p>
 
                                         <p className="mt-1">
-                                            <span className="uppercase font-semibold text-white">Email: </span>
+                                            <span className="text-sm tracking-tight text-white">Email: </span>
                                             <span className="text-cyan-200">{booking.clients?.email}</span>
                                         </p>
 
-                                        <p className="mt-1">
-                                            <span className="uppercase font-semibold text-white">Phone: </span>
-                                            <span className="text-cyan-200">{booking.clients?.phone}</span>
+                                        <div className="grid grid-cols-2 mt-1">
+                                            <p>
+                                                <span className="text-sm tracking-tight text-white">Phone: </span>
+                                                <span className="text-cyan-200">{booking.clients?.phone}</span>
+                                            </p>
+                                            
+                                        </div>
+
+                                    
+                                        <p>
+                                            <span className="text-sm tracking-tight text-white"> Pickup  </span>
+                                            <span className="text-xs tracking-widest text-cyan-300">{booking.pickup_location}</span>
                                         </p>
+                                        <div>
+                                            <span className="text-sm tracking-tight text-white"> Destination  </span>
+                                            <span className="text-xs tracking-widest text-cyan-300">{booking.destination}</span>
+                                        </div>
+
                                     </div>
-                                    <Link  href={`/admin/bookings/${booking.id}`}  className={formStyles.smallButton} > Edit </Link>
+                                    
                                 </div>
                                 </div>
 
                                 <div className="mt-4 grid gap-3">
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <p className="uppercase font-semibold text-white"> Pickup  </p>
-                                                <p className="text-xs tracking-widest text-cyan-300">{booking.pickup_location}</p>
+                                                <span className="text-sm tracking-tight text-white"> Date: </span>
+                                                <span className="text-xs tracking-widest text-cyan-300">{formatShortDate(booking.pickup_date)}</span>
                                             </div>
+
                                             <div>
-                                                <p className="uppercase font-semibold text-white"> Destination  </p>
-                                                <p className="text-xs tracking-widest text-cyan-300">{booking.destination}</p>
+                                                <span className="text-sm tracking-tight text-white"> Time: </span>
+                                                <span className="text-xs tracking-widest text-cyan-300">{formatShortTime(booking.pickup_time)}</span>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <p className="uppercase font-semibold text-white"> Date </p>
-                                                <p className="text-xs tracking-widest text-cyan-300">{booking.pickup_date}</p>
+                                                <span className="text-sm tracking-tight text-white"> Pax: </span>
+                                                <span className="text-xs tracking-widest text-cyan-300">{booking.passengers}</span>
                                             </div>
 
                                             <div>
-                                                <p className="uppercase font-semibold text-white"> Time </p>
-                                                <p className="text-xs tracking-widest text-cyan-300">{booking.pickup_time}</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <p className="uppercase font-semibold text-white"> Pax </p>
-                                                <p className="text-xs tracking-widest text-cyan-300">{booking.passengers}</p>
-                                            </div>
-
-                                            <div>
-                                                <p className="uppercase font-semibold text-white">  Trip type  </p>
-                                                <p className="text-xs tracking-widest text-cyan-300">{booking.trip_type}</p>
+                                                <span className="text-sm tracking-tight text-white">  Trip:  </span>
+                                                <span className="text-xs tracking-widest text-cyan-300">{booking.trip_type}</span>
                                             </div>
                                         </div>
 
                                         <div>
-                                            <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">  Notes  </p>
-                                            <p className="mt-1 wrap-break-word text-white"> {booking.notes || "-----"} </p>
+                                            <span className="text-sm tracking-tight text-white">  Notes:  </span>
+                                            <span className="mt-1 wrap-break-word text-cyan-300"> {booking.notes || "-----"} </span>
                                         </div>
                                 </div>
 
@@ -236,7 +239,11 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                     <select name="status" defaultValue={booking.status} className={`${formStyles.selectForm} w-full`} >
                                         {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
                                     </select>
-                                    <button type="submit" className={formStyles.smallButton}> Save </button>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button type="submit" className={formStyles.smallButton}> Save </button>
+                                        <Link  href={`/admin/bookings/${booking.id}`}  className={formStyles.smallButton} > Edit </Link>
+                                    </div>
+
                                 </form>
                             </article>	  ))}
 

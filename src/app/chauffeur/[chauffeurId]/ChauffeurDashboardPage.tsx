@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import Link from "next/link";
 import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx 
 
@@ -178,89 +179,220 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 </div>
 
                 <h3 className={tableStyles.headerTableSmall}>My vehicles</h3>
-                <div className={tableStyles.tableDiv}>
-                    <table className={tableStyles.table1000}>
-                        <thead className={tableStyles.tableHeaderCyan}>
-                            <tr>
-                                <th className={tableStyles.cellCaption}>Brand</th>
-                                <th className={tableStyles.cellCaption}>Model</th>
-                                <th className={tableStyles.cellCaption}>License plate</th>
-                                <th className={tableStyles.cellCaption}>Type</th>
-                                <th className={tableStyles.cellCaption}>Seats</th>
-                                <th className={tableStyles.cellCaption}>Luggage</th>
-                                <th className={tableStyles.cellCaption}>Year</th>
-                                <th className={tableStyles.cellCaption}>Color</th>
-                            </tr>
-                        </thead>
+                {/* Mobile vehicle cards */}
+                <div className="mt-6 grid gap-4 lg:hidden">
+                    {vehicleRows.map((vehicle) => (
+                    <article key={vehicle.id} className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">
+                        <div>
+                            <span className= "font-bold text-white text-sm tracking-tight">Brand(Model): </span>
+                            <span className="text-cyan-300 text-sm tracking-tight"> {vehicle.brand} ({vehicle.model})</span>
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-1">
+                            <div>
+                                <span className= "text-sm tracking-tight text-white">License: </span>
+                                <span className= "text-cyan-300 mt-1 break-word" >{vehicle.license_plate}</span>
+                            </div>
+                            <div>
+                                <span className="text-sm tracking-tight text-white"> Type: </span>
+                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.vehicle_type}</span>
+                            </div>
+                            <div>
+                                <span className="tracking-tight text-sm text-white"> Seats: </span>
+                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.seats}</span>
+                            </div>
+                            <div>
+                                <span className="text-sm tracking-tight text-white"> Luggage: </span>
+                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.luggage_capacity}</span>
+                            </div>
+                            <div>
+                                <span className="text-sm tracking-tight text-white"> Year: </span>
+                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.vehicle_year?vehicle.vehicle_year:"---"}</span>
+                            </div>
+                            <div>
+                                <span className="text-sm tracking-tight text-white"> Color: </span>
+                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.vehicle_color?vehicle.vehicle_color: "---" }</span>
+                            </div>
+                        </div>
+                    </article>  ))}
 
-                        <tbody>
-                            {vehicleRows.map((vehicle) => (
-                                <tr key={vehicle.id} className={tableStyles.rowCyan}>
-                                    <td className={tableStyles.cell}>{vehicle.brand}</td>
-                                    <td className={tableStyles.cell}>{vehicle.model}</td>
-                                    <td className={tableStyles.cell}>{vehicle.license_plate}</td>
-                                    <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
-                                    <td className={tableStyles.cell}>{vehicle.seats}</td>
-                                    <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
-                                    <td className={tableStyles.cell}>{vehicle.vehicle_year}</td>
-                                    <td className={tableStyles.cell}>{vehicle.vehicle_color}</td>
-                                </tr>
-                            ))}
-                            {vehicleRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}>No vehicles connected to this chauffeur yet.</td></tr>)}
-                        </tbody>
-                    </table>
+                    {vehicleRows.length === 0 && (
+                        <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">
+                            No vehicles connected to this chauffeur yet.
+                        </div>
+                    )}
                 </div>
+
+                {/* Desktop vehicle table */}
+                <div className={`${tableStyles.tableDiv} hidden lg:block`}>
+                <table className={tableStyles.table1000}>
+                    <thead className={tableStyles.tableHeaderCyan}>
+                    <tr>
+                        <th className={tableStyles.cellCaption}>Brand</th>
+                        <th className={tableStyles.cellCaption}>Model</th>
+                        <th className={tableStyles.cellCaption}>License plate</th>
+                        <th className={tableStyles.cellCaption}>Type</th>
+                        <th className={tableStyles.cellCaption}>Seats</th>
+                        <th className={tableStyles.cellCaption}>Luggage</th>
+                        <th className={tableStyles.cellCaption}>Year</th>
+                        <th className={tableStyles.cellCaption}>Color</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {vehicleRows.map((vehicle) => (
+                        <tr key={vehicle.id} className={tableStyles.rowCyan}>
+                        <td className={tableStyles.cell}>{vehicle.brand}</td>
+                        <td className={tableStyles.cell}>{vehicle.model}</td>
+                        <td className={tableStyles.cell}>{vehicle.license_plate}</td>
+                        <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
+                        <td className={tableStyles.cell}>{vehicle.seats}</td>
+                        <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
+                        <td className={tableStyles.cell}>{vehicle.vehicle_year}</td>
+                        <td className={tableStyles.cell}>{vehicle.vehicle_color}</td>
+                        </tr>))}
+
+                    {vehicleRows.length === 0 && ( <tr><td className={tableStyles.cellEmpty} colSpan={8}> No vehicles connected to this chauffeur yet. </td></tr> )}
+                    </tbody>
+                </table>
+                </div>
+
                 <h3 className={tableStyles.headerTableSmall}>My Bookings</h3>
-                <div className={tableStyles.tableDiv}>
+                {/* Mobile booking cards */}
+                <div className="mt-6 grid gap-4 lg:hidden">
+                {bookingRows.map((booking) => (
+                    <article key={booking.id}  className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
+                    <div className="border-b border-white/10 pb-4">
+                            <div>
+                                <span className= "text-sm tracking-tight text-white">Client: </span>
+                                <span className= "text-cyan-300 mt-1 break-word" >{booking.clients?.name || "Unknown client"}</span>
+                            </div>
+                            <div>
+                                <span className= "text-sm tracking-tight text-white">Mail: </span>
+                                <span className= "text-cyan-300 mt-1 break-word" >{booking.clients?.email}</span>
+                            </div>
+                            <div>
+                                <span className= "text-sm tracking-tight text-white">Phone: </span>
+                                <span className= "text-cyan-300 mt-1 break-word" >{booking.clients?.phone}</span>
+                            </div>     
+                            <div>
+                                <span className="text-sm tracking-tight text-white "> Pickup: </span>
+                                <span className="mt-1 text-cyan-300">{booking.pickup_location}</span>
+                            </div>
+                            <div>
+                                <span className="text-sm tracking-tight text-white"> Destination: </span>
+                                <span className="mt-1  text-cyan-300">{booking.destination}</span>
+                            </div>                       
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div>
+                            <span className="text-sm tracking-tight text-white"> Date: </span>
+                            <span className="mt-1  text-cyan-300">{formatShortDate(booking.pickup_date)}</span>
+                        </div>
+                        <div>
+                            <span className="text-sm tracking-tight text-white"> Time: </span>
+                            <span className="mt-1  text-cyan-300">{formatShortTime(booking.pickup_time)}</span>
+                        </div>
+
+                        <div>
+                            <span className="text-sm tracking-tight text-white"> Pax: </span>
+                            <span className="mt-1  text-cyan-300">{booking.passengers}</span>
+                        </div>
+
+                        <div>
+                            <span className="text-sm tracking-tight text-white"> Trip: </span>
+                            <span className="mt-1  text-cyan-300">{booking.trip_type}</span>
+                        </div>
+                    </div>
+
+                    <form action={updateAssignedBookingStatus} className="mt-5 grid gap-3">
+                        <input type="hidden" name="bookingId" value={booking.id} />
+                        <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
+
+                        <select name="status"  defaultValue={booking.status}  className={`${tableStyles.selectTable} w-full`}>
+                        {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
+                        </select>
+
+                        <button type="submit" className={formStyles.smallButton}>
+                        Save
+                        </button>
+                    </form>
+                    </article>
+                ))}
+
+                {bookingRows.length === 0 && (
+                    <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">
+                    No assigned bookings found yet.
+                    </div>
+                )}
+                </div>
+
+                {/* Desktop booking table */}
+                <div className={`${tableStyles.tableDiv} hidden lg:block`}>
                     <table className={tableStyles.table1000}>
                         <thead className={tableStyles.tableHeaderCyan}>
-                            <tr>
-                                <th className={tableStyles.cellCaption}>Client</th>
-                                <th className={tableStyles.cellCaption}>Pickup</th>
-                                <th className={tableStyles.cellCaption}>Destination</th>
-                                <th className={tableStyles.cellCaption}>Date</th>
-                                <th className={tableStyles.cellCaption}>Time</th>
-                                <th className={tableStyles.cellCaption}>Passengers</th>
-                                <th className={tableStyles.cellCaption}>Trip type</th>
-                                <th className={tableStyles.cellCaption}>Status</th>
-                            </tr>
+                        <tr>
+                            <th className={tableStyles.cellCaption}>Client</th>
+                            <th className={tableStyles.cellCaption}>Pickup</th>
+                            <th className={tableStyles.cellCaption}>Destination</th>
+                            <th className={tableStyles.cellCaption}>Date</th>
+                            <th className={tableStyles.cellCaption}>Time</th>
+                            <th className={tableStyles.cellCaption}>Passengers</th>
+                            <th className={tableStyles.cellCaption}>Trip type</th>
+                            <th className={tableStyles.cellCaption}>Status</th>
+                        </tr>
                         </thead>
 
                         <tbody>
-                            {bookingRows.map((booking) =>(
-                                <tr key={booking.id} className="border-b border-white/10">
-                                    <td className={tableStyles.cellCaption}>
-                                        <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"} </div>
-                                        <div className={tableStyles.cellInfo}> {booking.clients?.email} </div>
-                                        <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
-                                    </td>
-                                    <td className={tableStyles.cell}> {booking.pickup_location} </td>
-                                    <td className={tableStyles.cell}> {booking.destination} </td>
-                                    <td className={tableStyles.cell}> {booking.pickup_date} </td>
-                                    <td className={tableStyles.cell}> {booking.pickup_time} </td>
-                                    <td className={tableStyles.cell}> {booking.passengers}  </td>
-                                    <td className={tableStyles.cell}> {booking.trip_type}   </td>
-                                    <td className={tableStyles.cellCaption}>
-                                        <form action={updateAssignedBookingStatus} className="flex items-center gap-2">
-                                            <input type="hidden" name="bookingId" value={booking.id} />
-                                            <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
-                                            <select name="status" defaultValue={booking.status} className={tableStyles.selectTable}>
-                                                {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status} </option>  ))}
-                                            </select>
+                        {bookingRows.map((booking) => (
+                            <tr key={booking.id} className="border-b border-white/10">
+                            <td className={tableStyles.cellCaption}>
+                                <div className={tableStyles.cellCaptionGroup}>
+                                {booking.clients?.name || "Unknown client"}
+                                </div>
+                                <div className={tableStyles.cellInfo}>
+                                {booking.clients?.email}
+                                </div>
+                                <div className={tableStyles.cellInfo}>
+                                {booking.clients?.phone}
+                                </div>
+                            </td>
 
-                                            <button type="submit" className={formStyles.smallButton}>
-                                                Save
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            ))}
+                            <td className={tableStyles.cell}>{booking.pickup_location}</td>
+                            <td className={tableStyles.cell}>{booking.destination}</td>
+                            <td className={tableStyles.cell}>{booking.pickup_date}</td>
+                            <td className={tableStyles.cell}>{booking.pickup_time}</td>
+                            <td className={tableStyles.cell}>{booking.passengers}</td>
+                            <td className={tableStyles.cell}>{booking.trip_type}</td>
 
-                            {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}>No assigned bookings found yet.</td></tr>)}
+                            <td className={tableStyles.cellCaption}>
+                                <form action={updateAssignedBookingStatus} className="flex items-center gap-2">
+                                <input type="hidden" name="bookingId" value={booking.id} />
+                                <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
 
+                                <select name="status" defaultValue={booking.status} className={tableStyles.selectTable} >
+                                    {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status} </option>))}
+                                </select>
+
+                                <button type="submit" className={formStyles.smallButton}>
+                                    Save
+                                </button>
+                                </form>
+                            </td>
+                            </tr>
+                        ))}
+
+                        {bookingRows.length === 0 && (
+                            <tr>
+                            <td className={tableStyles.cellEmpty} colSpan={8}>
+                                No assigned bookings found yet.
+                            </td>
+                            </tr>
+                        )}
                         </tbody>
                     </table>
                 </div>
+
             </div>
         </main>
     );
