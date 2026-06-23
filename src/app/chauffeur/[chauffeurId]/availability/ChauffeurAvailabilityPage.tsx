@@ -152,17 +152,17 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
             <div className="mt-6 grid gap-4 md:grid-cols-4">
               <label className="block">
                 <span className={formStyles.span}>Date </span>
-                <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min={todayDate} max="2099-12-31" className={formStyles.inputWFull} />
+                <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min={todayDate} max="2099-12-31" className={formStyles.inputWFullCyan} />
               </label>
 
               <label className="block">
                 <span className={formStyles.span}> Start time </span>
-                <input  name="startTime"  type="time"  required defaultValue={formValues.startTime} className={formStyles.inputWFull} />
+                <input  name="startTime"  type="time"  required defaultValue={formValues.startTime} className={formStyles.inputWFullCyan} />
               </label>
 
               <label className="block">
                 <span className={formStyles.span}>End time </span>
-                <input name="endTime"  type="time"  required defaultValue={formValues.endTime}  className={formStyles.inputWFull} />
+                <input name="endTime"  type="time"  required defaultValue={formValues.endTime}  className={formStyles.inputWFullCyan} />
               </label>
 
               <label className="block">
@@ -175,7 +175,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
 
             <label className="block">
                 <span className={`mt-6 ${formStyles.span}}`} >Notes</span>             
-                <input name="notes"  type="string"  required defaultValue={formValues.notes}  className={formStyles.inputWFull} />
+                <input name="notes"  type="string"  required defaultValue={formValues.notes}  className={formStyles.inputWFullCyan} />
             </label>
 
             <button  type="submit"  className={`mt-8 ${formStyles.primaryButtonDP}`}>  

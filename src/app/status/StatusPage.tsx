@@ -72,26 +72,26 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
   return (
       <main className={pageStyles.main}>
       <div className={pageStyles.container}> 
-          <Link  href="./" className={formStyles.link} > ← Back to homepage </Link>
-          <p className={pageStyles.pageLabelUpper}> Booking status </p>
+          <Link  href="./" className={formStyles.formInfoCell} > ← Back to homepage </Link>
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"> Booking status </p>
           <h1 className={pageStyles.pageTitle}>Check your taxi booking</h1>
           <p className={pageStyles.pageDescription}> Enter your booking id and email address to view the current status of your trip. </p>
       
-          <form onSubmit={handleStatusSearch} className={formStyles.form}>
-              <div className={formStyles.formDivGridCol3}>
+          <form onSubmit={handleStatusSearch} className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
+              <div className={formStyles.formDivGridCol2}>
                 <label className="block">
                   <span className={formStyles.span}> Booking id </span>
                   {/*defaultValue= The browser controls the value after the first load. */}
-                  <input name="bookingId" defaultValue={safeInitialBookingId} required placeholder="Paste your booking id" className={formStyles.inputWFull}/>
+                  <input name="bookingId" defaultValue={safeInitialBookingId} required placeholder="Paste your booking id" className={`${formStyles.inputWFullYellow} break-all`}/>
                 </label>
 
                 <label className="block">
                   <span className={formStyles.span}> Email address </span>
-                  <input name="email" type="email" required placeholder="you@example.com" className={formStyles.inputWFull} />
+                  <input name="email" type="email" required placeholder="you@example.com" className={formStyles.inputWFullYellow} />
                 </label>
             </div>
 
-            <button className={`mt-8 ${formStyles.primaryButtonDP}`}>
+            <button className={`mt-8 ${formStyles.submitSmallButtonUserPage}`}>
               {isLoading ? "Searching..." : "Check status"}
             </button>
             {errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
@@ -99,17 +99,56 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
 
           {booking && (
             <section className={formStyles.form}>
-              <h3 className={formStyles.formH3SemiBold}> Booking found </h3>  
-              <div className={formStyles.formDivGridCol2}>
-                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Status</span> {booking.status} </p>
-                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Client</span> {booking.clients?.name} </p>
-                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Client phone</span> {booking.clients?.phone} </p>
-                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Pickup</span> {booking.pickup_location} </p>
-                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Destination</span> {booking.destination} </p>
-                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Date</span> {booking.pickup_date} </p>
-                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Time</span> {booking.pickup_time} </p>
-                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Passengers</span> {booking.passengers} </p>
-                  <p className={formStyles.formInfoCellCaption}> <span className={formStyles.formInfoCell}>Trip type</span>  {booking.trip_type}  </p>
+              <h3 className={formStyles.formH5MediumSemiBold}> Booking Status: <span className={formStyles.formPCyan}>{booking.status}</span> </h3>  
+              <div className="mt-8">  
+                  <div>
+                      <span className={formStyles.formPCyan}> Name: </span>
+                      <span className={formStyles.formP}>{booking.clients?.name}</span>
+                  </div>   
+                  <div className="grid grid-cols-2">
+                      <div>
+                          <span className={formStyles.formPCyan}> Email:   </span>
+                          <span className={formStyles.formP}> {booking.clients?.email} </span> 
+                      </div>
+                      <div>
+                          <span className={formStyles.formPCyan}> Phone:   </span>
+                          <span className={formStyles.formP}> {booking.clients?.phone} </span> 
+                      </div>
+                  </div>     
+                  <div>
+                      <span className= {formStyles.formPCyan}>Pickup: </span>
+                      <span className= {formStyles.formP} >{booking.destination}</span>
+                  </div>        
+                  <div>
+                      <span className= {formStyles.formPCyan}>Location: </span>
+                      <span className= {formStyles.formP} >{booking.pickup_location}</span>
+                  </div>                  
+              </div>
+              <div className="grid grid-cols-2">
+                  <div>
+                      <span className={formStyles.formPCyan}> Date:  </span>
+                      <span className={formStyles.formP}>{booking.pickup_date}</span>
+                  </div>
+                  <div>
+                      <span className={formStyles.formPCyan}> Time:  </span>
+                      <span className={formStyles.formP}>{booking.pickup_time}</span>
+                  </div>
+                  <div>
+                      <span className={formStyles.formPCyan}> Passengers:  </span>
+                      <span className={formStyles.formP}>{booking.passengers}</span>
+                  </div>
+                  <div>
+                      <span className={formStyles.formPCyan}> Luggage:  </span>
+                      <span className={formStyles.formP}>{booking.luggage}</span>
+                  </div>
+                  <div>
+                      <span className={formStyles.formPCyan}> Trip type:  </span>
+                      <span className={formStyles.formP}>{booking.trip_type}</span>
+                  </div>
+                  <div>
+                      <span className={formStyles.formPCyan}> Status:  </span>
+                      <span className={formStyles.formP}>{booking.status}</span>
+                  </div>
               </div>
               {booking.chauffeurs? (
                   <div className={formStyles.formDivCyan}>

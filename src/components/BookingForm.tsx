@@ -69,20 +69,15 @@ export default function BookingForm() {
         {
             const response = await fetch
                 ("/api/bookings", 
-                    {
-                        method: "POST",
+                    {   method: "POST",
                         headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify(bookingRequest),
-                    }
+                        body: JSON.stringify(bookingRequest),}
                 );
 
             if (!response.ok) {throw new Error("Booking request failed"); }
 
             //const result = await response.json();
-            const result = (await response.json()) as {
-                message: string;
-                booking: BookingSummary;
-                };
+            const result = (await response.json()) as { message: string; booking: BookingSummary;  };
 
             setSubmittedBooking(result.booking);
             setSubmitted(true);
@@ -164,41 +159,81 @@ export default function BookingForm() {
                     <textarea id="notes" name="notes"  rows={4} placeholder="Flight number, child seat request, exact pickup point, or other information..."  className={formStyles.inputUserPage}/>
                 </div>
 
-                <button type="submit" className={formStyles.submitButtonUserPage}> Send booking request </button>
+                <button type="submit" className={formStyles.submitSmallButtonUserPage}> Send booking request </button>
             </form>
 
             {errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
             {submitted && (<div className={pageStyles.successMsgPage}> Your booking request has been received. We will connect you with an available chauffeur. </div>) }
 
             {submittedBooking && (
-                <div ref={bookingResultRef}>
-                    <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950 p-6">
-                        <h3 className={formStyles.formH3SemiBold}> Booking summary </h3>                   
-                        <div className={formStyles.formDivCyan}>
-                            <p className={formStyles.formLabel}> Your booking reference </p>
-                            {/* explanation: This is important because booking IDs are long. On mobile, break-all allows the ID to wrap safely instead of pushing the layout wider. */}
-                            <p className={`${formStyles.formP} break-all`}> {submittedBooking.id} </p>
-                            <p className={formStyles.formP}> Save this booking reference. You can use it later together with your email address to check your booking status. </p>
-                            {/* explanation: Now the booking ID goes to the status page through the URL. */}
-                            <Link href={`/status?bookingId=${submittedBooking.id}`} className={formStyles.linkHref} > 
-                                Check booking status
-                            </Link>
+            <div ref={bookingResultRef}>
+                <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950 p-6">
+                    <div>
+                        <h5 className={formStyles.formH3SemiBold}> Booking summary: </h5>     
+                        <div>
+                            <span className={formStyles.formPCyan}> Name:   </span>
+                            <span className={formStyles.formP}>{submittedBooking.name}</span>
+                        </div>   
+                        <div className="grid grid-cols-2">
+                            <div>
+                                <span className={formStyles.formPCyan}> Email:   </span>
+                                <span className={formStyles.formP}> {submittedBooking.email} </span> 
+                            </div>
+                            <div>
+                                <span className={formStyles.formPCyan}> Phone:   </span>
+                                <span className={formStyles.formP}> {submittedBooking.phone} </span> 
+                            </div>
+                        </div>     
+                        <div>
+                            <span className= {formStyles.formPCyan}>Pickup: </span>
+                            <span className= {formStyles.formP} >{submittedBooking.destination}</span>
+                        </div>        
+                        <div>
+                            <span className= {formStyles.formPCyan}>Location: </span>
+                            <span className= {formStyles.formP} >{submittedBooking.pickup}</span>
+                        </div>                  
+                    </div>
 
+                    <div className="grid grid-cols-2">
+                        <div>
+                            <span className={formStyles.formPCyan}> Date:  </span>
+                            <span className={formStyles.formP}>{submittedBooking.date}</span>
                         </div>
-                        <div className={formStyles.formDivGridCol2}>
-                            <p> <span className={formStyles.formInfoCellCaption}>Pickup:</span>{" "} {submittedBooking.pickup} </p>
-                            <p> <span className={formStyles.formInfoCellCaption}>Destination:</span>{" "} {submittedBooking.destination} </p>
-                            <p> <span className={formStyles.formInfoCellCaption}>Date:</span>{" "} {submittedBooking.date} </p>
-                            <p> <span className={formStyles.formInfoCellCaption}>Time:</span>{" "} {submittedBooking.time} </p>
-                            <p><span className={formStyles.formInfoCellCaption}>Passengers:</span>{" "}{submittedBooking.passengers} </p>
-                            <p> <span className={formStyles.formInfoCellCaption}>Trip type:</span>{" "}{submittedBooking.tripType} </p>
-                            <p> <span className={formStyles.formInfoCellCaption}>Client:</span>{" "} {submittedBooking.name} </p>
-                            <p> <span className={formStyles.formInfoCellCaption}>Status:</span>{" "} {submittedBooking.status} </p>
+                        <div>
+                            <span className={formStyles.formPCyan}> Time:  </span>
+                            <span className={formStyles.formP}>{submittedBooking.time}</span>
+                        </div>
+                        <div>
+                            <span className={formStyles.formPCyan}> Passengers:  </span>
+                            <span className={formStyles.formP}>{submittedBooking.passengers}</span>
+                        </div>
+                        <div>
+                            <span className={formStyles.formPCyan}> Luggage:  </span>
+                            <span className={formStyles.formP}>{submittedBooking.luggage}</span>
+                        </div>
+                        <div>
+                            <span className={formStyles.formPCyan}> Trip type:  </span>
+                            <span className={formStyles.formP}>{submittedBooking.tripType}</span>
+                        </div>
+                        <div>
+                            <span className={formStyles.formPCyan}> Status:  </span>
+                            <span className={formStyles.formP}>{submittedBooking.status}</span>
                         </div>
                     </div>
-                </div>)
-            }
+                    <div className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
+                        <p className={formStyles.formH5MediumSemiBold}> Your booking reference </p>
+                        {/* explanation: This is important because booking IDs are long. On mobile, break-all allows the ID to wrap safely instead of pushing the layout wider. */}
+                        <p className={`${formStyles.formPYellow} break-all`}> {submittedBooking.id} </p>
+                        <p className={formStyles.formP}> Save this booking reference. You can use it later together with your email address to check your booking status. </p>
+                        {/* explanation: Now the booking ID goes to the status page through the URL. */}
+                        <div className= "mt-8">
+                            <Link href={`/status?bookingId=${submittedBooking.id}`} className={formStyles.submitSmallButtonUserPage} > 
+                                Check booking status
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>) }
         </div>
-    </section>
-  );
+    </section> );
 }

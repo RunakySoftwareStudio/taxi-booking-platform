@@ -5,9 +5,11 @@ export const formStyles = {
     formDivCyan:            "mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4",
     formDivFlex:            "flex items-start justify-between gap-4",
     formInfoCellCaption:    "text-slate-300",
+    formBookingInfoCaption: "font-bold text-slate-400",
     formInfoCell:           "block text-sm text-slate-400",
     input:                  "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
-    inputWFull:             "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full", //with w-full 
+    inputWFullCyan:         "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full", //with w-full 
+    inputWFullYellow:       "rounded-lg border-3 border-yellow-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-300 w-full", //with w-full 
     inputNumber:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-26",  
     selectWFull:            "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full",  //with w-full 
     selectForm:             "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
@@ -27,13 +29,18 @@ export const formStyles = {
     formInputInfoCaption:    "text-md text-slate-400",
     formInputInfoValue:     "mt-2 font-medium",
     formLabel:              "text-sm font-semibold text-cyan-200",     
-    formH3SemiBold:         "text-xl font-semibold text-white",            
+    formH3SemiBold:         "text-xl font-semibold text-white",   
+    formH5MediumSemiBold:   "text-md font-semibold text-white", 
+    formH5SmallSemiBold:    "text-sm font-semibold text-white",         
     sectionCardBorder4:     "rounded-2xl border-4 border-white/10 bg-white/5 p-6",   
     formP:                  "mt-2 text-sm text-slate-300",
+    formPCyan:              "mt-2 text-sm text-cyan-300",
+    formPYellow:            "mt-2 text-sm text-yellow-300",
     formCaptionUpTracking03:"font-semibold uppercase tracking-[0.3em] text-cyan-300",
     inputUserPage:          "w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400",
     inputDateUserPage:      "w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400",
-    submitButtonUserPage:   "mt-8 rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300",
+    submitButtonUserPage:        "mt-8 rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300",
+    submitSmallButtonUserPage:   "mt-8 rounded-full bg-yellow-400 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-yellow-300",
     formMt10: "mt-10 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:p-6",
 };
 

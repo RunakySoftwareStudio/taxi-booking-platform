@@ -109,70 +109,70 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
             <h2 className="text-lg font-semibold text-white">Client information</h2>
             <div className="mt-5 grid gap-5 md:grid-cols-3">
                     <label className={formStyles.label}> Client name
-                        <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={formStyles.inputWFull} />
+                        <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={formStyles.inputWFullCyan} />
                     </label>
                     <label className={formStyles.label}>  Client email
-                        <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={formStyles.inputWFull} />
+                        <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={formStyles.inputWFullCyan} />
                     </label>
                     <label className={formStyles.label}>  Client phone 
-                        <input value={clientPhone}  onChange={(event) => setClientPhone(event.target.value)} required  className={formStyles.inputWFull}  />
+                        <input value={clientPhone}  onChange={(event) => setClientPhone(event.target.value)} required  className={formStyles.inputWFullCyan}  />
                     </label>
             </div>
         </section>
 
-      <div className="grid gap-5 md:grid-cols-2">
-            <div className={formStyles.formInfoCellCaption}> Pickup
-                <input value={pickupLocation}  onChange={(event) => setPickupLocation(event.target.value)} required className={formStyles.inputWFull}/>
-            </div>
-
-            <div className={formStyles.formInfoCellCaption}>  Destination
-                <input  value={destination} onChange={(event) => setDestination(event.target.value)}  required className={formStyles.inputWFull}/>
-            </div>
-
-            <div className={formStyles.formInfoCellCaption}> Date
-                <input type="date" value={pickupDate} onChange={(event) => setPickupDate(event.target.value)} required  min={minimumPickupDate} max="2099-12-31" className={formStyles.inputWFull}/>
-            </div>
-
-            <div className={formStyles.formInfoCellCaption}> Time
-                <input type="time" value={pickupTime}onChange={(event) => setPickupTime(event.target.value)} required className={formStyles.inputWFull} />
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2"> 
-                <div className={formStyles.formInfoCellCaption}> Passengers
-                    <input type="number" min="1" value={passengers} onChange={(event) => setPassengers(event.target.value)} required className={formStyles.input} />   
+        <div className="mt-3 grid gap-5 md:grid-cols-2">
+                <div className={formStyles.formInfoCellCaption}> Location
+                    <input value={pickupLocation}  onChange={(event) => setPickupLocation(event.target.value)} required className={formStyles.inputWFullCyan}/>
                 </div>
-                <div className={formStyles.formInfoCellCaption}> Luggage
-                    <input type="number" min="0" value={luggage}  onChange={(event) => setLuggage(event.target.value)} required  className={formStyles.input} />  
+
+                <div className={formStyles.formInfoCellCaption}>  Destination
+                    <input  value={destination} onChange={(event) => setDestination(event.target.value)}  required className={formStyles.inputWFullCyan}/>
                 </div>
-            </div>
 
-            <div className={formStyles.formInfoCellCaption}>  Trip type
-                <select value={tripType} onChange={(event) => setTripType(event.target.value)} required className={formStyles.selectWFull} >
-                    {tripTypeOptions.map((typeOption) => ( <option key={typeOption} value={typeOption}> {typeOption} </option>  ))}
-                </select>
-            </div>
+                <div className={formStyles.formInfoCellCaption}> Date
+                    <input type="date" value={pickupDate} onChange={(event) => setPickupDate(event.target.value)} required  min={minimumPickupDate} max="2099-12-31" className={formStyles.inputWFullCyan}/>
+                </div>
 
-            <div className={formStyles.formInfoCellCaption}> Booking status
-                <select  value={status}  onChange={(event) => setStatus(event.target.value)}  required  className={formStyles.selectWFull}>
-                    {bookingStatusOptions.map((statusOption) => ( <option key={statusOption} value={statusOption}> {statusOption}  </option>  ))}
-                </select>
-            </div>
+                <div className={formStyles.formInfoCellCaption}> Time
+                    <input type="time" value={pickupTime}onChange={(event) => setPickupTime(event.target.value)} required className={formStyles.inputWFullCyan} />
+                </div>
 
-            <div className={formStyles.formInfoCellCaption}>  Assigned chauffeur
-                <select  value={chauffeurId} onChange={(event) => setChauffeurId(event.target.value)} className={formStyles.selectWFull} >
-                    <option value="">No chauffeur assigned</option>
-                        {chauffeurs.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status}) </option> ))  }
-                </select>
-            </div>
-            <div className="md:col-span-2"> 
-                <span className={formStyles.span}> Notes </span>
-                <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder="Optional booking notes" className={formStyles.textarea} />
-            </div>
-      </div>
+                <div className="grid gap-5 md:grid-cols-2"> 
+                    <div className={formStyles.formInfoCellCaption}> Passengers
+                        <input type="number" min="1" value={passengers} onChange={(event) => setPassengers(event.target.value)} required className={formStyles.input} />   
+                    </div>
+                    <div className={formStyles.formInfoCellCaption}> Luggage
+                        <input type="number" min="0" value={luggage}  onChange={(event) => setLuggage(event.target.value)} required  className={formStyles.input} />  
+                    </div>
+                </div>
 
-      <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`}  >
-            {isSaving ? "Saving..." : "Save booking"}
-      </button>
+                <div className={formStyles.formInfoCellCaption}>  Trip type
+                    <select value={tripType} onChange={(event) => setTripType(event.target.value)} required className={formStyles.selectWFull} >
+                        {tripTypeOptions.map((typeOption) => ( <option key={typeOption} value={typeOption}> {typeOption} </option>  ))}
+                    </select>
+                </div>
+
+                <div className={formStyles.formInfoCellCaption}> Booking status
+                    <select  value={status}  onChange={(event) => setStatus(event.target.value)}  required  className={formStyles.selectWFull}>
+                        {bookingStatusOptions.map((statusOption) => ( <option key={statusOption} value={statusOption}> {statusOption}  </option>  ))}
+                    </select>
+                </div>
+
+                <div className={formStyles.formInfoCellCaption}>  Assigned chauffeur
+                    <select  value={chauffeurId} onChange={(event) => setChauffeurId(event.target.value)} className={formStyles.selectWFull} >
+                        <option value="">No chauffeur assigned</option>
+                            {chauffeurs.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status}) </option> ))  }
+                    </select>
+                </div>
+                <div className="md:col-span-2"> 
+                    <span className={formStyles.span}> Notes </span>
+                    <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder="Optional booking notes" className={formStyles.textarea} />
+                </div>
+        </div>
+
+        <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`}  >
+                {isSaving ? "Saving..." : "Save booking"}
+        </button>
     </form>
   );
 }

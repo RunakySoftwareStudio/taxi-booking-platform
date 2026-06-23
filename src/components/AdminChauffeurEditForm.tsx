@@ -67,19 +67,19 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
         <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
           <div className="grid gap-5 md:grid-cols-2">
             <label className={formStyles.label}> Name
-              <input value={name} onChange={(event) => setName(event.target.value)} required className={formStyles.inputWFull} />
+              <input value={name} onChange={(event) => setName(event.target.value)} required className={formStyles.inputWFullCyan} />
             </label>
 
             <label className={formStyles.label}>  Email
-              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required className={formStyles.inputWFull} />
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required className={formStyles.inputWFullCyan} />
             </label>
 
             <label className={formStyles.label}> Phone
-              <input value={phone}  onChange={(event) => setPhone(event.target.value)} required  className={formStyles.inputWFull}/>
+              <input value={phone}  onChange={(event) => setPhone(event.target.value)} required  className={formStyles.inputWFullCyan}/>
             </label>
 
             <label className={formStyles.label}>  Service area
-              <input  value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} placeholder="Example: Amsterdam" className={formStyles.inputWFull} />
+              <input  value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} placeholder="Example: Amsterdam" className={formStyles.inputWFullCyan} />
             </label>
 
             <label className={formStyles.label}>  Account status

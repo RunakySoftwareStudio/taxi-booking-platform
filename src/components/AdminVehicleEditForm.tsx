@@ -89,20 +89,20 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
                         </select>
                     </label >
                     <label  className={formStyles.formInfoCellCaption}> Brand
-                        <input value={brand} onChange={(event) => setBrand(event.target.value)}  required className={formStyles.inputWFull} />
+                        <input value={brand} onChange={(event) => setBrand(event.target.value)}  required className={formStyles.inputWFullCyan} />
                     </label >
                     <label  className={formStyles.formInfoCellCaption}> Model
-                        <input value={model} onChange={(event) => setModel(event.target.value)} required className={formStyles.inputWFull}/>
+                        <input value={model} onChange={(event) => setModel(event.target.value)} required className={formStyles.inputWFullCyan}/>
                     </label >
                     <label  className={formStyles.formInfoCellCaption}> License plate
-                        <input value={licensePlate} onChange={(event) => setLicensePlate(event.target.value)} required className={formStyles.inputWFull} />
+                        <input value={licensePlate} onChange={(event) => setLicensePlate(event.target.value)} required className={formStyles.inputWFullCyan} />
                     </label >
                     <div className="grid gap-5 md:grid-cols-2"> 
                         <label  className={formStyles.formInfoCellCaption}> Seats
-                            <input value={seats} onChange={(event) => setSeats(event.target.value)} type="number" min="1" required className={formStyles.inputWFull}/>
+                            <input value={seats} onChange={(event) => setSeats(event.target.value)} type="number" min="1" required className={formStyles.inputWFullCyan}/>
                         </label >
                         <label  className={formStyles.formInfoCellCaption}> Luggage capacity
-                            <input value={luggageCapacity} onChange={(event) => setLuggageCapacity(event.target.value)} type="number"  min="0" required className={formStyles.inputWFull} />
+                            <input value={luggageCapacity} onChange={(event) => setLuggageCapacity(event.target.value)} type="number"  min="0" required className={formStyles.inputWFullCyan} />
                         </label >
                     </div>
                     <div className="grid gap-5 md:grid-cols-2"> 

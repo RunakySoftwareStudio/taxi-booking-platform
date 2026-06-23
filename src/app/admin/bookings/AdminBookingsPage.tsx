@@ -117,7 +117,17 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     const { data: bookingStatuses, error:bookingStatusError } = await supabaseAdmin.rpc( "get_enum_values", { p_enum_type_name: "booking_status"});
     if (bookingStatusError) { console.error("Could not load booking statuses:", bookingStatusError);}
     const bookingStatusOptions = (bookingStatuses ?? []) as string[];
-    
+    //===============helper function:
+    function formatShortDate(dateValue: string | null) {
+            if (!dateValue) { return "-"; }
+            const [year, month, day] = dateValue.split("-");
+            return `${day}/${month}/${year.slice(2)}`;
+        }
+    function formatShortTime(timeValue: string | null) {
+        if (!timeValue) { return "-"; }
+        return timeValue.slice(0, 5);
+        }
+
     /* =====================================================
         <table>
             <thead>
@@ -201,7 +211,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
 
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <p className="uppercase font-semibold text-white"> Passengers </p>
+                                                <p className="uppercase font-semibold text-white"> Pax </p>
                                                 <p className="text-xs tracking-widest text-cyan-300">{booking.passengers}</p>
                                             </div>
 
@@ -213,7 +223,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
 
                                         <div>
                                             <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">  Notes  </p>
-                                            <p className="mt-1 wrap-break-word text-white"> {booking.notes || "No notes"} </p>
+                                            <p className="mt-1 wrap-break-word text-white"> {booking.notes || "-----"} </p>
                                         </div>
                                 </div>
 
@@ -234,7 +244,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                 </div>
 
                 {/* Desktop booking table */}
-                <div className={`${tableStyles.DivCyanList} hidden lg:block`}>
+                <div className={`${tableStyles.DivCyanList} hidden lg:block overflow-x-auto`}>
                     <table className={`${tableStyles.table1000} min-w-312.5`}>
                         <thead className={tableStyles.tableHeaderCyan}>
                         <tr>
@@ -243,9 +253,8 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                             <th className={tableStyles.cellCaption}>Destination</th>
                             <th className={tableStyles.cellCaption}>Date</th>
                             <th className={tableStyles.cellCaption}>Time</th>
-                            <th className={tableStyles.cellCaption}>Passengers</th>
+                            <th className={tableStyles.cellCaption}>Pax</th>
                             <th className={tableStyles.cellCaption}>Trip type</th>
-                            <th className={tableStyles.cellCaption}>Notes</th>
                             <th className={tableStyles.cellCaption}>Actions</th>
                         </tr>
                         </thead>
@@ -264,19 +273,26 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                             {booking.clients?.phone}
                                         </div>
                                         <div className="mt-3">
-                                            <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
-                                                Edit
-                                            </Link>
+                                            <span>
+                                                <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
+                                                    Edit
+                                                </Link>
+                                            </span>
+                                       
+                                                <span className={tableStyles.cellCaption} > Notes:  </span>
+                                                <span className={tableStyles.cell} > {booking.notes?booking.notes:"-----"} </span>
+                                        
+
                                         </div>
                                     </td>
 
                                     <td className={tableStyles.cell}>{booking.pickup_location}</td>
                                     <td className={tableStyles.cell}>{booking.destination}</td>
-                                    <td className={tableStyles.cell}>{booking.pickup_date}</td>
-                                    <td className={tableStyles.cell}>{booking.pickup_time}</td>
+                                    <td className={tableStyles.cell}>{formatShortDate(booking.pickup_date)}</td>
+                                    <td className={tableStyles.cell}>{formatShortTime(booking.pickup_time)}</td>
                                     <td className={tableStyles.cell}>{booking.passengers}</td>
                                     <td className={tableStyles.cell}>{booking.trip_type}</td>
-                                    <td className={tableStyles.cell}>{booking.notes}</td>
+                                   
 
                                     <td className={tableStyles.cell}>
                                         <form action={updateBookingAdminFields} className="flex min-w-75 flex-wrap items-center gap-3"  >

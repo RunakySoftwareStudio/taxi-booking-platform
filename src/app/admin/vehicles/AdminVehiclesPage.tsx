@@ -215,17 +215,17 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     
                     <label className="block">
                         <span className={formStyles.span}> Brand </span>
-                        <input name="brand"  required defaultValue={formValues.brand} placeholder="Brand, example Mercedes" className={formStyles.inputWFull} />
+                        <input name="brand"  required defaultValue={formValues.brand} placeholder="Brand, example Mercedes" className={formStyles.inputWFullCyan} />
                     </label>
 
                     <label className="block">
                         <span className={formStyles.span}> Model </span>
-                        <input name="model"  required defaultValue={formValues.model} placeholder="Model, example E-Class" className={formStyles.inputWFull} />
+                        <input name="model"  required defaultValue={formValues.model} placeholder="Model, example E-Class" className={formStyles.inputWFullCyan} />
                     </label>
 
                     <label className="block">
                         <span className={formStyles.span}> License Plate </span>
-                        <input name="licensePlate"  required defaultValue={formValues.licensePlate} placeholder="License plate"  className={formStyles.inputWFull} />
+                        <input name="licensePlate"  required defaultValue={formValues.licensePlate} placeholder="License plate"  className={formStyles.inputWFullCyan} />
                     </label>
                     
                     <label className="block">
@@ -245,7 +245,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     
                      <label className="block">
                         <span className={formStyles.span}> Color</span>
-                        <input  name="vehicleColor"  defaultValue={formValues.vehicleColor} placeholder="Example: black"  className={formStyles.inputWFull} />
+                        <input  name="vehicleColor"  defaultValue={formValues.vehicleColor} placeholder="Example: black"  className={formStyles.inputWFullCyan} />
                     </label>     
                 </div>
 
