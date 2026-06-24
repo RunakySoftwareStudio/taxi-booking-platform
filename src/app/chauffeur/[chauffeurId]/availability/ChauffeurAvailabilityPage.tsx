@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/Availability/page.tsx 
 
@@ -184,7 +185,71 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
           </form>
 
           <h2 className={tableStyles.headerTableSmall}>Availability records</h2>
-          <div className={tableStyles.tableDiv}>
+          -------------------
+          {/* Mobile availability cards */}
+          <div className="mt-6 grid gap-4 lg:hidden">
+            {availabilityRows.map((availability) => { let statusColorClasses = tableStyles.statusRedClasses;
+
+              if (availability.status === "available") { statusColorClasses = tableStyles.statusGreenClasses;}
+
+              if (availability.status === "busy") { statusColorClasses = tableStyles.statusYellowClasses;  }
+
+              return (
+                <article  key={availability.id} className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-sm tracking-tight text-white"> Date:  </span>
+                      <span className="mt-1  text-cyan-300">{formatShortDate(availability.available_date)}</span>
+                    </div>
+
+                    <div>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm tracking-tight text-white"> Status:  </span>
+                        <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}  > {availability.status} </span>
+                         {availability.status === "available" && (<span className={tableStyles.okCheckSign} aria-hidden="true">  ✓  </span> )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-sm tracking-tight text-white"> Start time: </span>
+                      <span className="mt-1 text-cyan-300">{formatShortTime(availability.start_time)}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-sm tracking-tight text-white"> End time: </span>
+                      <span className="mt-1 text-cyan-300">{formatShortTime(availability.end_time)}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <span className="text-sm tracking-tight text-white"> Notes: </span>
+                    <span className="mt-1 text-cyan-300 wrap-break-word">{availability.notes || "----"}</span>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <Link  href={`/chauffeur/${chauffeurId}/availability/${availability.id}`} className={formStyles.smallButton} >
+                      Edit
+                    </Link>
+                    <form action={deleteAvailability}>
+                      <input type="hidden" name="chauffeurId" value={chauffeurId} />
+                      <input type="hidden" name="availabilityId" value={availability.id} />
+                      <button type="submit" className={formStyles.smallButton}> Delete </button>
+                    </form>
+                  </div>
+                </article>
+              );
+            })}
+
+            {availabilityRows.length === 0 && (
+              <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">
+                No availability records found yet.
+              </div>
+            )}
+          </div>
+          --------------------------------------
+          {/* Desktop availability table */}
+          <div className={`${tableStyles.tableDiv} hidden lg:block`}>
             <table className={tableStyles.table1000}>
               <thead className={tableStyles.tableHeaderCyan}>
                 <tr>
@@ -214,7 +279,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                                   <td className={tableStyles.cellCaption}>
                                       <div className="flex items-center gap-2">
                                           <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} > {availability.status} </span>
-                                          {availability.status === "available" && (<span className="text-sm font-bold text-green-300" aria-hidden="true"> ✓ </span>)}
+                                          {availability.status === "available" && (<span className={tableStyles.okCheckSign} aria-hidden="true"> ✓ </span>)}
                                       </div>
                                   </td>
                                   <td className={tableStyles.cell}> {availability.notes || "—"} </td>
@@ -236,10 +301,10 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                       })
                   }
 
-                  {availabilityRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={7}> No availability records found yet. </td> </tr> )}
+                  {availabilityRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={7}> No availability records found yet. </td> </tr> )}
               </tbody>
             </table>
-          </div>
+          </div>  
         </div>
       </main>
     );

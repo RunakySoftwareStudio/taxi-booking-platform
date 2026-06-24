@@ -111,7 +111,7 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                                         <div className="flex items-center gap-2">
                                             <span
                                             className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} > {booking.status} </span>
-                                            {booking.status === "completed" && (<span className="text-sm font-bold text-green-300" aria-hidden="true"> ✓ </span>)}
+                                            {booking.status === "completed" && (<span className={tableStyles.okCheckSign} aria-hidden="true"> ✓ </span>)}
                                         </div>
                                     </td>
                                 </tr> 

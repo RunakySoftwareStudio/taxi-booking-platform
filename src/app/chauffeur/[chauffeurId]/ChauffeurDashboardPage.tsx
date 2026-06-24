@@ -173,7 +173,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
 
                     {isAdminUser && ( 
                         <Link  href={`/admin/chauffeurs/${chauffeurRow.id}`} className={formStyles.primaryButtonOutside}  >
-                            Edit chauffeur details
+                            Edit details
                         </Link>
                     )}
                 </div>
@@ -287,21 +287,21 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                     <div className="mt-4 grid grid-cols-2 gap-3">
                         <div>
                             <span className="text-sm tracking-tight text-white"> Date: </span>
-                            <span className="mt-1  text-cyan-300">{formatShortDate(booking.pickup_date)}</span>
+                            <span className="mt-1 text-cyan-300">{formatShortDate(booking.pickup_date)}</span>
                         </div>
                         <div>
                             <span className="text-sm tracking-tight text-white"> Time: </span>
-                            <span className="mt-1  text-cyan-300">{formatShortTime(booking.pickup_time)}</span>
+                            <span className="mt-1 text-cyan-300">{formatShortTime(booking.pickup_time)}</span>
                         </div>
 
                         <div>
                             <span className="text-sm tracking-tight text-white"> Pax: </span>
-                            <span className="mt-1  text-cyan-300">{booking.passengers}</span>
+                            <span className="mt-1 text-cyan-300">{booking.passengers}</span>
                         </div>
 
                         <div>
                             <span className="text-sm tracking-tight text-white"> Trip: </span>
-                            <span className="mt-1  text-cyan-300">{booking.trip_type}</span>
+                            <span className="mt-1 text-cyan-300">{booking.trip_type}</span>
                         </div>
                     </div>
 
