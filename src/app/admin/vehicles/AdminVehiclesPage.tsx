@@ -218,35 +218,38 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                         <input name="brand"  required defaultValue={formValues.brand} placeholder="Brand, example Mercedes" className={formStyles.inputWFullCyan} />
                     </label>
 
+                    {/*   md:col-span-2: This makes the whole group start under the left side of the form instead of staying only in the third column.
+                          w-20! This forces the input to be small, even if formStyles.inputNumber has w-full. */} 
                     <label className="block">
-                        <span className={formStyles.span}> Model </span>
-                        <input name="model"  required defaultValue={formValues.model} placeholder="Model, example E-Class" className={formStyles.inputWFullCyan} />
+                      <span className={formStyles.span}>Model</span>
+                      <input name="model"  required defaultValue={formValues.model} placeholder="Model, example E-Class" className={formStyles.inputWFullCyan} />
                     </label>
 
                     <label className="block">
-                        <span className={formStyles.span}> License Plate </span>
-                        <input name="licensePlate"  required defaultValue={formValues.licensePlate} placeholder="License plate"  className={formStyles.inputWFullCyan} />
-                    </label>
-                    
-                    <label className="block">
-                        <span className={formStyles.span}> Seats </span>
-                        <input  name="seats" type="number"  min="1" defaultValue={formValues.seats} required  placeholder="Example: 4" className={formStyles.inputNumber} />
+                      <span className={formStyles.span}>License Plate</span>
+                      <input name="licensePlate"  required defaultValue={formValues.licensePlate} placeholder="License plate"  className={formStyles.inputWFullCyan} />
                     </label>
 
-                    <label className="block">
-                        <span className={formStyles.span}> Luggage capacity </span>
-                        <input  name="luggageCapacity" type="number"  min="0" defaultValue={formValues.luggageCapacity} required  placeholder="Example: 2" className={formStyles.inputNumber} />
-                    </label>        
-                    
-                    <label className="block">
-                        <span className={formStyles.span}> Year </span>
-                        <input  name="vehicleYear"  type="number"  min="1980"  max="2100" defaultValue={formValues.vehicleYear} placeholder="Ex: 2026"  className={formStyles.input} />                           
-                    </label>      
-                    
-                     <label className="block">
-                        <span className={formStyles.span}> Color</span>
-                        <input  name="vehicleColor"  defaultValue={formValues.vehicleColor} placeholder="Example: black"  className={formStyles.inputWFullCyan} />
-                    </label>     
+                    <div className="flex flex-wrap items-end gap-2">
+                        <label className="block">
+                          <span className={formStyles.span}>Seats</span>
+                        <input name="seats" type="number"  min="1" defaultValue={formValues.seats} required   placeholder="4"  className={`${formStyles.inputNumber} w-20!`}  />
+                        </label>
+
+                        <label className="block">
+                          <span className={formStyles.span}>Luggage</span>
+                        <input  name="luggageCapacity"  type="number"   min="0" defaultValue={formValues.luggageCapacity} required  placeholder="2"  className={`${formStyles.inputNumber} w-20!`}  />
+                        </label>
+
+                        <label className="block">
+                          <span className={formStyles.span}>Year</span>
+                          <input  name="vehicleYear" type="number"  min="1980"  max="2100"  defaultValue={formValues.vehicleYear} placeholder="2024"  className={`${formStyles.inputNumber} w-24!`}  />
+                        </label>
+                    </div>
+                      <label className="block">
+                          <span className={formStyles.span}>Color</span>
+                          <input  name="vehicleColor"  defaultValue={formValues.vehicleColor} placeholder="Example: black"  className={formStyles.inputWFullCyan} />
+                      </label>
                 </div>
 
                 <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}> 
@@ -254,7 +257,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                 </button>
           </form>
 
-          <h3 className={tableStyles.headerTableSmall}> List of vehicles grouped by chauffeur</h3>
+          <h3 className={tableStyles.headerTableSmall}> List of vehicles grouped by chauffeur </h3>
 
           <div className="mt-8 space-y-8">
             {vehicleGroups.map((group) => (
