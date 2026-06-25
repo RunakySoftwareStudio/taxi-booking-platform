@@ -12,7 +12,7 @@
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 
 import Link from "next/link"; 
 
@@ -167,31 +167,29 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <p className="mt-1">
-                                            <span className="text-sm tracking-tight text-white">Name: </span>
-                                            <span className="text-cyan-300">{booking.clients?.name}</span>
+                                            <span className={mobileStyle.inforCaption}>Client name: </span>
+                                            <span className={mobileStyle.infoValue}>{booking.clients?.name}</span>
                                         </p>
 
                                         <p className="mt-1">
-                                            <span className="text-sm tracking-tight text-white">Email: </span>
-                                            <span className="text-cyan-200">{booking.clients?.email}</span>
+                                            <span className={mobileStyle.inforCaption}>Email: </span>
+                                            <span className={mobileStyle.infoValue}>{booking.clients?.email}</span>
                                         </p>
 
                                         <div className="grid grid-cols-2 mt-1">
                                             <p>
-                                                <span className="text-sm tracking-tight text-white">Phone: </span>
-                                                <span className="text-cyan-200">{booking.clients?.phone}</span>
-                                            </p>
-                                            
+                                                <span className={mobileStyle.inforCaption}>Phone: </span>
+                                                <span className={mobileStyle.infoValue}>{booking.clients?.phone}</span>
+                                            </p>                                            
                                         </div>
-
                                     
                                         <p>
-                                            <span className="text-sm tracking-tight text-white"> Pickup  </span>
-                                            <span className="text-xs tracking-widest text-cyan-300">{booking.pickup_location}</span>
+                                            <span className={mobileStyle.inforCaption}> Pickup  </span>
+                                            <span className={mobileStyle.infoValue}>{booking.pickup_location}</span>
                                         </p>
                                         <div>
-                                            <span className="text-sm tracking-tight text-white"> Destination  </span>
-                                            <span className="text-xs tracking-widest text-cyan-300">{booking.destination}</span>
+                                            <span className={mobileStyle.inforCaption}> Destination:  </span>
+                                            <span className={mobileStyle.infoValue}>{booking.destination}</span>
                                         </div>
 
                                     </div>
@@ -202,31 +200,31 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 <div className="mt-4 grid gap-3">
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <span className="text-sm tracking-tight text-white"> Date: </span>
-                                                <span className="text-xs tracking-widest text-cyan-300">{formatShortDate(booking.pickup_date)}</span>
+                                                <span className={mobileStyle.inforCaption}> Date: </span>
+                                                <span className={mobileStyle.infoValue}>{formatShortDate(booking.pickup_date)}</span>
                                             </div>
 
                                             <div>
-                                                <span className="text-sm tracking-tight text-white"> Time: </span>
-                                                <span className="text-xs tracking-widest text-cyan-300">{formatShortTime(booking.pickup_time)}</span>
+                                                <span className={mobileStyle.inforCaption}> Time: </span>
+                                                <span className={mobileStyle.infoValue}>{formatShortTime(booking.pickup_time)}</span>
                                             </div>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <span className="text-sm tracking-tight text-white"> Pax: </span>
-                                                <span className="text-xs tracking-widest text-cyan-300">{booking.passengers}</span>
+                                                <span className={mobileStyle.inforCaption}> Pax: </span>
+                                                <span className={mobileStyle.infoValue}>{booking.passengers}</span>
                                             </div>
 
                                             <div>
-                                                <span className="text-sm tracking-tight text-white">  Trip:  </span>
-                                                <span className="text-xs tracking-widest text-cyan-300">{booking.trip_type}</span>
+                                                <span className={mobileStyle.inforCaption}> Trip: </span>
+                                                <span className={mobileStyle.infoValue}>{booking.trip_type}</span>
                                             </div>
                                         </div>
 
                                         <div>
-                                            <span className="text-sm tracking-tight text-white">  Notes:  </span>
-                                            <span className="mt-1 wrap-break-word text-cyan-300"> {booking.notes || "-----"} </span>
+                                            <span className={mobileStyle.inforCaption}>  Notes:  </span>
+                                            <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
                                         </div>
                                 </div>
 

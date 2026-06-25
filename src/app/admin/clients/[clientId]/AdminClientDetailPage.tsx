@@ -116,15 +116,11 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                                 </div>
                             </div>
 
-                            <div className="mt-3">
-                            <span className={mobileStyle.inforCaption}> Chauffeur: </span>
-                            <span className={mobileStyle.infoValue}>{booking.chauffeurs?.name || "Unassigned"}</span>
-                            </div>
-
-                            <div className="mt-4 grid grid-cols-2 gap-2">                                
-                                <span className={mobileStyle.inforCaption}> Status:  </span>
-                                <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}  >  {booking.status}  </span>
-                                {booking.status === "completed" && ( <span className={tableStyles.okCheckSign} aria-hidden="true">  ✓  </span>  )}
+                            <div className="mt-2 flex items-center gap-2">
+                                <span className={mobileStyle.inforCaption}> Chauffeur: </span>
+                                <span className={mobileStyle.infoValue}>{booking.chauffeurs?.name || "Unassigned"}</span>
+                                <span className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} >  {booking.status}   </span>
+                                {booking.status === "completed" && ( <span className={tableStyles.okCheckSign} aria-hidden="true"> ✓ </span> )}
                             </div>
                         </article> );})
                     }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 
 //export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app/admin/chauffeurs/page.tsx 
 /*=====================================================================
@@ -191,61 +191,56 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 {/*================= Mobile chauffeur cards ======================*/}
                 <div className="mt-6 grid gap-4 lg:hidden">
                 {sortedChauffeurRows.map((chauffeur) => (
-                    <article key={chauffeur.id}
-                    className={ chauffeur.account_status === "inactive" ? formStyles.deActivateButtonPhone : formStyles.deActivateButtonPhone   } >
+                    <article key={chauffeur.id}  className={ chauffeur.account_status === "inactive" ? formStyles.deActivateButtonPhone : formStyles.deActivateButtonPhone   } >
                     <div className="border-b border-white/10 pb-4">
                         <p className="mt-1">
-                            <span className= "text-sm tracking-tight text-white">Name: </span>
-                            <span className= "text-cyan-300" >{chauffeur.name}</span>
+                            <span className= {mobileStyle.inforCaption}>Name: </span>
+                            <span className= {mobileStyle.infoValue} >{chauffeur.name}</span>
                         </p>
                         <p className="mt-1">
-                            <span className= "text-sm tracking-tight text-white">Email: </span>
-                            <span className= "text-cyan-200" >{chauffeur.email}</span>
+                            <span className= {mobileStyle.inforCaption}>Email: </span>
+                            <span className= {mobileStyle.infoValue} >{chauffeur.email}</span>
                         </p>
                         <p className="mt-1">
-                            <span className= "text-sm tracking-tight text-white">Phone: </span>
-                            <span className= "text-cyan-200" >{chauffeur.phone}</span>
+                            <span className= {mobileStyle.inforCaption}>Phone: </span>
+                            <span className= {mobileStyle.infoValue} >{chauffeur.phone}</span>
                         </p>
                     </div>
 
                     <div className="mt-4 grid gap-3">
                         <div>
                             <p className="mt-1">
-                                <span className= "text-sm tracking-tight text-white">Service area: </span>
-                                <span className= "text-cyan-300" >{chauffeur.service_area || "- - -"}</span>
+                                <span className= {mobileStyle.inforCaption}>Service area: </span>
+                                <span className= {mobileStyle.infoValue} >{chauffeur.service_area || "- - -"}</span>
                             </p>
 
                             <p className="mt-1">
-                                <span className= "text-sm tracking-tight text-white">Rating: </span>
-                                <span className= "text-cyan-300" >{chauffeur.rating}</span>
+                                <span className= {mobileStyle.inforCaption}>Rating: </span>
+                                <span className= {mobileStyle.infoValue} >{chauffeur.rating}</span>
                             </p>
                         </div>
                     </div>
 
-                    <div className="mt-5">
-                        <p className="text-sm tracking-tight text-white"> Status </p>
-                        <form action={updateChauffeurStatus} className="mt-2 grid gap-3">
+                    <form  action={updateChauffeurStatus} className="mt-1 flex items-center gap-2">
                         <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                        <select name="accountStatus" defaultValue={chauffeur.account_status} className={`${formStyles.selectForm} w-full`} >
-                            {chauffeurStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
+                        <label htmlFor={`status-${chauffeur.id}`} className={mobileStyle.inforCaption}>
+                            Status:
+                        </label>
+                        <select id={`status-${chauffeur.id}`} name="accountStatus" defaultValue={chauffeur.account_status} className={mobileStyle.selectOption}>
+                            {chauffeurStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
                         </select>
-                        <button type="submit" className={formStyles.smallButton}>
-                            Save
-                        </button>
-                        </form>
-                    </div>
-
+                    </form>
                     <div className="mt-5 flex flex-wrap items-center gap-3">
                         <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
                             Details
                         </Link>
 
                         <form action={changeChauffeurActiveStatus}>
-                        <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                        <input type="hidden" name="nextAccountStatus" value={chauffeur.account_status === "inactive" ? "approved" : "inactive"} />
-                        <button type="submit" className={ chauffeur.account_status === "inactive" ? formStyles.activateButton : formStyles.deActiveDeleteButton } >
-                            {chauffeur.account_status === "inactive" ? "Activate" : "Deactivate"}
-                        </button>
+                            <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+                            <input type="hidden" name="nextAccountStatus" value={chauffeur.account_status === "inactive" ? "approved" : "inactive"} />
+                            <button type="submit" className={ chauffeur.account_status === "inactive" ? formStyles.activateButton : formStyles.deActiveDeleteButton } >
+                                {chauffeur.account_status === "inactive" ? "Activate" : "Deactivate"}
+                            </button>
                         </form>
                     </div>
                     </article>

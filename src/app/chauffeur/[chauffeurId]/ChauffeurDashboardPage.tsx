@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import Link from "next/link";
-import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx 
@@ -184,33 +184,33 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                     {vehicleRows.map((vehicle) => (
                     <article key={vehicle.id} className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">
                         <div>
-                            <span className= "font-bold text-white text-sm tracking-tight">Brand(Model): </span>
-                            <span className="text-cyan-300 text-sm tracking-tight"> {vehicle.brand} ({vehicle.model})</span>
+                            <span className= {mobileStyle.inforCaption}>Brand(Model): </span>
+                            <span className={mobileStyle.infoValue}> {vehicle.brand} ({vehicle.model})</span>
                         </div>
                         <div className="mt-4 grid grid-cols-2 gap-1">
                             <div>
-                                <span className= "text-sm tracking-tight text-white">License: </span>
-                                <span className= "text-cyan-300 mt-1 break-word" >{vehicle.license_plate}</span>
+                                <span className= {mobileStyle.inforCaption}>License: </span>
+                                <span className= {mobileStyle.infoValue} >{vehicle.license_plate}</span>
                             </div>
                             <div>
-                                <span className="text-sm tracking-tight text-white"> Type: </span>
-                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.vehicle_type}</span>
+                                <span className={mobileStyle.inforCaption}> Type: </span>
+                                <span className={mobileStyle.infoValue} >{vehicle.vehicle_type}</span>
                             </div>
                             <div>
-                                <span className="tracking-tight text-sm text-white"> Seats: </span>
-                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.seats}</span>
+                                <span className={mobileStyle.inforCaption}> Seats: </span>
+                                <span className={mobileStyle.infoValue} >{vehicle.seats}</span>
                             </div>
                             <div>
-                                <span className="text-sm tracking-tight text-white"> Luggage: </span>
-                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.luggage_capacity}</span>
+                                <span className={mobileStyle.inforCaption}> Luggage: </span>
+                                <span className={mobileStyle.infoValue} >{vehicle.luggage_capacity}</span>
                             </div>
                             <div>
-                                <span className="text-sm tracking-tight text-white"> Year: </span>
-                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.vehicle_year?vehicle.vehicle_year:"---"}</span>
+                                <span className={mobileStyle.inforCaption}> Year: </span>
+                                <span className={mobileStyle.infoValue} >{vehicle.vehicle_year?vehicle.vehicle_year:"---"}</span>
                             </div>
                             <div>
-                                <span className="text-sm tracking-tight text-white"> Color: </span>
-                                <span className="text-cyan-300 mt-1 break-word" >{vehicle.vehicle_color?vehicle.vehicle_color: "---" }</span>
+                                <span className={mobileStyle.inforCaption}> Color: </span>
+                                <span className={mobileStyle.infoValue} >{vehicle.vehicle_color?vehicle.vehicle_color: "---" }</span>
                             </div>
                         </div>
                     </article>  ))}
@@ -263,45 +263,45 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                     <article key={booking.id}  className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
                     <div className="border-b border-white/10 pb-4">
                             <div>
-                                <span className= "text-sm tracking-tight text-white">Client: </span>
-                                <span className= "text-cyan-300 mt-1 break-word" >{booking.clients?.name || "Unknown client"}</span>
+                                <span className= {mobileStyle.inforCaption}>Client: </span>
+                                <span className= {mobileStyle.infoValue}>{booking.clients?.name || "Unknown client"}</span>
                             </div>
                             <div>
-                                <span className= "text-sm tracking-tight text-white">Mail: </span>
-                                <span className= "text-cyan-300 mt-1 break-word" >{booking.clients?.email}</span>
+                                <span className= {mobileStyle.inforCaption}>Mail: </span>
+                                <span className= {mobileStyle.infoValue} >{booking.clients?.email}</span>
                             </div>
                             <div>
-                                <span className= "text-sm tracking-tight text-white">Phone: </span>
-                                <span className= "text-cyan-300 mt-1 break-word" >{booking.clients?.phone}</span>
+                                <span className= {mobileStyle.inforCaption}>Phone: </span>
+                                <span className= {mobileStyle.infoValue} >{booking.clients?.phone}</span>
                             </div>     
                             <div>
-                                <span className="text-sm tracking-tight text-white "> Pickup: </span>
+                                <span className={mobileStyle.inforCaption}> Pickup: </span>
                                 <span className="mt-1 text-cyan-300">{booking.pickup_location}</span>
                             </div>
                             <div>
-                                <span className="text-sm tracking-tight text-white"> Destination: </span>
-                                <span className="mt-1  text-cyan-300">{booking.destination}</span>
+                                <span className={mobileStyle.inforCaption}> Destination: </span>
+                                <span className={mobileStyle.infoValue}>{booking.destination}</span>
                             </div>                       
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
                         <div>
-                            <span className="text-sm tracking-tight text-white"> Date: </span>
-                            <span className="mt-1 text-cyan-300">{formatShortDate(booking.pickup_date)}</span>
+                            <span className={mobileStyle.inforCaption}> Date: </span>
+                            <span className={mobileStyle.infoValue}>{formatShortDate(booking.pickup_date)}</span>
                         </div>
                         <div>
-                            <span className="text-sm tracking-tight text-white"> Time: </span>
-                            <span className="mt-1 text-cyan-300">{formatShortTime(booking.pickup_time)}</span>
-                        </div>
-
-                        <div>
-                            <span className="text-sm tracking-tight text-white"> Pax: </span>
-                            <span className="mt-1 text-cyan-300">{booking.passengers}</span>
+                            <span className={mobileStyle.inforCaption}> Time: </span>
+                            <span className={mobileStyle.infoValue}>{formatShortTime(booking.pickup_time)}</span>
                         </div>
 
                         <div>
-                            <span className="text-sm tracking-tight text-white"> Trip: </span>
-                            <span className="mt-1 text-cyan-300">{booking.trip_type}</span>
+                            <span className={mobileStyle.inforCaption}> Pax: </span>
+                            <span className={mobileStyle.infoValue}>{booking.passengers}</span>
+                        </div>
+
+                        <div>
+                            <span className={mobileStyle.inforCaption}> Trip: </span>
+                            <span className={mobileStyle.infoValue}>{booking.trip_type}</span>
                         </div>
                     </div>
 
@@ -310,7 +310,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
 
                         <select name="status"  defaultValue={booking.status}  className={`${tableStyles.selectTable} w-full`}>
-                        {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
+                            {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
                         </select>
 
                         <button type="submit" className={formStyles.smallButton}>

@@ -51,14 +51,9 @@ export default async function AdminChauffeurEditPage({
 
         <p className={pageStyles.pageLabelUpper}>Admin</p>
         <h1 className={pageStyles.pageTitle}>Edit chauffeur details</h1>
-        <p className={pageStyles.pageDescription}>
-          Update chauffeur contact details and account status.
-        </p>
+        <p className={pageStyles.pageDescription}> Update chauffeur contact details and account status. </p>
 
-        <AdminChauffeurEditForm
-          chauffeur={chauffeurRow}
-          accountStatusOptions={(accountStatuses ?? []) as string[]}
-        />
+        <AdminChauffeurEditForm chauffeur={chauffeurRow}   accountStatusOptions={(accountStatuses ?? []) as string[]}  />
       </div>
     </main>
   );
