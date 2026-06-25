@@ -2,7 +2,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/vehicles/page.tsx 
 
@@ -257,19 +257,74 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                 </button>
           </form>
 
-          <h3 className={tableStyles.headerTableSmall}> List of vehicles grouped by chauffeur </h3>
-
+          <h3 className={tableStyles.headerTableSmall}>  List of vehicles grouped by chauffeur</h3>
           <div className="mt-8 space-y-8">
             {vehicleGroups.map((group) => (
-              <section key={group.chauffeurId} className={formStyles.sectionCardBorder4} >
+              <section key={group.chauffeurId} >
                 <div className="mb-4">
                   <h2 className="text-lg font-bold text-white"> {"Chauffeur: " + group.chauffeurName}  </h2>
-                  <p className="text-sm text-slate-300">{"Email: " + group.chauffeurEmail}</p>
-                  <p className="text-sm text-slate-300">{"Phone: " + group.chauffeurPhone}</p>
-                  <p className="mt-2 text-sm font-semibold text-cyan-200"> Vehicles: {group.vehicles.length} </p>
+                  <p className="wrap-break-word text-sm text-slate-300"> {"Email: " + group.chauffeurEmail}  </p>
+                  <p className="text-sm text-slate-300"> {"Phone: " + group.chauffeurPhone} </p>
+                  <p className="mt-2 text-sm font-semibold text-cyan-200">  Vehicles: {group.vehicles.length}  </p>
                 </div>
 
-                <div className={tableStyles.tableDiv}>
+                {/* Mobile vehicle cards */}
+                <div className="grid gap-4 lg:hidden">
+                  {group.vehicles.map((vehicle) => (
+                    <article  key={vehicle.id} className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
+                      <div>
+                        <span className={mobileStyle.inforCaptionBold}> Car: </span>
+                        <span className={mobileStyle.infoValueBold}> {vehicle.brand} {vehicle.model} </span>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-1">
+                        <div>
+                          <span className={mobileStyle.inforCaption}> Year: </span>
+                          <span className={mobileStyle.infoValue}>{vehicle.vehicle_year || "-"}</span>
+                        </div>
+
+                        <div>
+                          <span className={mobileStyle.inforCaption}>  Color: </span>
+                          <span className={mobileStyle.infoValue}>{vehicle.vehicle_color || "-"}</span>
+                        </div>
+
+                        <div>
+                          <span className={mobileStyle.inforCaption}> License:  </span>
+                          <span className="mt-1 wrap-break-word">{vehicle.license_plate}</span>
+                        </div>
+
+                        <div>
+                          <span className={mobileStyle.inforCaption}>  Type:  </span>
+                          <span className={mobileStyle.infoValue}>{vehicle.vehicle_type}</span>
+                        </div>
+
+                        <div>
+                          <span className={mobileStyle.inforCaption}>  Seats:  </span>
+                          <span className={mobileStyle.infoValue}>{vehicle.seats}</span>
+                        </div>
+
+                        <div>
+                          <span className={mobileStyle.inforCaption}> Luggage: </span>
+                          <span className={mobileStyle.infoValue}>{vehicle.luggage_capacity}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap items-center gap-3">
+                        <Link  href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton} >
+                          Details
+                        </Link>
+
+                        <form action={deleteVehicle}>
+                          <input type="hidden" name="vehicleId" value={vehicle.id} />
+                          <button type="submit" className={formStyles.deActiveDeleteButton}> Delete </button>
+                        </form>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                {/* Desktop vehicle table */}
+                <div className={`${tableStyles.tableDiv} hidden lg:block`}>
                   <table className={tableStyles.table1000}>
                     <thead className={tableStyles.tableHeaderCyan}>
                       <tr>
@@ -290,20 +345,19 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                         <tr key={vehicle.id} className={tableStyles.rowCyan}>
                           <td className={tableStyles.cell}>{vehicle.brand}</td>
                           <td className={tableStyles.cell}>{vehicle.model}</td>
-                          <td className={tableStyles.cell}> {vehicle.vehicle_year || "-"} </td>
-                          <td className={tableStyles.cell}> {vehicle.vehicle_color || "-"} </td>
-                          <td className={tableStyles.cell}> {vehicle.license_plate}  </td>
+                          <td className={tableStyles.cell}>{vehicle.vehicle_year || "-"}</td>
+                          <td className={tableStyles.cell}>{vehicle.vehicle_color || "-"}</td>
+                          <td className={tableStyles.cell}>{vehicle.license_plate}</td>
                           <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
                           <td className={tableStyles.cell}>{vehicle.seats}</td>
-                          <td className={tableStyles.cell}> {vehicle.luggage_capacity} </td>
+                          <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
+
                           <td className={tableStyles.cell}>
                             <div className="flex flex-wrap items-center gap-3">
-                              <Link  href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton} > Details </Link>
+                              <Link href={`/admin/vehicles/${vehicle.id}`}  className={formStyles.smallButton} > Details </Link>
                               <form action={deleteVehicle}>
-                                <input type="hidden"  name="vehicleId"  value={vehicle.id} />
-                                <button type="submit" className={formStyles.deActiveDeleteButton}  >
-                                  Delete
-                                </button>
+                                <input type="hidden" name="vehicleId" value={vehicle.id} />
+                                <button type="submit" className={formStyles.deActiveDeleteButton} >  Delete </button>
                               </form>
                             </div>
                           </td>
@@ -314,7 +368,8 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                 </div>
               </section>
             ))}
-            {vehicleGroups.length === 0 && ( <p className={tableStyles.cellEmpty}>No vehicles found yet.</p> )}
+
+            {vehicleGroups.length === 0 && (<p className={tableStyles.cellEmpty}>No vehicles found yet.</p> )}
           </div>
         </div>
       </main>

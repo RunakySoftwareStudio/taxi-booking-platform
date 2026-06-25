@@ -91,28 +91,37 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
                     <label  className={formStyles.formInfoCellCaption}> Brand
                         <input value={brand} onChange={(event) => setBrand(event.target.value)}  required className={formStyles.inputWFullCyan} />
                     </label >
-                    <label  className={formStyles.formInfoCellCaption}> Model
-                        <input value={model} onChange={(event) => setModel(event.target.value)} required className={formStyles.inputWFullCyan}/>
-                    </label >
-                    <label  className={formStyles.formInfoCellCaption}> License plate
-                        <input value={licensePlate} onChange={(event) => setLicensePlate(event.target.value)} required className={formStyles.inputWFullCyan} />
-                    </label >
-                    <div className="grid gap-5 md:grid-cols-2"> 
-                        <label  className={formStyles.formInfoCellCaption}> Seats
-                            <input value={seats} onChange={(event) => setSeats(event.target.value)} type="number" min="1" required className={formStyles.inputWFullCyan}/>
-                        </label >
-                        <label  className={formStyles.formInfoCellCaption}> Luggage capacity
-                            <input value={luggageCapacity} onChange={(event) => setLuggageCapacity(event.target.value)} type="number"  min="0" required className={formStyles.inputWFullCyan} />
-                        </label >
+                    <label className="block">
+                      <span className={formStyles.span}>Model</span>
+                      <input value={model} onChange={(event) => setModel(event.target.value)} required className={formStyles.inputWFullCyan}/>
+                    </label>
+
+                    <label className="block">
+                      <span className={formStyles.span}>License Plate</span>
+                      <input value={licensePlate} onChange={(event) => setLicensePlate(event.target.value)} required className={formStyles.inputWFullCyan} />
+                    </label>
+
+                    <div className="flex flex-wrap items-end gap-2">
+                        <label className="block">
+                          <span className={formStyles.span}>Seats</span>
+                        <input value={seats} onChange={(event) => setSeats(event.target.value)} type="number" min="1" required  className={`${formStyles.inputNumber} w-18!`}  />
+                        </label>
+
+                        <label className="block">
+                          <span className={formStyles.span}>Luggage</span>
+                        <input  value={luggageCapacity} onChange={(event) => setLuggageCapacity(event.target.value)} type="number"  min="0" required  className={`${formStyles.inputNumber} w-18!`}  />
+                        </label>
+
+                        <label className="block">
+                          <span className={formStyles.span}>Year</span>
+                          <input  value={vehicleYear}  onChange={(event) => setVehicleYear(event.target.value)} type="number" min="1980"  max="2100"   className={`${formStyles.inputNumber} w-24!`}  />
+                        </label>
                     </div>
-                    <div className="grid gap-5 md:grid-cols-2"> 
-                        <label  className={formStyles.formInfoCellCaption}> Color
-                            <input value={vehicleColor} onChange={(event) => setVehicleColor(event.target.value)} className={formStyles.input}/>
-                        </label >
-                        <label  className={formStyles.formInfoCellCaption}> Year
-                            <input  value={vehicleYear}  onChange={(event) => setVehicleYear(event.target.value)} type="number" min="1980"  max="2100"  className={formStyles.input}/>   
-                        </label >
-                    </div>
+
+                    <label className="block">
+                      <span className={formStyles.span}>Color</span>
+                      <input value={vehicleColor} onChange={(event) => setVehicleColor(event.target.value)} className={formStyles.input} />
+                    </label>
             </div>
             <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`} >
                 {isSaving ? "Saving..." : "Save vehicle details"}

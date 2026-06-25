@@ -93,7 +93,9 @@ export const tableStyles = {
 };
 
 export const mobileStyle ={
-    inforCaption:             "text-sm tracking-tight text-cyan-300",
-    infoValue:                "mt-1 wrap-break-word text-white",
-    selectOption:             "rounded-lg border border-cyan-400/30 bg-slate-950 px-2 py-0 text-white text-sm outline-none focus:border-cyan-300 leading-tight h-7 w-42 ",
+    inforCaption:                   "text-sm tracking-tight text-cyan-300",
+    inforCaptionBold:               "text-sm tracking-tight text-cyan-300 font-bold wrap-break-word",
+    infoValue:                      "mt-1 wrap-break-word text-white",
+    infoValueBold:                  "mt-1 wrap-break-word text-white font-bold wrap-break-word ",
+    selectOption:                   "rounded-lg border border-cyan-400/30 bg-slate-950 px-2 py-0 text-white text-sm outline-none focus:border-cyan-300 leading-tight h-7 w-42 ",
 };
