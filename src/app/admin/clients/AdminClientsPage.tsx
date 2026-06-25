@@ -1,7 +1,8 @@
 
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+import { pageStyles, tableStyles, formStyles,mobileStyle } from "@/styles/classNames";
+import { formatShortDateTime } from "@/lib/formatDateTime";
 
 //export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app/admin/clients/page.tsx 
 
@@ -44,7 +45,38 @@ export default async function AdminClientsPage()
         <p className={pageStyles.pageLabelUpper}> Admin </p>
         <h1 className={pageStyles.pageTitle}>Clients</h1>
         <p className={pageStyles.pageDescription}>  View clients who submitted booking requests through the website.  </p>
-        <div className={tableStyles.DivCyanList}>
+        {/* Mobile client cards */}
+        <div className="mt-6 grid gap-4 lg:hidden">
+            {clientRows.map((client) => (
+            <article key={client.id} className="rounded-2xl border-2 border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
+                <div>
+                  <span className={mobileStyle.inforCaption}> Name: </span>
+                  <span className={mobileStyle.infoValue}>{client.name}</span>
+                </div>
+                <div >
+                  <span className={mobileStyle.inforCaption}> Email: </span>
+                  <span className={mobileStyle.infoValue}>{client.email}</span>
+                </div>
+                <div >
+                    <span className={mobileStyle.inforCaption}> Phone: </span>
+                    <span className={mobileStyle.infoValue}>{client.phone}</span>
+                </div>
+                <div >
+                  <span className={mobileStyle.inforCaption}> Created at:  </span>
+                  <span className={mobileStyle.infoValue}>  {formatShortDateTime(client.created_at)}</span> 
+                </div>
+                <div className="mt-5">
+                  <Link  href={`/admin/clients/${client.id}`} className={formStyles.smallButton} >
+                    Open client details
+                  </Link>
+                </div>
+            </article> ))}
+
+            {clientRows.length === 0 && ( <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white"> No clients found yet. </div> )}
+          </div>
+
+        {/* Desktop clients table */}
+        <div className={`${tableStyles.DivCyanList} hidden lg:block`}>
           <table className={tableStyles.table1000}>
             <thead className={tableStyles.tableHeaderCyan}>
               <tr>
@@ -57,21 +89,23 @@ export default async function AdminClientsPage()
             </thead>
 
             <tbody>
-                {clientRows.map((client) => (
-                    <tr key={client.id} className={tableStyles.rowCyan}>
-                        <td className={tableStyles.cell}>{client.name}</td>
-                        <td className={tableStyles.cell}> {client.email}</td>
-                        <td className={tableStyles.cell}> {client.phone}</td>
-                        <td className={tableStyles.cell}> {new Date(client.created_at).toLocaleString()}  </td>
-                        <td className={tableStyles.cellCaption}>
-                            <Link href={`/admin/clients/${client.id}`} className={formStyles.smallButton} >
-                                Open client details
-                            </Link>
-                        </td>
-                    </tr>
-                ))}
+              {clientRows.map((client) => (
+                <tr key={client.id} className={tableStyles.rowCyan}>
+                  <td className={tableStyles.cell}>{client.name}</td>
+                  <td className={tableStyles.cell}>{client.email}</td>
+                  <td className={tableStyles.cell}>{client.phone}</td>
+                  <td className={tableStyles.cell}>
+                    {new Date(client.created_at).toLocaleString()}
+                  </td>
+                  <td className={tableStyles.cellCaption}>
+                    <Link href={`/admin/clients/${client.id}`} className={formStyles.smallButton} >
+                      Open client details
+                    </Link>
+                  </td>
+                </tr>
+              ))}
 
-              {clientRows.length === 0 && (<tr> <td className={tableStyles.cell} colSpan={5}>  No clients found yet. </td> </tr> )}
+              {clientRows.length === 0 && (<tr><td className={tableStyles.cell} colSpan={5}>  No clients found yet. </td></tr> )}
             </tbody>
           </table>
         </div>

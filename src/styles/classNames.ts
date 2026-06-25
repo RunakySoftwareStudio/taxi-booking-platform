@@ -91,3 +91,9 @@ export const tableStyles = {
     DivCyanList:              "mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4",
     okCheckSign:                    "text-sm font-bold text-green-300",
 };
+
+export const mobileStyle ={
+    inforCaption:             "text-sm tracking-tight text-cyan-300",
+    infoValue:                "mt-1 wrap-break-word text-white"
+
+};

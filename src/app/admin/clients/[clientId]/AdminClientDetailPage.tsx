@@ -1,4 +1,5 @@
-import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
+import { formatShortDate, formatShortTime , formatShortDateTime } from "@/lib/formatDateTime";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import Link from "next/link";
 
@@ -53,7 +54,7 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
             <div className={pageStyles.container}> 
                 
                 <Link href="/admin/clients" className={formStyles.link} > ← Back to clients </Link>
-                <p className={pageStyles.pageLabelUpper}> Admin client</p>
+                <p className={pageStyles.pageLabelUpper}> Admin client detail</p>
                 <h1 className={pageStyles.pageTitle}>{clientRow.name}</h1>
 
                 <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -69,12 +70,69 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
 
                     <div className={formStyles.info}>
                         <p className={formStyles.formInputInfoCaption}>Created at</p>
-                        <p className={formStyles.formInputInfoValue}> {new Date(clientRow.created_at).toLocaleString()} </p>
+                        <p className={formStyles.formInputInfoValue}> {formatShortDateTime(client.created_at)} </p>
                     </div>
                 </div>
                 
                 <h2 className={tableStyles.headerTableSmall}>Booking history</h2>
-                <div className={tableStyles.tableDiv}>
+
+                {/* Mobile booking history cards */}
+                <div className="mt-6 grid gap-4 lg:hidden">
+                    {bookingRows.map((booking) => {
+                        let statusColorClasses = tableStyles.statusRedClasses;
+                        if (booking.status === "accepted" || booking.status === "completed") { statusColorClasses = tableStyles.statusGreenClasses; }
+                        if (booking.status === "pending" || booking.status === "confirmed") {statusColorClasses = tableStyles.statusYellowClasses;  }
+
+                        return (
+                        <article key={booking.id} className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
+                            <div >
+                                <div>
+                                    <span className={mobileStyle.inforCaption}>Pickup:  </span>
+                                    <span className={mobileStyle.infoValue}>{booking.pickup_location}</span>
+                                </div>
+                                <div>
+                                    <span className={mobileStyle.inforCaption}> Destination:  </span>
+                                    <span className={mobileStyle.infoValue}>{booking.destination}</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div >
+                                        <span className={mobileStyle.inforCaption}>  Date: </span>
+                                        <span className={mobileStyle.infoValue}>{formatShortDate(booking.pickup_date)}</span>
+                                    </div>
+                                    <div>
+                                        <span className={mobileStyle.inforCaption}>  Time:  </span>
+                                        <span className={mobileStyle.infoValue}>{formatShortTime(booking.pickup_time)}</span>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span className={mobileStyle.inforCaption}> Pax: </span>
+                                        <span className={mobileStyle.infoValue}>{booking.passengers}</span>
+                                    </div>
+                                    <div>
+                                        <span className={mobileStyle.inforCaption}> Trip:  </span>
+                                        <span className={mobileStyle.infoValue}>{booking.trip_type}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-3">
+                            <span className={mobileStyle.inforCaption}> Chauffeur: </span>
+                            <span className={mobileStyle.infoValue}>{booking.chauffeurs?.name || "Unassigned"}</span>
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-2 gap-2">                                
+                                <span className={mobileStyle.inforCaption}> Status:  </span>
+                                <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}  >  {booking.status}  </span>
+                                {booking.status === "completed" && ( <span className={tableStyles.okCheckSign} aria-hidden="true">  ✓  </span>  )}
+                            </div>
+                        </article> );})
+                    }
+                    {bookingRows.length === 0 && (<div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white"> No bookings found for this client.</div> )}
+                </div>
+
+                {/* Desktop booking history table */}
+                <div className={`${tableStyles.tableDiv} hidden lg:block`}>
                     <table className={tableStyles.table1000}>
                         <thead className={tableStyles.tableHeaderCyan}>
                             <tr>
