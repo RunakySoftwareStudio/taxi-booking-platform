@@ -172,7 +172,7 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                             );
                         })
                     }
-                        {bookingRows.length === 0 && (<tr> <td className="p-4 text-slate-300" colSpan={8}> No bookings found for this client. </td></tr>)}
+                        {bookingRows.length === 0 && (<tr><td className="p-4 text-slate-300" colSpan={8}> No bookings found for this client. </td></tr>)}
                         </tbody>
                     </table>
                 </div>

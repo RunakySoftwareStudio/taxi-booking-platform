@@ -374,13 +374,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             </tr>
                         ))}
 
-                        {bookingRows.length === 0 && (
-                            <tr>
-                            <td className={tableStyles.cellEmpty} colSpan={8}>
-                                No assigned bookings found yet.
-                            </td>
-                            </tr>
-                        )}
+                        {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}> No assigned bookings found yet.</td></tr> )}
                         </tbody>
                     </table>
                 </div>

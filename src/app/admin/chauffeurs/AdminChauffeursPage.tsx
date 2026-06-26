@@ -309,7 +309,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                 </tr>
                             ))}
 
-                            {chauffeurRows.length === 0 && ( <tr> <td className={tableStyles.cell} colSpan={7}> No chauffeurs found yet. </td> </tr> )}
+                            {chauffeurRows.length === 0 && (<tr><td className={tableStyles.cell} colSpan={7}> No chauffeurs found yet. </td></tr>)}
 
                         </tbody>
                     </table>

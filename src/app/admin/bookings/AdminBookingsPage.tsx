@@ -320,7 +320,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 </tr>
                             ))}
 
-                            {bookingRows.length === 0 && ( <tr> <td className={tableStyles.cellEmpty} colSpan={9}> No bookings found yet. </td>  </tr> )}
+                            {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={9}> No bookings found yet. </td></tr>)}
                         </tbody>
                     </table>
                 </div>
