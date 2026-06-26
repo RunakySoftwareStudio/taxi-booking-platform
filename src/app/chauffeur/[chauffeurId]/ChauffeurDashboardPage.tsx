@@ -86,7 +86,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
     // get chauffeur data of this chauffeur id
     const { data: supabaseAdminChauffeur, error: chauffeurError } = await supabaseAdmin
         .from("chauffeurs")
-        .select("id, name, email, phone, service_area, account_status")
+        .select("id, name, email, phone, service_area, account_status, accepts_pets")
         .eq("id", chauffeurId)
         .single();
 

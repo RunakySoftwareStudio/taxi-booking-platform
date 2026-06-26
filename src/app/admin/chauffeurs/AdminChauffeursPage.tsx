@@ -24,6 +24,7 @@ type ChauffeurRow = {
     service_area: string | null;
     account_status: string;
     rating: number;
+    accepts_pets: boolean; 
     created_at: string;
 };
 async function changeChauffeurActiveStatus(formData: FormData) {
@@ -59,6 +60,7 @@ async function addChauffeur(formData: FormData) {
     const companyName = String(formData.get("companyName") || "").trim();
     const licenseNumber = String(formData.get("licenseNumber") || "").trim();
     const serviceArea = String(formData.get("serviceArea") || "").trim();
+    const acceptsPets = formData.get("acceptsPets") === "on";
 
     if (!name || !email || !phone) {  redirect("/admin/chauffeurs?error=missing-fields");}
 
@@ -70,6 +72,7 @@ async function addChauffeur(formData: FormData) {
         license_number: licenseNumber || null,
         service_area: serviceArea || null,
         account_status: "pending_approval",
+        accepts_pets: acceptsPets
     });
 
     if (error) {
@@ -119,7 +122,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
     
     const { data: chauffeurs, error } = await supabaseAdmin
         .from("chauffeurs")
-        .select( ` id, name, email, phone, company_name, license_number, service_area, account_status, rating, created_at `)
+        .select( ` id, name, email, phone, company_name, license_number, service_area, account_status, rating, accepts_pets, created_at`)
         .order("created_at", { ascending: false });
 
     const chauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
@@ -179,6 +182,10 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                             <span className={formStyles.span}> Service area </span>
                             <input name="serviceArea" placeholder="Service area" className={formStyles.selectWFull}/>
                         </label>
+                        <label className="flex items-center gap-3 text-sm text-white">                       
+                                <span className="h-5 w-5"> <input type="checkbox" name="acceptsPets"  />  </span> 
+                                Accepts pets     
+                        </label>
                     </div>
                     <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}> 
                         Add chauffeur 
@@ -206,31 +213,37 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                             <span className= {mobileStyle.infoValue} >{chauffeur.phone}</span>
                         </p>
                     </div>
-
-                    <div className="mt-4 grid gap-3">
-                        <div>
-                            <p className="mt-1">
-                                <span className= {mobileStyle.inforCaption}>Service area: </span>
-                                <span className= {mobileStyle.infoValue} >{chauffeur.service_area || "- - -"}</span>
-                            </p>
-
-                            <p className="mt-1">
+                    <p className="mt-1">
+                        <span className= {mobileStyle.inforCaption}>Service area: </span>
+                        <span className= {mobileStyle.infoValue} >{chauffeur.service_area || "- - -"}</span>
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-3">
+                        
+                            <div className="">
                                 <span className= {mobileStyle.inforCaption}>Rating: </span>
                                 <span className= {mobileStyle.infoValue} >{chauffeur.rating}</span>
-                            </p>
-                        </div>
+                            </div>
+                            <div className="">
+                                <span className={mobileStyle.inforCaption}>  Pets:  </span>
+                                  <span  className={chauffeur.accepts_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed } >
+                                     {chauffeur.accepts_pets ? " Yes ✓ " : " No ✕ "}
+                                 </span>
+                            </div>                     
+
+                            <form  action={updateChauffeurStatus} className="mt-1 flex items-center gap-2">
+                                <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+                                <label htmlFor={`status-${chauffeur.id}`} className={mobileStyle.inforCaption}> Status: </label>
+                                <select id={`status-${chauffeur.id}`} name="accountStatus" defaultValue={chauffeur.account_status} className={mobileStyle.selectOption}>
+                                    {chauffeurStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
+                                </select>
+                            </form>
                     </div>
 
-                    <form  action={updateChauffeurStatus} className="mt-1 flex items-center gap-2">
-                        <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                        <label htmlFor={`status-${chauffeur.id}`} className={mobileStyle.inforCaption}>
-                            Status:
-                        </label>
-                        <select id={`status-${chauffeur.id}`} name="accountStatus" defaultValue={chauffeur.account_status} className={mobileStyle.selectOption}>
-                            {chauffeurStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
-                        </select>
-                    </form>
+
+
                     <div className="mt-5 flex flex-wrap items-center gap-3">
+
+
                         <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
                             Details
                         </Link>
@@ -259,6 +272,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                 <th className={tableStyles.cellCaption}>Phone</th>
                                 <th className={tableStyles.cellCaption}>Service area</th>
                                 <th className={tableStyles.cellCaption}>Rating</th>
+                                <th className ={tableStyles.cellCaption}> pet </th>
                                 <th className={tableStyles.cellCaption}>Status</th>
                                 <th className={tableStyles.cellCaption}>Actions</th>
                             </tr>
@@ -271,7 +285,14 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                     <td className={tableStyles.cell}>{chauffeur.email}</td>
                                     <td className={tableStyles.cell}>{chauffeur.phone}</td>
                                     <td className={tableStyles.cell}> {chauffeur.service_area || "-"} </td>
-                                    <td className={tableStyles.cell}>{chauffeur.rating}</td>
+                                    <td className={tableStyles.cell}>{chauffeur.rating}</td>                                   
+
+                                    <td className={tableStyles.cell}>
+                                        <span  className={  chauffeur.accepts_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                            {chauffeur.accepts_pets ? "✓" : "X"}
+                                        </span>
+                                    </td>
+
                                     <td className={tableStyles.cellCaption}>
                                         <form action={updateChauffeurStatus} className="flex items-center gap-2">
                                             <input type="hidden" name="chauffeurId" value={chauffeur.id} />
@@ -290,7 +311,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                                 Save
                                             </button>
                                         </form>
-                                    </td>                                   
+                                    </td>     
                                     <td className={tableStyles.cellCaption}>
                                         <div className="flex flex-wrap items-center gap-3">
                                             <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>

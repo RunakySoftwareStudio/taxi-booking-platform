@@ -6,20 +6,13 @@ import { formStyles, pageStyles } from "@/styles/classNames";
 
 export const dynamic = "force-dynamic";
 
-type AdminChauffeurEditPageProps = {
-  params: Promise<{
-    chauffeurId: string;
-  }>;
-};
+type AdminChauffeurEditPageProps = { params: Promise<{  chauffeurId: string; }>;};
 
-export default async function AdminChauffeurEditPage({
-  params,
-}: AdminChauffeurEditPageProps) {
+export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEditPageProps) {
   const { chauffeurId } = await params;
-
   const { data: chauffeurRow, error } = await supabaseAdmin
     .from("chauffeurs")
-    .select("id, name, email, phone, service_area, account_status")
+    .select("id, name, email, phone, service_area, account_status,accepts_pets ")
     .eq("id", chauffeurId)
     .single();
 
@@ -27,14 +20,9 @@ export default async function AdminChauffeurEditPage({
     notFound();
   }
 
-  const { data: accountStatuses, error: statusError } = await supabaseAdmin.rpc(
-    "get_enum_values",
-    { p_enum_type_name: "chauffeur_account_status" }
-  );
+  const { data: accountStatuses, error: statusError } = await supabaseAdmin.rpc( "get_enum_values", { p_enum_type_name: "chauffeur_account_status" }  );
 
-  if (statusError) {
-    console.error("Could not load chauffeur account statuses:", statusError);
-  }
+  if (statusError) { console.error("Could not load chauffeur account statuses:", statusError);  }
 
   return (
     <main className={pageStyles.main}>

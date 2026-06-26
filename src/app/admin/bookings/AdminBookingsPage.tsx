@@ -106,7 +106,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
 
     const { data: approvedChauffeurs, error: chauffeursError } = await supabaseAdmin
         .from("chauffeurs")
-        .select("id, name, email, account_status")
+        .select("id, name, email, account_status,accepts_pets ")
         .eq("account_status", "approved")
         .order("name", { ascending: true });
 

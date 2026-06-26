@@ -17,7 +17,7 @@ export default async function ChauffeursPreview() {
   const todayDate = getTodayDateInputValue();
   const { data: chauffeurRows, error: chauffeursError } = await supabaseAdmin
       .from("chauffeurs")
-      .select("id, name, service_area, account_status")
+      .select("id, name, service_area, account_status,accepts_pets")
       .eq("account_status", "approved")
       .order("name", { ascending: true })
       .limit(6);

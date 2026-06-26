@@ -20,7 +20,7 @@ export default async function AdminVehicleEditPage({params}: AdminVehicleEditPag
 
     const { data: chauffeurs, error: chauffeursError } = await supabaseAdmin
         .from("chauffeurs")
-        .select("id, name, email, account_status")
+        .select("id, name, email, account_status,accepts_pets")
         .order("name", { ascending: true });
     if (chauffeursError) { console.error("Could not load chauffeurs:", chauffeursError); }
 

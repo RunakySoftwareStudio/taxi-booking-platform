@@ -11,6 +11,7 @@ type ChauffeurForEdit = {
   phone: string;
   service_area: string | null;
   account_status: string;
+  accepts_pets: boolean; 
 };
 
 type AdminChauffeurEditFormProps = {
@@ -26,6 +27,7 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
   const [phone, setPhone] = useState(chauffeur.phone);
   const [serviceArea, setServiceArea] = useState(chauffeur.service_area ?? "");
   const [accountStatus, setAccountStatus] = useState(chauffeur.account_status);
+  const [acceptsPets, setAcceptsPets] = useState(chauffeur.accepts_pets);
 
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -42,7 +44,7 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
         const response = await fetch(`/api/admin/chauffeurs/${chauffeur.id}`, {
             method: "PATCH",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ name,  email, phone, serviceArea,  accountStatus }),
+            body: JSON.stringify({ name,  email, phone, serviceArea,  accountStatus, acceptsPets }),
         });
 
         const result = await response.json();
@@ -86,6 +88,11 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
               <select value={accountStatus} onChange={(event) => setAccountStatus(event.target.value)} required className={formStyles.selectWFull} >
                 {accountStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option>  ))}
               </select>
+            </label>
+            
+            <label className="flex items-center gap-3 text-sm text-white">
+              <input type="checkbox" checked={acceptsPets} onChange={(event) => setAcceptsPets(event.target.checked)}  className="h-5 w-5"/>             
+                Accepts pets
             </label>
           </div>
 

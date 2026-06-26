@@ -47,6 +47,7 @@ CREATE TABLE chauffeurs (
   service_area TEXT,
   account_status chauffeur_account_status NOT NULL DEFAULT 'pending_approval',
   rating NUMERIC(2, 1) DEFAULT 0.0,
+  accepts_pets boolean not null default false,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
