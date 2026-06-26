@@ -15,6 +15,7 @@ type BookingForEdit = {
   trip_type: string;
   notes: string | null;
   status: string;
+  has_pets: boolean; 
   chauffeur_id: string | null;
   clients: {
     name: string;
@@ -63,10 +64,12 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     const [clientName, setClientName] = useState(booking.clients?.name ?? "");
     const [clientEmail, setClientEmail] = useState(booking.clients?.email ?? "");
     const [clientPhone, setClientPhone] = useState(booking.clients?.phone ?? "");
+    const [hasPets, setHasPets] = useState(booking.has_pets ?? false);
+
 
     const [successMessage, setSuccessMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
-    const [isSaving, setIsSaving] = useState(false);
+   const [isSaving, setIsSaving] = useState(false);
 
     /*=======================================================================================
         If pickupDate exists AND pickupDate is earlier than today,use pickupDate as the minimum date.
@@ -86,7 +89,8 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
       const response = await fetch(`/api/admin/bookings/${booking.id}`, {
         method: "PATCH",
         headers: {"Content-Type": "application/json", },
-        body: JSON.stringify({clientName, clientEmail, clientPhone, pickupLocation, destination, pickupDate, pickupTime,passengers, luggage,tripType,notes,status, chauffeurId, }), });
+        body: JSON.stringify({clientName, clientEmail, clientPhone, pickupLocation, destination, pickupDate, pickupTime,
+                                passengers, luggage,tripType,notes,status, hasPets,chauffeurId, }), });
 
       const result = await response.json();
       if (!response.ok) {setErrorMessage(result.message || "Could not update booking."); return; }
@@ -128,14 +132,19 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                 <div className={formStyles.formInfoCellCaption}>  Destination
                     <input  value={destination} onChange={(event) => setDestination(event.target.value)}  required className={formStyles.inputWFullCyan}/>
                 </div>
-
-                <div className={formStyles.formInfoCellCaption}> Date
-                    <input type="date" value={pickupDate} onChange={(event) => setPickupDate(event.target.value)} required  min={minimumPickupDate} max="2099-12-31" className={formStyles.inputWFullCyan}/>
+                <div className="grid gap-5 md:grid-cols-2">
+                    <div>
+                        <span className={formStyles.formInfoCellCaption}> Date
+                            <input type="date" value={pickupDate} onChange={(event) => setPickupDate(event.target.value)} required  min={minimumPickupDate} max="2099-12-31" className={formStyles.inputWFullCyan}/>
+                        </span >
+                    </div>
+                    <div>
+                        <span  className={formStyles.formInfoCellCaption}> Time
+                            <input type="time" value={pickupTime}onChange={(event) => setPickupTime(event.target.value)} required className={formStyles.inputWFullCyan} />
+                        </span> 
+                    </div>
                 </div>
 
-                <div className={formStyles.formInfoCellCaption}> Time
-                    <input type="time" value={pickupTime}onChange={(event) => setPickupTime(event.target.value)} required className={formStyles.inputWFullCyan} />
-                </div>
 
                 <div className="grid gap-5 md:grid-cols-2"> 
                     <div className={formStyles.formInfoCellCaption}> Passengers
@@ -164,6 +173,10 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                             {chauffeurs.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status}) </option> ))  }
                     </select>
                 </div>
+                <label className="flex items-center gap-3 text-sm text-white">                       
+                    <input type="checkbox" checked={hasPets} onChange={(event) => setHasPets(event.target.checked)}  className="h-5 w-5"/>   
+                    has pets     
+                </label>
                 <div className="md:col-span-2"> 
                     <span className={formStyles.span}> Notes </span>
                     <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder="Optional booking notes" className={formStyles.textarea} />

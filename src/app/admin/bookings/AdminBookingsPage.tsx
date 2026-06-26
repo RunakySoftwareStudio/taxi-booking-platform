@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 
 import Link from "next/link"; 
+import { Fragment } from "react";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
 
@@ -25,7 +26,7 @@ type BookingRow =
 {
     id: string;  pickup_location: string;  destination: string;  pickup_date: string;
     pickup_time: string;  passengers: number;  luggage: number;  trip_type: string;
-    status: string;  created_at: string; notes: string;
+    status: string;  created_at: string; notes: string; has_pets: boolean;
     clients: {name: string;  email: string;  phone: string; } | null;
     chauffeur_id: string | null;
     chauffeurs: {  name: string; email: string; phone: string; } | null;
@@ -84,7 +85,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     .select
     ( `
         id, pickup_location, destination, pickup_date, pickup_time, 
-        passengers, luggage, trip_type, status, notes, created_at,
+        passengers, luggage, trip_type, status, notes, created_at, has_pets,
         clients (name, email, phone ),
         chauffeur_id,
         chauffeurs (name, email, phone ) `
@@ -164,41 +165,37 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                     {bookingRows.map((booking) => (
                             <article  key={booking.id} className={mobileStyle.article} >
                                 <div className="border-b border-white/10 pb-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="mt-1">
-                                            <span className={mobileStyle.inforCaption}>Client name: </span>
-                                            <span className={mobileStyle.infoValue}>{booking.clients?.name}</span>
-                                        </p>
-
-                                        <p className="mt-1">
-                                            <span className={mobileStyle.inforCaption}>Email: </span>
-                                            <span className={mobileStyle.infoValue}>{booking.clients?.email}</span>
-                                        </p>
-
-                                        <div className="grid grid-cols-2 mt-1">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="mt-1">
+                                                <span className={mobileStyle.inforCaption}>Client name: </span>
+                                                <span className={mobileStyle.infoValue}>{booking.clients?.name}</span>
+                                            </p>
+                                            <p className="mt-1">
+                                                <span className={mobileStyle.inforCaption}>Email: </span>
+                                                <span className={mobileStyle.infoValue}>{booking.clients?.email}</span>
+                                            </p>
+                                            <div className="grid grid-cols-2 mt-1">
+                                                <p>
+                                                    <span className={mobileStyle.inforCaption}>Phone: </span>
+                                                    <span className={mobileStyle.infoValue}>{booking.clients?.phone}</span>
+                                                </p>                                            
+                                            </div>
+                                        
                                             <p>
-                                                <span className={mobileStyle.inforCaption}>Phone: </span>
-                                                <span className={mobileStyle.infoValue}>{booking.clients?.phone}</span>
-                                            </p>                                            
-                                        </div>
-                                    
-                                        <p>
-                                            <span className={mobileStyle.inforCaption}> Pickup  </span>
-                                            <span className={mobileStyle.infoValue}>{booking.pickup_location}</span>
-                                        </p>
-                                        <div>
-                                            <span className={mobileStyle.inforCaption}> Destination:  </span>
-                                            <span className={mobileStyle.infoValue}>{booking.destination}</span>
-                                        </div>
-
+                                                <span className={mobileStyle.inforCaption}> Pickup  </span>
+                                                <span className={mobileStyle.infoValue}>{booking.pickup_location}</span>
+                                            </p>
+                                            <div>
+                                                <span className={mobileStyle.inforCaption}> Destination:  </span>
+                                                <span className={mobileStyle.infoValue}>{booking.destination}</span>
+                                            </div>
+                                        </div>                                   
                                     </div>
-                                    
-                                </div>
                                 </div>
 
-                                <div className="mt-4 grid gap-3">
-                                        <div className="grid grid-cols-2 gap-2">
+                                <div className="mt-4 grid gap-2">
+                                        <div className="grid grid-cols-2 ">
                                             <div>
                                                 <span className={mobileStyle.inforCaption}> Date: </span>
                                                 <span className={mobileStyle.infoValue}>{formatShortDate(booking.pickup_date)}</span>
@@ -210,12 +207,11 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 ">
                                             <div>
                                                 <span className={mobileStyle.inforCaption}> Pax: </span>
                                                 <span className={mobileStyle.infoValue}>{booking.passengers}</span>
                                             </div>
-
                                             <div>
                                                 <span className={mobileStyle.inforCaption}> Trip: </span>
                                                 <span className={mobileStyle.infoValue}>{booking.trip_type}</span>
@@ -226,22 +222,33 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                             <span className={mobileStyle.inforCaption}>  Notes:  </span>
                                             <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
                                         </div>
+                                        <div>
+                                            <span className={mobileStyle.inforCaption}>  Has pets:  </span>
+                                            <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                                {booking.has_pets  ? "yes ✓" : "No"}
+                                            </span>
+                                        </div>
                                 </div>
 
-                                <form action={updateBookingAdminFields} className="mt-5 grid gap-3">
+                                <form action={updateBookingAdminFields} className="mt-2 grid gap-3">
                                     <input type="hidden" name="bookingId" value={booking.id} />
-                                    <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={`${formStyles.selectForm} w-full`}  >
-                                    <option value="">Unassigned</option>
-                                        {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option> ))}
-                                    </select>
-                                    <select name="status" defaultValue={booking.status} className={`${formStyles.selectForm} w-full`} >
-                                        {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
-                                    </select>
+                                    <span className={mobileStyle.infoValue}>
+                                        <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={`${formStyles.selectForm} w-full`}  >
+                                            <option value="">Unassigned</option>
+                                            {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option> ))}
+                                        </select>
+                                    </span>
+
+                                    <span>
+                                        <select name="status" defaultValue={booking.status} className={`${formStyles.selectForm} w-full`} >
+                                            {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
+                                        </select>
+                                    </span>
+
                                     <div className="grid grid-cols-3 gap-2">
                                         <button type="submit" className={formStyles.smallButton}> Save </button>
                                         <Link  href={`/admin/bookings/${booking.id}`}  className={formStyles.smallButton} > Edit </Link>
                                     </div>
-
                                 </form>
                             </article>	  ))}
 
@@ -259,35 +266,23 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                             <th className={tableStyles.cellCaption}>Date</th>
                             <th className={tableStyles.cellCaption}>Time</th>
                             <th className={tableStyles.cellCaption}>Pax</th>
-                            <th className={tableStyles.cellCaption}>Trip type</th>
-                            <th className={tableStyles.cellCaption}>Actions</th>
+                            <th className={tableStyles.cellCaption}>Trip </th>
+                            <th className={tableStyles.cellCaption}>Luggage</th>
+                            <th className={tableStyles.cellCaption}>Has pet</th>
+                            <th className={tableStyles.cellCaption}></th>
+                            
                         </tr>
                         </thead>
 
                         <tbody>
                             {bookingRows.map((booking) => (
-                                <tr key={booking.id} className={tableStyles.rowCyan}>
+                            <Fragment key={booking.id}>
+                                <tr className={`${tableStyles.rowCyan} align-top border-b-0`}>
                                     <td className={tableStyles.cellCaption}>
-                                        <div className={tableStyles.cellCaptionGroup}>
-                                            {booking.clients?.name || "Unknown client"}
-                                        </div>
-                                        <div className={tableStyles.cellInfo}>
-                                            {booking.clients?.email}
-                                        </div>
-                                        <div className={tableStyles.cellInfo}>
-                                            {booking.clients?.phone}
-                                        </div>
-                                        <div className="mt-3">
-                                            <span>
-                                                <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
-                                                    Edit
-                                                </Link>
-                                            </span>
-                                       
-                                                <span className={tableStyles.cellCaption} > Notes:  </span>
-                                                <span className={tableStyles.cell} > {booking.notes?booking.notes:"-----"} </span>
-                                        
-
+                                        <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"}  </div>
+                                            <div className={tableStyles.cellInfo}> {booking.clients?.email}</div>
+                                            <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
+                                            <div className="mt-3">
                                         </div>
                                     </td>
 
@@ -295,32 +290,53 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                     <td className={tableStyles.cell}>{booking.destination}</td>
                                     <td className={tableStyles.cell}>{formatShortDate(booking.pickup_date)}</td>
                                     <td className={tableStyles.cell}>{formatShortTime(booking.pickup_time)}</td>
-                                    <td className={tableStyles.cell}>{booking.passengers}</td>
-                                    <td className={tableStyles.cell}>{booking.trip_type}</td>
-                                   
-
+                                    <td className={tableStyles.cell}>Pax:{" "}{booking.passengers}</td>
+                                    <td className={tableStyles.cell}>Trip:{" "}{booking.trip_type}</td>
+                                    <td className={tableStyles.cell}>Luggage:{" "} {booking.luggage}</td>
+                                    <td className={`${tableStyles.cell} whitespace-nowrap`}>
+                                        <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                            {booking.has_pets  ? "Pet ✓" : "No pet"}
+                                        </span>
+                                    </td>
                                     <td className={tableStyles.cell}>
-                                        <form action={updateBookingAdminFields} className="flex min-w-75 flex-wrap items-center gap-3"  >
-                                            <input type="hidden" name="bookingId" value={booking.id} />
-
-                                            <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""} className={formStyles.selectForm} >
-                                                <option value="">Unassigned</option>
-                                                {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
-                                            </select>
-
-                                            <select name="status" defaultValue={booking.status} className={formStyles.selectForm}  >
-                                                {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option>  ))}
-                                            </select>
-
-                                            <button type="submit" className={formStyles.smallButton}>
-                                                Save
-                                            </button>
-                                        </form>
                                     </td>
                                 </tr>
-                            ))}
 
-                            {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={9}> No bookings found yet. </td></tr>)}
+                                <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
+                                    <td colSpan={4} className="px-4 pb-6 pt-0 text-sm text-slate-300">
+                                        <div className="rounded-xl bg-slate-950/30 px-3 py-2">
+                                            <span className="font-semibold text-cyan-300">Notes: </span>
+                                            <span className="wrap-break-word">
+                                            {booking.notes || "-----"}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td colSpan={2} className="px-4 pb-4 text-sm text-slate-300">
+                                        Booking status 
+                                        <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
+                                           {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
+                                        </select>
+                                    </td>
+                                    <td colSpan={2} className="px-4 pb-4 text-sm text-slate-300">
+                                        <p > Assinged chauffeur </p>
+                                        <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={formStyles.selectForm} >
+                                            <option value="">Unassigned</option>
+                                            {chauffeurOptions.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
+                                        </select>
+                                    </td>
+                                    <div className="mt-6">
+
+                                        <td colSpan={2} className="px-4 pb-4 text-sm text-slate-300">
+                                            <Link  href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} > Edit </Link>
+                                        </td>
+                                        <td colSpan={1} className="px-4 pb-4 text-sm text-slate-300">
+                                            <button type="submit" className={formStyles.smallButton}> Save </button>
+                                        </td>
+                                    </div>
+                                </tr>
+                            </Fragment>))}
+
+                            {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={10}> No bookings found yet. </td></tr>)}
                         </tbody>
                     </table>
                 </div>

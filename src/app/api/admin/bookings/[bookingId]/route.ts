@@ -43,6 +43,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const tripType = String(body.tripType || "").trim();
     const notes = String(body.notes || "").trim();
     const status = String(body.status || "").trim();
+    const hasPets  =  Boolean(body.hasPets )
     const chauffeurId = String(body.chauffeurId || "").trim();
 
     const passengerCount = Number(body.passengers);
@@ -98,6 +99,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
                 trip_type: tripType,
                 notes: notes || null,
                 status,
+                has_pets:hasPets,
                 chauffeur_id: chauffeurId || null})
         .eq("id", bookingId);
 

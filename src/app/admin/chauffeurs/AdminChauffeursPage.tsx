@@ -286,7 +286,6 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                     <td className={tableStyles.cell}>{chauffeur.phone}</td>
                                     <td className={tableStyles.cell}> {chauffeur.service_area || "-"} </td>
                                     <td className={tableStyles.cell}>{chauffeur.rating}</td>                                   
-
                                     <td className={tableStyles.cell}>
                                         <span  className={  chauffeur.accepts_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
                                             {chauffeur.accepts_pets ? "✓" : "X"}

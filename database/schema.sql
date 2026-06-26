@@ -125,6 +125,7 @@ CREATE TABLE bookings (
   trip_type trip_type NOT NULL,
   notes TEXT,
   status booking_status NOT NULL DEFAULT 'pending',
+  has_pets boolean not null default false,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );

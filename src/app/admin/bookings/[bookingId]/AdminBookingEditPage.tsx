@@ -12,7 +12,7 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
     const { bookingId } = await params;
     const { data: bookingRow, error } = await supabaseAdmin
         .from("bookings")
-        .select( ` id, pickup_date,pickup_location, destination,  pickup_time, passengers, luggage, trip_type, notes, status,  chauffeur_id, clients ( name, email,phone) `    )
+        .select( ` id, pickup_date,pickup_location, destination,  pickup_time, passengers, luggage, trip_type, notes, status,  chauffeur_id, has_pets, clients  ( name, email,phone) `    )
         .eq("id", bookingId)
         .single();
 
