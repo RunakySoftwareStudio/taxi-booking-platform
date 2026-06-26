@@ -246,7 +246,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                     </article>
                 ))}
 
-                {chauffeurRows.length === 0 && ( <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white"> No chauffeurs found yet.</div> )}
+                {chauffeurRows.length === 0 && ( <div className={tableStyles.cellEmpty}> No chauffeurs found yet.</div> )}
                 </div>
 
                 {/* =================Desktop chauffeur table ==========================*/}

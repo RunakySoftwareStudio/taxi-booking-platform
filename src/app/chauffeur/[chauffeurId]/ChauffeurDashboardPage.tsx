@@ -182,7 +182,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 {/* Mobile vehicle cards */}
                 <div className="mt-6 grid gap-4 lg:hidden">
                     {vehicleRows.map((vehicle) => (
-                    <article key={vehicle.id} className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">
+                    <article key={vehicle.id} className={mobileStyle.article}>
                         <div>
                             <span className= {mobileStyle.inforCaption}>Brand(Model): </span>
                             <span className={mobileStyle.infoValue}> {vehicle.brand} ({vehicle.model})</span>
@@ -215,11 +215,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         </div>
                     </article>  ))}
 
-                    {vehicleRows.length === 0 && (
-                        <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">
-                            No vehicles connected to this chauffeur yet.
-                        </div>
-                    )}
+                    {vehicleRows.length === 0 && ( <div className={tableStyles.cellEmpty}> No vehicles connected to this chauffeur yet. </div>  )}
                 </div>
 
                 {/* Desktop vehicle table */}
@@ -260,7 +256,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 {/* Mobile booking cards */}
                 <div className="mt-6 grid gap-4 lg:hidden">
                 {bookingRows.map((booking) => (
-                    <article key={booking.id}  className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
+                    <article key={booking.id}  className={mobileStyle.article}>
                     <div className="border-b border-white/10 pb-4">
                             <div>
                                 <span className= {mobileStyle.inforCaption}>Client: </span>
@@ -320,11 +316,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                     </article>
                 ))}
 
-                {bookingRows.length === 0 && (
-                    <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">
-                    No assigned bookings found yet.
-                    </div>
-                )}
+                {bookingRows.length === 0 && ( <div className={tableStyles.cellEmpty}>  No assigned bookings found yet.  </div>)}
                 </div>
 
                 {/* Desktop booking table */}

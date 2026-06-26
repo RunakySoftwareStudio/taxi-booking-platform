@@ -89,7 +89,7 @@ export const tableStyles = {
     statusRedClasses:         "bg-red-600/25 text-red-50 ring-1 ring-red-500/40",
     errorCell:                "mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200",
     DivCyanList:              "mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4",
-    okCheckSign:                    "text-sm font-bold text-green-300",
+    okCheckSign:              "text-sm font-bold text-green-300",
 };
 
 export const mobileStyle ={
@@ -98,4 +98,6 @@ export const mobileStyle ={
     infoValue:                      "mt-1 wrap-break-word text-white",
     infoValueBold:                  "mt-1 wrap-break-word text-white font-bold wrap-break-word ",
     selectOption:                   "rounded-lg border border-cyan-400/30 bg-slate-950 px-2 py-0 text-white text-sm outline-none focus:border-cyan-300 leading-tight h-7 w-42 ",
+    article:                        "rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white",
+    line:                           "border-t border-cyan-400/60 pt-4"  ,
 };

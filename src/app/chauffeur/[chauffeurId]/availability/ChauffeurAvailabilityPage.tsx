@@ -2,7 +2,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { pageStyles, tableStyles, formStyles } from "@/styles/classNames";
+import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/Availability/page.tsx 
@@ -185,7 +185,6 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
           </form>
 
           <h2 className={tableStyles.headerTableSmall}>Availability records</h2>
-          -------------------
           {/* Mobile availability cards */}
           <div className="mt-6 grid gap-4 lg:hidden">
             {availabilityRows.map((availability) => { let statusColorClasses = tableStyles.statusRedClasses;
@@ -195,7 +194,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
               if (availability.status === "busy") { statusColorClasses = tableStyles.statusYellowClasses;  }
 
               return (
-                <article  key={availability.id} className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
+                <article  key={availability.id} className={mobileStyle.article}>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <span className="text-sm tracking-tight text-white"> Date:  </span>
@@ -203,7 +202,6 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                     </div>
 
                     <div>
-                      
                       <div className="flex items-center gap-2">
                         <span className="text-sm tracking-tight text-white"> Status:  </span>
                         <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}  > {availability.status} </span>
@@ -241,13 +239,8 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
               );
             })}
 
-            {availabilityRows.length === 0 && (
-              <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">
-                No availability records found yet.
-              </div>
-            )}
+            {availabilityRows.length === 0 && ( <div className={tableStyles.cellEmpty}>  No availability records found yet. </div> )}
           </div>
-          --------------------------------------
           {/* Desktop availability table */}
           <div className={`${tableStyles.tableDiv} hidden lg:block`}>
             <table className={tableStyles.table1000}>
@@ -301,7 +294,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                       })
                   }
 
-                  {availabilityRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={7}> No availability records found yet. </td> </tr> )}
+                  {availabilityRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={7}> No availability records found yet. </td></tr> )}
               </tbody>
             </table>
           </div>  

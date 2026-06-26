@@ -84,7 +84,7 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                         if (booking.status === "pending" || booking.status === "confirmed") {statusColorClasses = tableStyles.statusYellowClasses;  }
 
                         return (
-                        <article key={booking.id} className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
+                        <article key={booking.id} className={mobileStyle.article}>
                             <div >
                                 <div>
                                     <span className={mobileStyle.inforCaption}>Pickup:  </span>
@@ -124,7 +124,7 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                             </div>
                         </article> );})
                     }
-                    {bookingRows.length === 0 && (<div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white"> No bookings found for this client.</div> )}
+                    {bookingRows.length === 0 && (<div className={tableStyles.cellEmpty}> No bookings found for this client.</div> )}
                 </div>
 
                 {/* Desktop booking history table */}

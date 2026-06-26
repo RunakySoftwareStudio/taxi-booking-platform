@@ -162,7 +162,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                 {/* Mobile booking cards */}
                 <div className="mt-10 grid gap-4 lg:hidden">
                     {bookingRows.map((booking) => (
-                            <article  key={booking.id} className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" >
+                            <article  key={booking.id} className={mobileStyle.article} >
                                 <div className="border-b border-white/10 pb-4">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
@@ -245,7 +245,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 </form>
                             </article>	  ))}
 
-                    {bookingRows.length === 0 && (<div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white">  No bookings found yet. </div> )}
+                    {bookingRows.length === 0 && (<div className={mobileStyle.article}>  No bookings found yet. </div> )}
                 </div>
 
                 {/* Desktop booking table */}

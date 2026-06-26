@@ -72,7 +72,7 @@ export default async function AdminClientsPage()
                 </div>
             </article> ))}
 
-            {clientRows.length === 0 && ( <div className="rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white"> No clients found yet. </div> )}
+            {clientRows.length === 0 && ( <div className={tableStyles.cellEmpty}> No clients found yet. </div> )}
           </div>
 
         {/* Desktop clients table */}
