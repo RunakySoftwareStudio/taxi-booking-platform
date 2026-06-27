@@ -15,7 +15,7 @@ export const formStyles = {
     selectForm:             "rounded-lg border border-cyan-400/30 bg-slate-950 h-9 px-3 py-0 text-white outline-none focus:border-cyan-300",
     label:                  "block text-sm font-medium text-slate-200",
     info:                   "rounded-2xl border-3 border-cyan-400/30 bg-slate-950 p-5",
-    textarea:               "rounded-lg border border-white/10 bg-slate-950 px-3 py-0 text-white outline-none focus:border-cyan-300 w-full text-xs h-14 ",
+    textarea:               "rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-300 w-full text-xs h-14 ",
     primaryButtonOutside:   "inline-flex h-10 w-fit items-center justify-center rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     primaryButtonDP:        "rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold leading-none text-cyan-100 hover:bg-cyan-400/20 mt-1 h-12 w-fit self-start ",//phone: full width, desktop: small width
     smallButton:            "shrink-0 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20 inline-flex items-center justify-center text-center",
