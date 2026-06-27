@@ -298,44 +298,48 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                             {booking.has_pets  ? "Pet ✓" : "No pet"}
                                         </span>
                                     </td>
+                                    <td className={tableStyles.cell}></td>
                                 </tr>
-
                                 <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
-                                    <td colSpan={4} className="px-4 pb-6 pt-0 text-sm text-slate-300">
+                                    <td colSpan={5} className="px-4 pb-4 pt-0 text-sm text-slate-300">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
-                                            <span className="font-semibold text-cyan-300">Notes: </span>
-                                            <span className="wrap-break-word">
-                                            {booking.notes || "-----"}
-                                            </span>
+                                        <span className="font-semibold text-cyan-300">Notes: </span>
+                                        <span className="wrap-break-word"> {booking.notes || "-----"} </span>
                                         </div>
                                     </td>
-                                    <td colSpan={2} className="px-4 pb-4 text-sm text-slate-300">
-                                        Booking status 
-                                        <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
-                                           {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
-                                        </select>
-                                    </td>
-                                    <td colSpan={2} className="px-4 pb-4 text-sm text-slate-300">
-                                        <p > Assinged chauffeur </p>
-                                        <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={formStyles.selectForm} >
-                                            <option value="">Unassigned</option>
-                                            {chauffeurOptions.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
-                                        </select>
-                                    </td>
-                                    <td colSpan={3} className="px-4 pb-4 pt-6 text-sm text-slate-300 align-top">
-                                        <div className="flex items-center gap-4">
+
+                                    <td colSpan={4} className="px-4 pb-4 pt-0 text-sm text-slate-300">
+                                        <form action={updateBookingAdminFields} className="flex items-end justify-end gap-3" >
+                                            <input type="hidden" name="bookingId" value={booking.id} />
+
+                                            <label className="grid w-32 shrink-0 gap-2">
+                                                <span>Booking status</span>
+                                                <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
+                                                    {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
+                                                </select>
+                                            </label>
+
+                                            <label className="grid w-44 shrink-0 gap-2">
+                                                <span>Assigned chauffeur</span>
+                                                <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={formStyles.selectForm} >
+                                                    <option value="">Unassigned</option>
+                                                    {chauffeurOptions.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
+                                                </select>
+                                            </label>
+
                                             <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
                                                 Edit
                                             </Link>
                                             <button type="submit" className={formStyles.smallButton}>
                                                 Save
                                             </button>
-                                        </div>
+                                        </form>
                                     </td>
                                 </tr>
+
                             </Fragment>))}
 
-                            {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={10}> No bookings found yet. </td></tr>)}
+                            {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={11}> No bookings found yet. </td></tr>)}
                         </tbody>
                     </table>
                 </div>

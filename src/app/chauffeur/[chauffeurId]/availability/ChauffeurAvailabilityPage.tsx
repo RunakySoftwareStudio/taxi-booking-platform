@@ -151,7 +151,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
           <form action={addAvailability}  className={formStyles.form} >
             <input type="hidden" name="chauffeurId" value={chauffeurId} />
             <div className="grid gap-5 md:grid-cols-2">
-                  <div className="flex flex-wrap items-end gap-2 grid grid-cols-2">
+                  <div className="flex flex-wrap items-end gap-2 grid-cols-2">
                       <div className="block">
                           <span className={formStyles.label}>Date</span>
                           <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min={todayDate} max="2099-12-31" className={formStyles.inputWFullCyan} />

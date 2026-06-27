@@ -198,64 +198,61 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 {/*================= Mobile chauffeur cards ======================*/}
                 <div className="mt-6 grid gap-4 lg:hidden">
                 {sortedChauffeurRows.map((chauffeur) => (
-                    <article key={chauffeur.id}  className={ chauffeur.account_status === "inactive" ? formStyles.deActivateButtonPhone : formStyles.deActivateButtonPhone   } >
-                    <div className="border-b border-white/10 pb-4">
-                        <p className="mt-1">
-                            <span className= {mobileStyle.inforCaption}>Name: </span>
-                            <span className= {mobileStyle.infoValue} >{chauffeur.name}</span>
-                        </p>
-                        <p className="mt-1">
-                            <span className= {mobileStyle.inforCaption}>Email: </span>
-                            <span className= {mobileStyle.infoValue} >{chauffeur.email}</span>
-                        </p>
-                        <p className="mt-1">
-                            <span className= {mobileStyle.inforCaption}>Phone: </span>
-                            <span className= {mobileStyle.infoValue} >{chauffeur.phone}</span>
-                        </p>
-                    </div>
-                    <p className="mt-1">
-                        <span className= {mobileStyle.inforCaption}>Service area: </span>
-                        <span className= {mobileStyle.infoValue} >{chauffeur.service_area || "- - -"}</span>
-                    </p>
-                    <div className="mt-2 grid grid-cols-2 gap-3">
-                        
-                            <div className="">
-                                <span className= {mobileStyle.inforCaption}>Rating: </span>
-                                <span className= {mobileStyle.infoValue} >{chauffeur.rating}</span>
+                    <article key={chauffeur.id}  className={formStyles.deActivateButtonPhone } >
+                        <div className={ chauffeur.account_status === "inactive" ? `${formStyles.inactiveDivNoBorder} opacity-50` : formStyles.ativeDivNoBorder } >
+                            <div className="border-b border-white/10 pb-4">
+                                <p className="mt-1">
+                                    <span className= {mobileStyle.inforCaption}>{chauffeur.account_status === "inactive" ? "Not active:" : "Name:" }  </span>
+                                    <span className= {mobileStyle.infoValue} >{chauffeur.name}</span>
+                                </p>
+                                <p className="mt-1">
+                                    <span className= {mobileStyle.inforCaption}>Email: </span>
+                                    <span className= {mobileStyle.infoValue} >{chauffeur.email}</span>
+                                </p>
+                                <p className="mt-1">
+                                    <span className= {mobileStyle.inforCaption}>Phone: </span>
+                                    <span className= {mobileStyle.infoValue} >{chauffeur.phone}</span>
+                                </p>
                             </div>
-                            <div className="">
-                                <span className={mobileStyle.inforCaption}>  Pets:  </span>
-                                  <span  className={chauffeur.accepts_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed } >
-                                     {chauffeur.accepts_pets ? " Yes ✓ " : " No ✕ "}
-                                 </span>
-                            </div>                     
+                            <p className="mt-1">
+                                <span className= {mobileStyle.inforCaption}>Service area: </span>
+                                <span className= {mobileStyle.infoValue} >{chauffeur.service_area || "- - -"}</span>
+                            </p>
+                            <div className="mt-2 grid grid-cols-2 gap-3">
+                                
+                                    <div className="">
+                                        <span className= {mobileStyle.inforCaption}>Rating: </span>
+                                        <span className= {mobileStyle.infoValue} >{chauffeur.rating}</span>
+                                    </div>
+                                    <div className="">
+                                        <span className={mobileStyle.inforCaption}>  Pets:  </span>
+                                        <span  className={chauffeur.accepts_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed } >
+                                            {chauffeur.accepts_pets ? " Yes ✓ " : " No ✕ "}
+                                        </span>
+                                    </div>                     
 
-                            <form  action={updateChauffeurStatus} className="mt-1 flex items-center gap-2">
+                                    <form  action={updateChauffeurStatus} className="mt-1 flex items-center gap-2">
+                                        <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+                                        <label htmlFor={`status-${chauffeur.id}`} className={mobileStyle.inforCaption}> Status: </label>
+                                        <select id={`status-${chauffeur.id}`} name="accountStatus" defaultValue={chauffeur.account_status} className={mobileStyle.selectOption}>
+                                            {chauffeurStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
+                                        </select>
+                                    </form>
+                            </div>
+                        </div>
+                        <div className="mt-5 flex flex-wrap items-center gap-3">
+                            <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
+                                Details
+                            </Link>
+
+                            <form action={changeChauffeurActiveStatus}>
                                 <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                                <label htmlFor={`status-${chauffeur.id}`} className={mobileStyle.inforCaption}> Status: </label>
-                                <select id={`status-${chauffeur.id}`} name="accountStatus" defaultValue={chauffeur.account_status} className={mobileStyle.selectOption}>
-                                    {chauffeurStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
-                                </select>
+                                <input type="hidden" name="nextAccountStatus" value={chauffeur.account_status === "inactive" ? "approved" : "inactive"} />
+                                <button type="submit" className={ chauffeur.account_status === "inactive" ? formStyles.activateButton : formStyles.deActiveDeleteButton } >
+                                    {chauffeur.account_status === "inactive" ? "Activate" : "Deactivate"}
+                                </button>
                             </form>
-                    </div>
-
-
-
-                    <div className="mt-5 flex flex-wrap items-center gap-3">
-
-
-                        <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
-                            Details
-                        </Link>
-
-                        <form action={changeChauffeurActiveStatus}>
-                            <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                            <input type="hidden" name="nextAccountStatus" value={chauffeur.account_status === "inactive" ? "approved" : "inactive"} />
-                            <button type="submit" className={ chauffeur.account_status === "inactive" ? formStyles.activateButton : formStyles.deActiveDeleteButton } >
-                                {chauffeur.account_status === "inactive" ? "Activate" : "Deactivate"}
-                            </button>
-                        </form>
-                    </div>
+                        </div>
                     </article>
                 ))}
 

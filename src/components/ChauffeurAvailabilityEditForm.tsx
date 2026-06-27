@@ -99,7 +99,7 @@ export default function ChauffeurAvailabilityEditForm({ chauffeurId, availabilit
         <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
             <div className="grid gap-5 md:grid-cols-2">
 
-                <div className="flex flex-wrap items-end gap-2 grid grid-cols-2">
+                <div className="flex flex-wrap items-end gap-2 grid-cols-2">
                     <div className="block">
                         <span className={formStyles.label}>Date</span>
                         <input type="date" value={availableDate} onChange={(event) => setAvailableDate(event.target.value)} required  min={minimumAvailableDate} max="2099-12-31"  className={formStyles.inputWFullCyan}/>

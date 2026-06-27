@@ -109,7 +109,7 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
       {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p>)}
       {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
+        <section className="mt-1 rounded-2xl border border-white/10 bg-white/5 p-5">
             <h2 className="text-lg font-semibold text-white">Client information</h2>
             <div className="mt-5 grid gap-5 md:grid-cols-3">
                     <label className={formStyles.label}> Client name
