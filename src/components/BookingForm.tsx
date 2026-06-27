@@ -22,7 +22,8 @@ export default function BookingForm() {
     const [errorMessage, setErrorMessage] = useState("");
     const todayDate = getTodayDateInputValue();
     const bookingResultRef = useRef<HTMLDivElement | null>(null);
-    
+    const [hasPets, setHasPets] = useState(false);
+
     //When submittedBooking changes from null to a real booking,scroll smoothly to the result area.
     useEffect(() => {
         if (submittedBooking) { bookingResultRef.current?.scrollIntoView({
@@ -62,6 +63,7 @@ export default function BookingForm() {
             tripType: String(formData.get("tripType") || ""),
             notes: String(formData.get("notes") || ""),
             status: "pending",
+            hasPets,
         };
 
         setErrorMessage("");
@@ -82,6 +84,7 @@ export default function BookingForm() {
             setSubmittedBooking(result.booking);
             setSubmitted(true);
             form.reset();
+            setHasPets(false);
         } 
         catch (error) {   
             console.error("Could not submit booking:", error);
@@ -152,6 +155,11 @@ export default function BookingForm() {
                             {tripTypes.map((tripType) => ( <option key={tripType.value} value={tripType.value}> {tripType.label} </option>))}
                         </select>
                     </div>
+
+                    <label className="flex items-center gap-3 text-sm text-white">
+                        <input type="checkbox" name="has_pets" checked={hasPets} onChange={(event) => setHasPets(event.target.checked)}  className="h-5 w-5" />
+                        Has pets
+                    </label>
                 </div>
 
                 <div className="mt-5 sm:mt-6">
@@ -219,6 +227,13 @@ export default function BookingForm() {
                             <span className={formStyles.formPCyan}> Status:  </span>
                             <span className={formStyles.formP}>{submittedBooking.status}</span>
                         </div>
+                        <div className= "mt-1">                           
+                            <span className={formStyles.formPCyan}> Has pets:  </span>
+                                <span  className={ submittedBooking.hasPets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                    {submittedBooking.hasPets ? "✓" : "X"}
+                            </span>
+                        </div>
+                    
                     </div>
                     <div className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
                         <p className={formStyles.formH5MediumSemiBold}> Your booking reference </p>

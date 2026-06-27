@@ -298,8 +298,6 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                             {booking.has_pets  ? "Pet ✓" : "No pet"}
                                         </span>
                                     </td>
-                                    <td className={tableStyles.cell}>
-                                    </td>
                                 </tr>
 
                                 <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
@@ -324,15 +322,16 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                             {chauffeurOptions.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
                                         </select>
                                     </td>
-                                    <div className="mt-6">
-
-                                        <td colSpan={2} className="px-4 pb-4 text-sm text-slate-300">
-                                            <Link  href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} > Edit </Link>
-                                        </td>
-                                        <td colSpan={1} className="px-4 pb-4 text-sm text-slate-300">
-                                            <button type="submit" className={formStyles.smallButton}> Save </button>
-                                        </td>
-                                    </div>
+                                    <td colSpan={3} className="px-4 pb-4 pt-6 text-sm text-slate-300 align-top">
+                                        <div className="flex items-center gap-4">
+                                            <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
+                                                Edit
+                                            </Link>
+                                            <button type="submit" className={formStyles.smallButton}>
+                                                Save
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             </Fragment>))}
 

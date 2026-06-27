@@ -68,6 +68,7 @@ export async function POST(request: Request) {
                 trip_type: bookingRequest.tripType,
                 notes: bookingRequest.notes,
                 status: "pending",
+                has_pets: bookingRequest.hasPets,
             })
             .select()
             .single();
@@ -88,7 +89,8 @@ export async function POST(request: Request) {
 
             passengers: savedBooking.passengers,
             luggage: savedBooking.luggage,
-
+            hasPets: savedBooking.has_pets,
+                
             name: client.name,
             phone: client.phone,
             email: client.email,

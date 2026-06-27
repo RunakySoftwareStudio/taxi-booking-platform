@@ -98,28 +98,33 @@ export default function ChauffeurAvailabilityEditForm({ chauffeurId, availabilit
         </div>
         <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
             <div className="grid gap-5 md:grid-cols-2">
-                <label className={formStyles.label}> Date
-                    <input type="date" value={availableDate} onChange={(event) => setAvailableDate(event.target.value)} required  min={minimumAvailableDate} max="2099-12-31"  className={formStyles.inputWFullCyan}/>
-                </label>
 
-                <label className={formStyles.label}> Start time
-                    <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required className={formStyles.inputWFullCyan} />
-                </label>
+                <div className="flex flex-wrap items-end gap-2 grid grid-cols-2">
+                    <div className="block">
+                        <span className={formStyles.label}>Date</span>
+                        <input type="date" value={availableDate} onChange={(event) => setAvailableDate(event.target.value)} required  min={minimumAvailableDate} max="2099-12-31"  className={formStyles.inputWFullCyan}/>
+                    </div>
+                    <div className="block">
+                        <span className={formStyles.label}>Start time</span>
+                        <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required className={formStyles.inputWFullCyan} />
+                    </div>
 
-                <label className={formStyles.label}> End time
-                    <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required className={formStyles.inputWFullCyan}/>
-                </label>
+                    <div className="block">
+                        <span className={formStyles.label}>End time</span>
+                        <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required className={formStyles.inputWFullCyan} />
+                    </div>
+                    <div className={formStyles.label}> Status
+                        <select  value={status}  onChange={(event) => setStatus(event.target.value)}  required  className={formStyles.selectWFull}>
+                            {statusOptions.map((statusOption) => (  <option key={statusOption} value={statusOption}> {statusOption} </option> ))}
+                        </select>
+                    </div>
+                </div>
 
-                <label className={formStyles.label}>  Status
-                <select  value={status} onChange={(event) => setStatus(event.target.value)} required  className={formStyles.selectWFull} >
-                    {statusOptions.map((statusOption) => (  <option key={statusOption} value={statusOption}> {statusOption} </option> ))}
-                </select>
-                </label>
-
-                <label className="block">
+                <div className="md:col-span-2"> 
                     <span className={formStyles.span}> Notes </span>
-                    <textarea  value={notes} onChange={(event) => setNotes(event.target.value)}  placeholder="Optional notes" className={formStyles.textarea}  />                         
-                </label>  
+                    <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder="Optional booking notes" className={formStyles.textarea} />
+                </div>
+
             </div>
         <button  type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`}>
             {isSaving ? "Saving..." : "Save availability"}

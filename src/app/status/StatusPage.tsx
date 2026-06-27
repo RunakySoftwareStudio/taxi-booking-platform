@@ -15,6 +15,7 @@ import { type FormEvent, useState } from "react";
       trip_type: string;
       notes: string | null;
       status: string;
+      has_pets:boolean,
       clients: {
         name: string;
         email: string;
@@ -73,7 +74,7 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
       <main className={pageStyles.main}>
       <div className={pageStyles.container}> 
           <Link  href="./" className={formStyles.formInfoCell} > ← Back to homepage </Link>
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"> Booking status </p>
+          <p className={`mt-8 ${formStyles.captionUpTracking03Yellow}`}> Booking status </p>
           <h1 className={pageStyles.pageTitle}>Check your taxi booking</h1>
           <p className={pageStyles.pageDescription}> Enter your booking id and email address to view the current status of your trip. </p>
       
@@ -125,30 +126,36 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
                   </div>                  
               </div>
               <div className="grid grid-cols-2">
-                  <div>
-                      <span className={formStyles.formPCyan}> Date:  </span>
-                      <span className={formStyles.formP}>{booking.pickup_date}</span>
-                  </div>
-                  <div>
-                      <span className={formStyles.formPCyan}> Time:  </span>
-                      <span className={formStyles.formP}>{booking.pickup_time}</span>
-                  </div>
-                  <div>
-                      <span className={formStyles.formPCyan}> Passengers:  </span>
-                      <span className={formStyles.formP}>{booking.passengers}</span>
-                  </div>
-                  <div>
-                      <span className={formStyles.formPCyan}> Luggage:  </span>
-                      <span className={formStyles.formP}>{booking.luggage}</span>
-                  </div>
-                  <div>
-                      <span className={formStyles.formPCyan}> Trip type:  </span>
-                      <span className={formStyles.formP}>{booking.trip_type}</span>
-                  </div>
-                  <div>
-                      <span className={formStyles.formPCyan}> Status:  </span>
-                      <span className={formStyles.formP}>{booking.status}</span>
-                  </div>
+                    <div>
+                        <span className={formStyles.formPCyan}> Date:  </span>
+                        <span className={formStyles.formP}>{booking.pickup_date}</span>
+                    </div>
+                    <div>
+                        <span className={formStyles.formPCyan}> Time:  </span>
+                        <span className={formStyles.formP}>{booking.pickup_time}</span>
+                    </div>
+                    <div>
+                        <span className={formStyles.formPCyan}> Passengers:  </span>
+                        <span className={formStyles.formP}>{booking.passengers}</span>
+                    </div>
+                    <div>
+                        <span className={formStyles.formPCyan}> Luggage:  </span>
+                        <span className={formStyles.formP}>{booking.luggage}</span>
+                    </div>
+                    <div>
+                        <span className={formStyles.formPCyan}> Trip type:  </span>
+                        <span className={formStyles.formP}>{booking.trip_type}</span>
+                    </div>
+                    <div>
+                        <span className={formStyles.formPCyan}> Status:  </span>
+                        <span className={formStyles.formP}>{booking.status}</span>
+                    </div>
+                    <div className= "mt-1">                           
+                        <span className={formStyles.formPCyan}> Has pets:  </span>
+                            <span  className={ booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                {booking.has_pets ? "✓" : "X"}
+                        </span>
+                    </div>
               </div>
               {booking.chauffeurs? (
                   <div className={formStyles.formDivCyan}>

@@ -49,8 +49,8 @@ export default function LoginPage() {
   return (
     <main className={pageStyles.main}>
       <div className={pageStyles.containersmall}>
-        <Link href="/" className={formStyles.link}>  ← Back to homepage  </Link>
-        <p className={`mt-8 ${formStyles.formCaptionUpTracking03}`} >  Login </p>
+        <Link href="./" className={formStyles.formInfoCell} > ← Back to homepage </Link>
+        <p className={`mt-8 ${formStyles.captionUpTracking03Yellow}`} >  Login </p>
         <h1 className={pageStyles.pageTitle}>Sign in</h1>
         <p className={pageStyles.pageDescription}> Sign in to manage bookings, chauffeurs, clients, and vehicles. </p>
 
@@ -58,15 +58,15 @@ export default function LoginPage() {
           <div className="grid gap-6">
                 <label className="block">
                     <span className={formStyles.span}>Email address</span>
-                    <input name="email"  type="email"  required  placeholder="admin@example.com" className={formStyles.input} />
+                    <input name="email"  type="email"  required  placeholder="admin@example.com" className={formStyles.inputWFullYellow}  />
                 </label>
                 <label className="block">
                     <span className={formStyles.span}>Password</span>
-                    <input name="password"  type="password"  required placeholder="Your password" className={formStyles.input}/>
+                    <input name="password"  type="password"  required placeholder="Your password" className={formStyles.inputWFullYellow} />
                 </label>
           </div>
           <button
-            type="submit"  disabled={isLoading}  className={`mt-6 ${formStyles.primaryButtonDP}`} >  {isLoading ? "Signing in..." : "Sign in"}
+            type="submit"  disabled={isLoading}  className={`mt-6 ${formStyles.submitSmallButtonUserPage}`} >  {isLoading ? "Signing in..." : "Sign in"}
           </button>
           {errorMessage && ( <p className={tableStyles.errorCell}>  {errorMessage}  </p>  )}
         </form>

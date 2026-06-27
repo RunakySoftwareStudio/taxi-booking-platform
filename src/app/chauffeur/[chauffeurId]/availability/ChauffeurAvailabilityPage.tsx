@@ -150,38 +150,36 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
 
           <form action={addAvailability}  className={formStyles.form} >
             <input type="hidden" name="chauffeurId" value={chauffeurId} />
-            <div className="mt-6 grid gap-4 md:grid-cols-4">
-              <label className="block">
-                <span className={formStyles.span}>Date </span>
-                <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min={todayDate} max="2099-12-31" className={formStyles.inputWFullCyan} />
-              </label>
+            <div className="grid gap-5 md:grid-cols-2">
+                  <div className="flex flex-wrap items-end gap-2 grid grid-cols-2">
+                      <div className="block">
+                          <span className={formStyles.label}>Date</span>
+                          <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min={todayDate} max="2099-12-31" className={formStyles.inputWFullCyan} />
+                      </div>
+                      <div className="block">
+                          <span className={formStyles.label}>Start time</span>
+                          <input  name="startTime"  type="time"  required defaultValue={formValues.startTime} className={formStyles.inputWFullCyan} />
+                      </div>
 
-              <label className="block">
-                <span className={formStyles.span}> Start time </span>
-                <input  name="startTime"  type="time"  required defaultValue={formValues.startTime} className={formStyles.inputWFullCyan} />
-              </label>
+                      <div className="block">
+                          <span className={formStyles.label}>End time</span>
+                          <input name="endTime"  type="time"  required defaultValue={formValues.endTime}  className={formStyles.inputWFullCyan} />
+                      </div>
+                      <div className={formStyles.label}> Status
+                        <select name="status" required defaultValue={formValues.status} className={formStyles.selectWFull} >
+                          {availabilityStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
+                        </select>
+                      </div>
+                  </div>
 
-              <label className="block">
-                <span className={formStyles.span}>End time </span>
-                <input name="endTime"  type="time"  required defaultValue={formValues.endTime}  className={formStyles.inputWFullCyan} />
-              </label>
-
-              <label className="block">
-                <span className={formStyles.span}>Status </span>
-                <select name="status" required defaultValue={formValues.status} className={formStyles.selectWFull} >
-                  {availabilityStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
-                </select>
-              </label>
-            </div>
-
-            <label className="block">
-                <span className={`mt-6 ${formStyles.span}}`} >Notes</span>             
-                <input name="notes"  type="string"  required defaultValue={formValues.notes}  className={formStyles.inputWFullCyan} />
-            </label>
-
-            <button  type="submit"  className={`mt-8 ${formStyles.primaryButtonDP}`}>  
-                Add availability 
-            </button>
+                  <div className="md:col-span-2"> 
+                        <span className={`mt-6 ${formStyles.span}}`} >Notes</span> 
+                      <textarea name="notes"  required defaultValue={formValues.notes}  className={formStyles.textarea} />
+                  </div>
+                </div>
+                  <button  type="submit"  className={`mt-8 ${formStyles.primaryButtonDP}`}>  
+                      Add availability 
+                  </button>
           </form>
 
           <h2 className={tableStyles.headerTableSmall}>Availability records</h2>

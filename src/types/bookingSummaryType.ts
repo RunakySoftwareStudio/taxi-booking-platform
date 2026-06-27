@@ -15,7 +15,9 @@ export type BookingSummary = {
     phone: string;
     email: string;
 
+    hasPets: boolean;
     tripType: string;
     notes: string | null;
     status: BookingStatus;
+    
 };

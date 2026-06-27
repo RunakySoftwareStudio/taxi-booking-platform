@@ -19,6 +19,7 @@ type BookingRow = {
   trip_type: string;
   notes: string | null;
   status: string;
+  has_pets:boolean;
 };
 
 export async function POST(request: Request) {
@@ -50,7 +51,8 @@ export async function POST(request: Request) {
         luggage,
         trip_type,
         notes,
-        status
+        status,
+        has_pets
       `
       )
       .eq("id", bookingId)

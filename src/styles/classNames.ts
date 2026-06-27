@@ -7,41 +7,43 @@ export const formStyles = {
     formInfoCellCaption:    "text-slate-300",
     formBookingInfoCaption: "font-bold text-slate-400",
     formInfoCell:           "block text-sm text-slate-400",
-    input:                  "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
-    inputWFullCyan:         "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full", //with w-full 
-    inputWFullYellow:       "rounded-lg border-3 border-yellow-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-300 w-full", //with w-full 
-    inputNumber:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-26",  
-    selectWFull:            "rounded-lg border-3 border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full",  //with w-full 
-    selectForm:             "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300",
+    input:                  "rounded-lg border-3 border-cyan-400/30 bg-slate-950 h-9 px-3 py-0 text-white outline-none focus:border-cyan-300",
+    inputWFullCyan:         "rounded-lg border-3 border-cyan-400/30 bg-slate-950 h-9 px-3 py-0 text-white outline-none focus:border-cyan-300 w-full text-sm", //with w-full 
+    inputWFullYellow:       "rounded-lg border-3 border-yellow-400/30 bg-slate-950 h-9 px-3 py-0 text-white text-xs outline-none focus:border-yellow-300 w-full", //with w-full 
+    inputNumber:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-2 text-white outline-none focus:border-cyan-300 w-26 ",  
+    selectWFull:            "rounded-lg border-3 border-cyan-400/30 bg-slate-950 h-9 px-3 py-0 text-sm leading-tight text-white outline-none focus:border-cyan-300 w-full",  //with w-full 
+    selectForm:             "rounded-lg border border-cyan-400/30 bg-slate-950 h-9 px-3 py-0 text-white outline-none focus:border-cyan-300",
     label:                  "block text-sm font-medium text-slate-200",
     info:                   "rounded-2xl border-3 border-cyan-400/30 bg-slate-950 p-5",
-    textarea:               "rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-300 w-full",
+    textarea:               "rounded-lg border border-white/10 bg-slate-950 px-3 py-0 text-white outline-none focus:border-cyan-300 w-full text-xs",
     primaryButtonOutside:   "inline-flex h-10 w-fit items-center justify-center rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     primaryButtonDP:        "rounded-xl border-4 border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold leading-none text-cyan-100 hover:bg-cyan-400/20 mt-1 h-12 w-fit self-start ",//phone: full width, desktop: small width
     smallButton:            "shrink-0 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20 inline-flex items-center justify-center text-center",
     activateButton:         "rounded-full border border-cyan-400/30  px-4 py-2 text-sm font-semibold text-green-200 hover:bg-green-500/10",
     sctivateButtonPhone:     "rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white opacity-50" ,
-    deActiveDeleteButton:   "rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/10" ,
-    deActivateButtonPhone:  "rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" ,
-    link:                   "text-sm text-cyan-300 hover:text-cyan-200",
-    linkHref:               "mt-4 inline-block rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
-    span:                   "mb-2 block text-sm font-medium text-slate-300",
-    formInputInfoCaption:    "text-md text-slate-400",
-    formInputInfoValue:     "mt-2 font-medium",
-    formLabel:              "text-sm font-semibold text-cyan-200",     
-    formH3SemiBold:         "text-xl font-semibold text-white",   
-    formH5MediumSemiBold:   "text-md font-semibold text-white", 
-    formH5SmallSemiBold:    "text-sm font-semibold text-white",         
-    sectionCardBorder4:     "rounded-2xl border-4 border-white/10 bg-white/5 p-6",   
-    formP:                  "mt-2 text-sm text-slate-300",
-    formPCyan:              "mt-2 text-sm text-cyan-300",
-    formPYellow:            "mt-2 text-sm text-yellow-300",
-    formCaptionUpTracking03:"font-semibold uppercase tracking-[0.3em] text-cyan-300",
-    inputUserPage:          "w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400",
-    inputDateUserPage:      "w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-yellow-400",
+    deActiveDeleteButton:       "rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/10" ,
+    deActivateButtonPhone:      "rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white" ,
+    link:                       "text-sm text-cyan-300 hover:text-cyan-200",
+    linkYellow:                 "text-sm text-yellow-400 hover:text-yellow-200",
+    linkHref:                   "mt-4 inline-block rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
+    span:                       "mb-2 block text-sm font-medium text-slate-300",
+    formInputInfoCaption:       "text-md text-slate-400",
+    formInputInfoValue:           "mt-2 font-medium",
+    formLabel:                  "text-sm font-semibold text-cyan-200",     
+    formH3SemiBold:             "text-xl font-semibold text-white",   
+    formH5MediumSemiBold:       "text-md font-semibold text-white", 
+    formH5SmallSemiBold:        "text-sm font-semibold text-white",         
+    sectionCardBorder4:         "rounded-2xl border-4 border-white/10 bg-white/5 p-6",   
+    formP:                      "mt-2 text-sm text-slate-300",
+    formPCyan:                  "mt-2 text-sm text-cyan-300",
+    formPYellow:                "mt-2 text-xs text-yellow-300",
+    captionUpTracking03:        "font-semibold uppercase tracking-[0.3em] text-cyan-300",
+    captionUpTracking03Yellow:    "font-semibold uppercase tracking-[0.3em] text-yellow-400",
+    inputUserPage:              "w-full rounded-xl border border-white/10 bg-slate-950 h-9 px-3 py-0 text-white outline-none placeholder:text-slate-500 focus:border-yellow-400",
+    inputDateUserPage:          "w-full rounded-xl border border-white/10 bg-slate-950 h-9 px-3 py-0 text-white outline-none focus:border-yellow-400",
     submitButtonUserPage:        "mt-8 rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300",
     submitSmallButtonUserPage:   "mt-8 rounded-full bg-yellow-400 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-yellow-300",
-    formMt10: "mt-10 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:p-6",
+    formMt10:                     "mt-10 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:p-6",
 };
 
 export const pageStyles = {
@@ -62,6 +64,7 @@ export const pageStyles = {
     logButton:                "text-sm text-slate-300 hover:text-cyan-300",
     loginButtonHome:          "rounded-full border border-yellow-400 px-5 py-2 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10",
     divFlex:                  "flex items-start justify-between gap-4",
+    MainPageCaptionYellow:    "mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"
 
 };
 export const tableStyles = {
@@ -79,8 +82,8 @@ export const tableStyles = {
     rowCyan:                  "border-b border-cyan-400/30",
     cell:                     "p-4 text-slate-300",
     cellCheckBox:             "p-4 text-cyan-200",
-    cellCheckBoxTextGreen:      "whitespace-nowrap inline-flex w-fit items-center justify-center whitespace-nowrap rounded-full bg-green-600/25 px-3 py-1.5 text-sm font-semibold leading-none text-green-100 ring-1 ring-green-500/40",
-    cellCheckBoxTextRed:        "whitespace-nowrap inline-flex w-fit items-center justify-center whitespace-nowrap rounded-full bg-red-600/25 px-3 py-1.5 text-sm font-semibold leading-none text-red-100 ring-1 ring-red-500/40",
+    cellCheckBoxTextGreen:    "whitespace-nowrap inline-flex w-fit items-center justify-center whitespace-nowrap rounded-full bg-green-600/25 px-3 py-1.5 text-sm font-semibold leading-none text-green-100 ring-1 ring-green-500/40",
+    cellCheckBoxTextRed:      "whitespace-nowrap inline-flex w-fit items-center justify-center whitespace-nowrap rounded-full bg-red-600/25 px-3 py-1.5 text-sm font-semibold leading-none text-red-100 ring-1 ring-red-500/40",
     cellEmpty:                "p-2 text-md text-slate-300",
     cellInfo:                 "text-md text-slate-400",     
     cellStatusInfo:           "px-3 py-1 text-sm font-medium text-cyan-200",

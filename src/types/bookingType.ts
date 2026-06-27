@@ -14,4 +14,5 @@ export type BookingRequest = {
   tripType: string;
   notes: string;
   status: BookingStatus;
+  hasPets: boolean;
 };
