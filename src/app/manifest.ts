@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-
+// this file will be used in app for logo and description
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Voya Taxi",
