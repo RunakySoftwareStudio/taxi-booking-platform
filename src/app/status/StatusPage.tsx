@@ -44,15 +44,9 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
 
       const formData = new FormData(event.currentTarget);
       const statusRequest = {
-        bookingId: String(formData.get("bookingId") || "").trim(),
-        email: String(formData.get("email") || "").trim().toLowerCase(),
+        bookingId: String(formData.get("bookingId") || ""),
+        email: String(formData.get("email") || ""),
       };
-
-      if (!statusRequest.bookingId || !statusRequest.email) {
-        setErrorMessage("Please enter both your booking id and email address.");
-        setBooking(null);
-        return;
-      }
 
       setIsLoading(true);
       setErrorMessage("");
@@ -65,27 +59,27 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
               body: JSON.stringify(statusRequest)
           });
 
-            const result = (await response.json()) as BookingStatusResponse;
+        const result = (await response.json()) as BookingStatusResponse;
 
-            if (!response.ok || !result.booking) {
+        if (!response.ok || !result.booking) {
             setBooking(null);
             setErrorMessage(result.message || "Booking not found.");
-            return;
-            }
-            setBooking(result.booking);
-        } 
-        catch (error) {
-            console.error("Could not find booking:", error);
-            setErrorMessage("Booking not found. Please check your booking id and email.");
-        } 
-        finally { setIsLoading(false);  }
+            return;        
+        }
+        setBooking(result.booking);
+      } 
+      catch (error) {
+          console.error("Could not find booking:", error);
+          setErrorMessage("Booking not found. Please check your booking id and email.");
+      } 
+      finally { setIsLoading(false);  }
     }
 
   return (
       <main className={pageStyles.main}>
       <div className={pageStyles.container}> 
           <Link  href="./" className={formStyles.formInfoCell} > ← Back to homepage </Link>
-          <p className={`mt-8 ${formStyles.captionUpTracking03Yellow}`}> Booking status </p>
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"> Booking status </p>
           <h1 className={pageStyles.pageTitle}>Check your taxi booking</h1>
           <p className={pageStyles.pageDescription}> Enter your booking id and email address to view the current status of your trip. </p>
       
@@ -94,17 +88,16 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
                 <label className="block">
                   <span className={formStyles.span}> Booking id </span>
                   {/*defaultValue= The browser controls the value after the first load. */}
-                  <input name="bookingId"  defaultValue={safeInitialBookingId} required placeholder="Paste your booking id" autoComplete="off"  spellCheck={false}  className={`${formStyles.inputWFullYellow} break-all`}  />
-
+                  <input name="bookingId" defaultValue={safeInitialBookingId} required placeholder="Paste your booking id" className={`${formStyles.inputWFullYellow} break-all`}/>
                 </label>
 
                 <label className="block">
                   <span className={formStyles.span}> Email address </span>
-                  <input name="email" type="email" required placeholder="you@example.com"  autoComplete="email" className={formStyles.inputWFullYellow}  />
+                  <input name="email" type="email" required placeholder="you@example.com" className={formStyles.inputWFullYellow} />
                 </label>
             </div>
 
-            <button type="submit" disabled={isLoading} className={`mt-8 ${formStyles.submitSmallButtonUserPage}`} >
+            <button className={`mt-8 ${formStyles.submitSmallButtonUserPage}`}>
               {isLoading ? "Searching..." : "Check status"}
             </button>
             {errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
@@ -112,8 +105,7 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
 
           {booking && (
             <section className={formStyles.form}>
-              <h3 className={formStyles.formH5MediumSemiBold}> Booking Status: <span className={formStyles.formPCyan}>{booking.status}</span> </h3>
-              <p className={`${formStyles.formPYellow} mt-3 break-all`}> Booking reference: {booking.id} </p>
+              <h3 className={formStyles.formH5MediumSemiBold}> Booking Status: <span className={formStyles.formPCyan}>{booking.status}</span> </h3>  
               <div className="mt-8">  
                   <div>
                       <span className={formStyles.formPCyan}> Name: </span>
@@ -131,11 +123,11 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
                   </div>     
                   <div>
                       <span className= {formStyles.formPCyan}>Pickup: </span>
-                      <span className= {formStyles.formP} >{booking.pickup_location}</span>
+                      <span className= {formStyles.formP} >{booking.destination}</span>
                   </div>        
                   <div>
-                      <span className= {formStyles.formPCyan}>Destination: </span>
-                      <span className= {formStyles.formP} >{booking.destination}</span>
+                      <span className= {formStyles.formPCyan}>Location: </span>
+                      <span className= {formStyles.formP} >{booking.pickup_location}</span>
                   </div>                  
               </div>
               <div className="grid grid-cols-2">
@@ -165,7 +157,7 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
                     </div>
                     <div className= "mt-1">                           
                         <span className={formStyles.formPCyan}> Has pets:  </span>
-                        <span  className={ booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                            <span  className={ booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
                                 {booking.has_pets ? "✓" : "X"}
                         </span>
                     </div>
