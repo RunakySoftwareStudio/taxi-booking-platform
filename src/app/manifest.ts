@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "TaxiPlatform",
-    short_name: "TaxiPlatform",
-    description: "Taxi booking platform for clients, chauffeurs, and admin management.",
+    name: "Voya Taxi",
+    short_name: "Voya",
+    description: "Taxi & Chauffeur Platform for clients, chauffeurs, and admin management.",
     start_url: "/", //means the installed app starts on your homepage.
     scope: "/",
     display: "standalone", //means when installed, it opens more like an app, without the normal browser UI.
