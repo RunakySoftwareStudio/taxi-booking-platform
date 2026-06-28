@@ -9,9 +9,16 @@ export default function HomePage() {
       <TopMenu />
 
       <section className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 text-center">
-        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"> Taxi Chauffeur Platform </p>
-        <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-6xl"> Book a professional chauffeur for your next trip </h1>
+        <p ></p>
+        <p className="text-md font-bold uppercase tracking-[0.2em] text-yellow-400"> VOYΛ TΛXI </p>
+        <h1 className="mt-6 text-4xl font-bold text-white md:text-6xl"> Book a professional chauffeur for your next trip </h1>
+        <p className="mt-4 text-lg font-medium text-yellow-300">  Where the journey begins </p>
+        <p className="mt-8 text-lg text-slate-200"> Find available chauffeurs, compare vehicles, request a trip, and stay  connected from booking to arrival. </p>
+      {/*
+              <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-6xl"> Book a professional chauffeur for your next trip </h1>
         <p className="mt-6 max-w-2xl text-lg text-slate-300"> Find available chauffeurs, compare vehicles, request a trip, and stay connected from booking to arrival. </p>
+       */}
+
 
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
           <a href="#booking" className="rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300" > Book a Trip </a>

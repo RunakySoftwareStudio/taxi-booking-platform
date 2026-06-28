@@ -1,6 +1,6 @@
 import Link from "next/link";
 import AuthMenuLinks from "@/components/AuthMenuLinks";
-
+import Image from "next/image";
 /*
   jump to the right section:
     <a href="#how-it-works"> this is important to jump to the right section when we click on the href.
@@ -12,26 +12,17 @@ export default function TopMenu() {
   return (
     <header className="fixed left-0 top-0 z-50 w-full border-b border-white/10 bg-slate-950/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-        <Link href="/" className="shrink-0 text-lg font-bold text-white sm:text-xl">
-          TaxiPlatform
-        </Link>
 
+        <Link href="/" className="flex shrink-0 items-center gap-2">
+          <Image  src="/brand/TaxiVoyer-192.png"   alt="Voya taxi logo"  width={64}  height={64}  className="h-14 w-14 rounded-full object-contain"  />
+          <span className="text-lg font-bold text-yellow-300 sm:text-xl">  TX • VOYΛ </span>
+        </Link>
         <nav className="hidden items-center gap-8 text-sm text-slate-300 lg:flex">
-          <Link href="/" className="text-xl font-bold text-white">
-            Home
-          </Link>
-          <a href="#how-it-works" className="transition hover:text-white">
-            How it works
-          </a>
-          <a href="#chauffeurs" className="transition hover:text-white">
-            Chauffeurs
-          </a>
-          <a href="#booking" className="transition hover:text-white">
-            Booking
-          </a>
-          <Link href="/status" className="text-sm text-slate-300 hover:text-cyan-300">
-            Check booking
-          </Link>
+            <Link href="/" className="text-xl font-bold text-white"> Home </Link>
+            <a href="#how-it-works" className="transition hover:text-white"> How it works </a>
+            <a href="#chauffeurs" className="transition hover:text-white"> Chauffeurs </a>
+            <a href="#booking" className="transition hover:text-white"> Booking </a>
+            <Link href="/status" className="text-sm text-slate-300 hover:text-cyan-300"> Check booking  </Link>
         </nav>
 
         <div className="shrink-0">
