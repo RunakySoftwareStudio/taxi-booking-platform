@@ -20,3 +20,15 @@ export type EmailContent = {
     text: string;
     html: string;
 };
+export type SendEmailInput = {
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+};
+
+export type SendEmailResult = {
+    success: boolean;
+    skipped: boolean;
+    message: string;
+};
