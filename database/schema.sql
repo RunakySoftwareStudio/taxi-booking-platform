@@ -21,6 +21,12 @@ CREATE TABLE clients (
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
+-- Prevent duplicate clients with the same email address.
+-- This treats uppercase/lowercase and extra spaces as the same email.
+create unique index if not exists clients_unique_normalized_email
+on clients (lower(trim(email)))
+where email is not null and trim(email) <> '';
+
 -- Chauffeur account status values
 /*
     pending_approval = chauffeur registered but admin has not approved yet
