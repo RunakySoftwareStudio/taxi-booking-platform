@@ -1,3 +1,4 @@
+//→ creates email content
 import { type BookingEmailData, type EmailContent } from "./emailTypes";
 
 function escapeHtml(inputValue: string) {

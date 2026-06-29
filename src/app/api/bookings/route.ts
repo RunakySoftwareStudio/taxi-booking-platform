@@ -3,6 +3,7 @@ import { type BookingRequest } from "@/types/bookingType";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { validateBookingRequest } from "@/lib/bookings/validateBooking";
 import type { BookingSummary } from "@/types/bookingSummaryType";
+import { sendBookingCreatedEmails } from "@/lib/email/bookingEmailNotifications";
 
 export async function POST(request: Request) {
   try 
@@ -63,30 +64,28 @@ export async function POST(request: Request) {
                         .select("id, name, email, phone")
                         .eq("email", clientEmail)
                         .limit(1);
-
-                    if (retryClientError || !retryClients?.[0]) 
-                    {
-                        console.error("Client retry search error:", retryClientError);
-                        return NextResponse.json(
-                            { message: "Could not find existing client after duplicate email check" },
-                            { status: 500 }
-                        );
-                    }
-                    client = retryClients[0];
-                } 
-                else 
+            if (retryClientError || !retryClients?.[0]) 
                 {
-                    console.error("Client insert error:", clientError);
+                    console.error("Client retry search error:", retryClientError);
                     return NextResponse.json(
-                        { message: "Could not create client" },
+                        { message: "Could not find existing client after duplicate email check" },
                         { status: 500 }
                     );
                 }
+                client = retryClients[0];
             } 
-            else if (!newClient) 
-            {return NextResponse.json( { message: "Could not create client" },  { status: 500 } );  } 
             else 
-            { client = newClient; }
+            {
+                console.error("Client insert error:", clientError);
+                return NextResponse.json(
+                    { message: "Could not create client" },
+                    { status: 500 }
+                );
+            }
+        } 
+        else if (!newClient) 
+            {return NextResponse.json( { message: "Could not create client" },  { status: 500 } );  } 
+            else  { client = newClient; }
         }
 
         const { data: savedBooking, error: bookingError } = await supabaseAdmin
@@ -134,8 +133,37 @@ export async function POST(request: Request) {
             notes: savedBooking.notes,
             status: savedBooking.status,
         };
+        
+        /*====================================
+            Booking saved successfully
+            Email failed
+            Booking still works
+            Error is only logged
+        ========================================*/
+        try {
+            const emailResults = await sendBookingCreatedEmails({
+                id: savedBooking.id,
+                name: client.name,
+                email: client.email,
+                phone: client.phone,
+                pickup: savedBooking.pickup_location,
+                destination: savedBooking.destination,
+                date: savedBooking.pickup_date,
+                time: savedBooking.pickup_time,
+                passengers: String(savedBooking.passengers),
+                luggage: String(savedBooking.luggage),
+                tripType: savedBooking.trip_type,
+                status: savedBooking.status,
+                hasPets: savedBooking.has_pets,
+                notes: savedBooking.notes || "",
+            });
+            console.log("Booking email notification results:", emailResults);
+        } 
+        catch (emailError) 
+        { console.error("Booking email notification error:", emailError);  }
 
-        return NextResponse.json    //// This sends JSON back to the frontend.
+        //// This sends JSON back to the frontend.
+        return NextResponse.json    
         (
             {
                 message: "Booking saved successfully",
@@ -150,4 +178,6 @@ export async function POST(request: Request) {
         console.error("Invalid booking request:", error);
         return NextResponse.json( { message: "Invalid booking request", }, { status: 400 } );
     }
+
+    
 }
