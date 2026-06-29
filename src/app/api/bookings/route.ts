@@ -37,21 +37,56 @@ export async function POST(request: Request) {
 
         let client = existingClients?.[0];  // If existingClients exists, get the first item.
                                             // If existingClients is null or undefined, do not crash.
+        /*========================================
+        Normal case:
+        No client exists → create new client → continue booking
 
+        Rare double-submit case: Two bookings with same new email arrive at almost the same time.
+        Client insert fails because email already exists → search client again → continue booking
+        =========================================*/
         if (!client) 
         {
             const { data: newClient, error: clientError } = await supabaseAdmin
                 .from("clients")
-                .insert({ name: clientName, email: clientEmail, phone: clientPhone, })
+                .insert({ name: clientName, email: clientEmail, phone: clientPhone })
                 .select("id, name, email, phone")
                 .single();
 
-                if (clientError || !newClient) { 
-                    console.error("Client insert error:", clientError);
-                    return NextResponse.json( { message: "Could not create client"}, { status: 500 } ); 
-                }
+            if (clientError) 
+            {
+                // 23505 means duplicate value error.
+                // This can happen if two booking requests with the same new email arrive at almost the same time.
+                if (clientError.code === "23505") 
+                {
+                    const { data: retryClients, error: retryClientError } = await supabaseAdmin
+                        .from("clients")
+                        .select("id, name, email, phone")
+                        .eq("email", clientEmail)
+                        .limit(1);
 
-            client = newClient;
+                    if (retryClientError || !retryClients?.[0]) 
+                    {
+                        console.error("Client retry search error:", retryClientError);
+                        return NextResponse.json(
+                            { message: "Could not find existing client after duplicate email check" },
+                            { status: 500 }
+                        );
+                    }
+                    client = retryClients[0];
+                } 
+                else 
+                {
+                    console.error("Client insert error:", clientError);
+                    return NextResponse.json(
+                        { message: "Could not create client" },
+                        { status: 500 }
+                    );
+                }
+            } 
+            else if (!newClient) 
+            {return NextResponse.json( { message: "Could not create client" },  { status: 500 } );  } 
+            else 
+            { client = newClient; }
         }
 
         const { data: savedBooking, error: bookingError } = await supabaseAdmin
