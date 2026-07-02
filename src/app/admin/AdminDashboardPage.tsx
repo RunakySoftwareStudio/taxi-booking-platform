@@ -57,18 +57,17 @@ async function getPendingBookingsCount() {
 }
 
 /*
-    getActiveChauffeursCount counts only chauffeurs with account_status "active".
-
-    This tells the admin how many chauffeurs are currently active.
+    getApprovedChauffeursCount counts only chauffeurs with account_status "approved".
+    In our database, approved chauffeurs are the chauffeurs who can be used by the platform.
 */
-async function getActiveChauffeursCount() {
+async function getApprovedChauffeursCount() {
     const { count, error } = await supabaseAdmin
         .from("chauffeurs")
         .select("*", { count: "exact", head: true })
-        .eq("account_status", "active");
+        .eq("account_status", "approved");
 
     if (error) {
-        console.error("Could not count active chauffeurs:", error);
+        console.warn("Could not count approved chauffeurs:", error);
         return 0;
     }
 
@@ -92,14 +91,14 @@ export default async function AdminDashboardPage() {
         pendingBookings,
         totalClients,
         totalChauffeurs,
-        activeChauffeurs,
+        approvedChauffeurs,
         totalVehicles,
     ] = await Promise.all([
         getTableCount("bookings"),
         getPendingBookingsCount(),
         getTableCount("clients"),
         getTableCount("chauffeurs"),
-        getActiveChauffeursCount(),
+        getApprovedChauffeursCount(),
         getTableCount("vehicles"),
     ]);
 
@@ -117,7 +116,7 @@ export default async function AdminDashboardPage() {
         },
         {
             title: `Chauffeurs (${totalChauffeurs})`,
-            description: `Active chauffeurs: ${activeChauffeurs}`,
+            description: `Active chauffeurs: ${approvedChauffeurs}`,
             href: "/admin/chauffeurs",
         },
         {
