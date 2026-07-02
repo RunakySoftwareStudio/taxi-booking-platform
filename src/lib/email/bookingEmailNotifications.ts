@@ -33,28 +33,35 @@ type BookingEmailNotificationResult = {
 export async function sendBookingCreatedEmails(
     inputData: BookingEmailData
 ): Promise<BookingEmailNotificationResult> {
-    const clientEmail = createClientBookingReceivedEmail(inputData);
-    const adminEmail = createAdminNewBookingEmail(inputData);
-
-    const clientEmailResult = await sendEmail({
-        to: inputData.email,
-        subject: clientEmail.subject,
-        text: clientEmail.text,
-        html: clientEmail.html,
-    });
-
     const adminEmailAddress = process.env.ADMIN_BOOKING_EMAIL;
 
     if (!adminEmailAddress) {
         return {
-            clientEmail: clientEmailResult,
+            clientEmail: {
+                success: true,
+                skipped: true,
+                message: "ADMIN_BOOKING_EMAIL is not configured. Client preview email was not sent.",
+            },
             adminEmail: {
                 success: true,
                 skipped: true,
-                message: "ADMIN_BOOKING_EMAIL is not configured yet.",
+                message: "ADMIN_BOOKING_EMAIL is not configured. Admin email was not sent.",
             },
         };
     }
+
+    const clientEmail = createClientBookingReceivedEmail(inputData);
+    const adminEmail = createAdminNewBookingEmail(inputData);
+
+    // Temporary development setup:
+    // Resend blocks real customer emails until a sender domain is verified.
+    // So for now, we send the client email layout as a preview to the admin address.
+    const clientEmailResult = await sendEmail({
+        to: adminEmailAddress,
+        subject: `[Client preview] ${clientEmail.subject}`,
+        text: clientEmail.text,
+        html: clientEmail.html,
+    });
 
     const adminEmailResult = await sendEmail({
         to: adminEmailAddress,
