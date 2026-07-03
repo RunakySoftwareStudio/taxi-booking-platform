@@ -18,7 +18,6 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
 
     if (error || !bookingRow) {
         console.error("Could not load booking for edit:", error);
-        console.error("Booking id from URL:", bookingId);
         notFound();
     }
     const clientRow = Array.isArray(bookingRow.clients)  ? bookingRow.clients[0] ?? null  : bookingRow.clients;

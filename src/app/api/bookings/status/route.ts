@@ -94,16 +94,11 @@ export async function POST(request: Request) {
     let chauffeur = null;
 
 if (bookingRow.chauffeur_id) {
-      console.log("Booking chauffeur_id:", bookingRow.chauffeur_id);
-
       const { data: chauffeurRows, error: chauffeurError } = await supabaseAdmin
         .from("chauffeurs")
         .select("id, name, email, phone")
         .eq("id", bookingRow.chauffeur_id)
         .limit(1);
-
-      console.log("Chauffeur lookup rows:", chauffeurRows); // this error you can see in Visual Code Code terminal output
-      console.log("Chauffeur lookup error:", chauffeurError);
 
       if (chauffeurError) {
         console.error("Chauffeur lookup error:", chauffeurError);

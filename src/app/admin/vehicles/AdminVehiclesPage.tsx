@@ -45,8 +45,6 @@ type VehicleRow = {
 async function addVehicle(formData: FormData) {
     "use server";
     
-    console.log("addVehicle function started");
-
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const model = String(formData.get("model") || "").trim();
     const brand = String(formData.get("brand") || "").trim();
@@ -71,15 +69,12 @@ async function addVehicle(formData: FormData) {
 
     const previousFormQuery = previousFormValues.toString();
 
-    // to see all the data in console
-    console.log("Vehicle form data:", {chauffeurId, brand, model, vehicleYear, vehicleColor, licensePlate, vehicleType, seats,  luggageCapacity, });
-
     if (!chauffeurId || !brand || !model || !licensePlate || !vehicleType) {
       redirect(`/admin/vehicles?error=missing-fields&${previousFormQuery}`);
     }
 
     // .select() we can read data inserted
-    const { data, error } = await supabaseAdmin
+    const {error } = await supabaseAdmin
     .from("vehicles")
     .insert({
         chauffeur_id: chauffeurId,
@@ -100,8 +95,6 @@ async function addVehicle(formData: FormData) {
         if (error.code === "23505") { redirect(`/admin/vehicles?error=duplicate-license-plate&${previousFormQuery}`);; }
         redirect(`/admin/vehicles?error=add-vehicle-failed&${previousFormQuery}`);; //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
     }
-
-    console.log("Vehicle added:", data);
 
     //So after you add/update/delete a vehicle, the page should show fresh data.
     revalidatePath("/admin/vehicles");
