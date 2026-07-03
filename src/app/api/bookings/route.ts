@@ -17,9 +17,6 @@ export async function POST(request: Request) {
             If valid → continue saving to Supabase
         */
         if (!validationResult.isValid) { return NextResponse.json( { message: validationResult.message}, { status: 400 } ); }
-
-        console.log("Booking request received by API:", bookingRequest);
-
         const clientEmail = bookingRequest.email.trim().toLowerCase();
         const clientName = bookingRequest.name.trim();
         const clientPhone = bookingRequest.phone.trim();
@@ -111,6 +108,7 @@ export async function POST(request: Request) {
             console.error("Booking insert error:", bookingError);
             return NextResponse.json( { message: "Could not create booking", }, { status: 500 } );
         }
+        console.log("Booking created:", savedBooking.id);
 
         // Create an object that matches the frontend field names
         const bookingForFrontend: BookingSummary = {
@@ -157,7 +155,15 @@ export async function POST(request: Request) {
                 hasPets: savedBooking.has_pets,
                 notes: savedBooking.notes || "",
             });
-            console.log("Booking email notification results:", emailResults);
+            
+            /*This still tells us whether email worked, but it does not log client name, phone, email, pickup, or destination. */
+            console.log("Booking email notifications processed:", {
+                bookingId: savedBooking.id,
+                clientEmailSuccess: emailResults.clientEmail.success,
+                clientEmailSkipped: emailResults.clientEmail.skipped,
+                adminEmailSuccess: emailResults.adminEmail.success,
+                adminEmailSkipped: emailResults.adminEmail.skipped,
+            });
         } 
         catch (emailError) 
         { console.error("Booking email notification error:", emailError);  }
