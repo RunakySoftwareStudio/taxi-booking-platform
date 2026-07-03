@@ -174,7 +174,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
 
                   <div className="md:col-span-2"> 
                         <span className={`mt-6 ${formStyles.span}}`} >Notes</span> 
-                      <textarea name="notes"  required defaultValue={formValues.notes}  className={formStyles.textarea} />
+                      <textarea name="notes"  defaultValue={formValues.notes}  className={formStyles.textarea} />
                   </div>
                 </div>
                   <button  type="submit"  className={`mt-8 ${formStyles.primaryButtonDP}`}>  

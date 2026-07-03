@@ -263,7 +263,7 @@ export default function BookingForm() {
 
                     <div className="mt-5 sm:mt-6">
                         <label htmlFor="notes" className="mb-2 block text-sm font-medium"> Extra notes </label>
-                        <textarea id="notes" name="notes"  rows={4} placeholder="Flight number, child seat request, exact pickup point, or other information..." defaultValue={bookingDraft?.notes || ""} className={formStyles.textarea}/>
+                        <textarea id="notes" name="notes"  rows={4} placeholder="Flight number, child seat request, exact pickup point, or other information..." defaultValue={bookingDraft?.notes || ""} className={formStyles.textareaMainPg}/>
                     </div>
 
                     <button type="submit" className={formStyles.submitSmallButtonUserPage}> Review booking </button>

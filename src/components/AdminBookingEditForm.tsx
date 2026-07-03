@@ -106,92 +106,96 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
-      {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p>)}
-      {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
-        <section className="mt-1 rounded-2xl border border-white/10 bg-white/5 p-5">
-            <h2 className="text-lg font-semibold text-white">Client information</h2>
-            <div className="mt-5 grid gap-5 md:grid-cols-3">
-                    <label className={formStyles.label}> Client name
-                        <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={formStyles.inputWFullCyan} />
-                    </label>
-                    <label className={formStyles.label}>  Client email
-                        <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={formStyles.inputWFullCyan} />
-                    </label>
-                    <label className={formStyles.label}>  Client phone 
-                        <input value={clientPhone}  onChange={(event) => setClientPhone(event.target.value)} required  className={formStyles.inputWFullCyan}  />
-                    </label>
-            </div>
-        </section>
-
-        <div className="mt-3 grid gap-5 md:grid-cols-2">
-                <div className={formStyles.label}> Location
-                    <input value={pickupLocation}  onChange={(event) => setPickupLocation(event.target.value)} required className={formStyles.inputWFullCyan}/>
-                </div>
-
-                <div className={formStyles.label}>  Destination
-                    <input  value={destination} onChange={(event) => setDestination(event.target.value)}  required className={formStyles.inputWFullCyan}/>
-                </div>
-
-
-                <div className="flex flex-wrap items-end gap-2">
-                    <label className="block">
-                        <span className={formStyles.label}>Date</span>
-                        <input type="date" value={pickupDate} onChange={(event) => setPickupDate(event.target.value)} required  min={minimumPickupDate} max="2099-12-31" className={`${formStyles.inputWFullCyan} w-35!`} />
-                    </label>
-
-                    <label className="block">
-                        <span className={formStyles.label}>Time</span>
-                        <input type="time" value={pickupTime} onChange={(event) => setPickupTime(event.target.value)} required className={`${formStyles.inputWFullCyan} w-34!`}  />
-                    </label>
-
-
-                    <label className="block">
-                        <span className={formStyles.label}>Luggage</span>
-                        <input type="number" min="0" value={luggage}  onChange={(event) => setLuggage(event.target.value)} required  className={`${formStyles.inputWFullCyan} w-18!`} /> 
-                    </label>
-                </div>
-
-                <div className="flex flex-wrap items-end gap-2">
-                    <label className="block">
-                        <span className={formStyles.label}>Pax</span>
-                        <input type="number" min="1" value={passengers} onChange={(event) => setPassengers(event.target.value)} required className={`${formStyles.inputWFullCyan} w-18!`} />  
-                    </label>
-                    <div className={formStyles.label}>  Trip type
-                        <select value={tripType} onChange={(event) => setTripType(event.target.value)} required className={formStyles.selectWFull} >
-                            {tripTypeOptions.map((typeOption) => ( <option key={typeOption} value={typeOption}> {typeOption} </option>  ))}
-                        </select>
-                    </div>
-
-                    <div className={formStyles.label}> Booking status
-                        <select  value={status}  onChange={(event) => setStatus(event.target.value)}  required  className={formStyles.selectWFull}>
-                            {bookingStatusOptions.map((statusOption) => ( <option key={statusOption} value={statusOption}> {statusOption}  </option>  ))}
-                        </select>
-                    </div>
-                </div>
-
-                <div className={formStyles.label}>  Assigned chauffeur
-                    <select  value={chauffeurId} onChange={(event) => setChauffeurId(event.target.value)} className={formStyles.selectWFull} >
-                        <option value="">No chauffeur assigned</option>
-                            {chauffeurs.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status}) </option> ))  }
-                    </select>
-                </div>
-
-                <div className="flex items-center gap-4 px-4 pb-4 pt-6 text-sm text-slate-300 align-top">
-                    <input type="checkbox" checked={hasPets} onChange={(event) => setHasPets(event.target.checked)}  className="h-5 w-5"/>   
-                    <div className={formStyles.label}>  has petsss  </div>
-                        
-                </div>
-
-                <div className="md:col-span-2"> 
-                    <span className={formStyles.span}> Notes </span>
-                    <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder="Optional booking notes" className={formStyles.textarea} />
-                </div>
+    <main>
+        <div >
+           {successMessage && (<p className={pageStyles.successMsgPage}>{successMessage}</p> )}
+            {errorMessage && <p className={pageStyles.errorMsgPage}>{errorMessage}</p>}
         </div>
+        <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
+            <section className="mt-1 rounded-2xl border border-white/10 bg-white/5 p-5">
+                <h2 className="text-lg font-semibold text-white">Client information</h2>
+                <div className="mt-5 grid gap-5 md:grid-cols-3">
+                        <label className={formStyles.label}> Client name
+                            <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={formStyles.inputWFullCyan} />
+                        </label>
+                        <label className={formStyles.label}>  Client email
+                            <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={formStyles.inputWFullCyan} />
+                        </label>
+                        <label className={formStyles.label}>  Client phone 
+                            <input value={clientPhone}  onChange={(event) => setClientPhone(event.target.value)} required  className={formStyles.inputWFullCyan}  />
+                        </label>
+                </div>
+            </section>
 
-        <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`}  >
-                {isSaving ? "Saving..." : "Save booking"}
-        </button>
-    </form>
+            <div className="mt-3 grid gap-5 md:grid-cols-2">
+                    <div className={formStyles.label}> Location
+                        <input value={pickupLocation}  onChange={(event) => setPickupLocation(event.target.value)} required className={formStyles.inputWFullCyan}/>
+                    </div>
+
+                    <div className={formStyles.label}>  Destination
+                        <input  value={destination} onChange={(event) => setDestination(event.target.value)}  required className={formStyles.inputWFullCyan}/>
+                    </div>
+
+
+                    <div className="flex flex-wrap items-end gap-2">
+                        <label className="block">
+                            <span className={formStyles.label}>Date</span>
+                            <input type="date" value={pickupDate} onChange={(event) => setPickupDate(event.target.value)} required  min={minimumPickupDate} max="2099-12-31" className={`${formStyles.inputWFullCyan} w-35!`} />
+                        </label>
+
+                        <label className="block">
+                            <span className={formStyles.label}>Time</span>
+                            <input type="time" value={pickupTime} onChange={(event) => setPickupTime(event.target.value)} required className={`${formStyles.inputWFullCyan} w-34!`}  />
+                        </label>
+
+
+                        <label className="block">
+                            <span className={formStyles.label}>Luggage</span>
+                            <input type="number" min="0" value={luggage}  onChange={(event) => setLuggage(event.target.value)} required  className={`${formStyles.inputWFullCyan} w-18!`} /> 
+                        </label>
+                    </div>
+
+                    <div className="flex flex-wrap items-end gap-2">
+                        <label className="block">
+                            <span className={formStyles.label}>Pax</span>
+                            <input type="number" min="1" value={passengers} onChange={(event) => setPassengers(event.target.value)} required className={`${formStyles.inputWFullCyan} w-18!`} />  
+                        </label>
+                        <div className={formStyles.label}>  Trip type
+                            <select value={tripType} onChange={(event) => setTripType(event.target.value)} required className={formStyles.selectWFull} >
+                                {tripTypeOptions.map((typeOption) => ( <option key={typeOption} value={typeOption}> {typeOption} </option>  ))}
+                            </select>
+                        </div>
+
+                        <div className={formStyles.label}> Booking status
+                            <select  value={status}  onChange={(event) => setStatus(event.target.value)}  required  className={formStyles.selectWFull}>
+                                {bookingStatusOptions.map((statusOption) => ( <option key={statusOption} value={statusOption}> {statusOption}  </option>  ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className={formStyles.label}>  Assigned chauffeur
+                        <select  value={chauffeurId} onChange={(event) => setChauffeurId(event.target.value)} className={formStyles.selectWFull} >
+                            <option value="">No chauffeur assigned</option>
+                                {chauffeurs.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status}) </option> ))  }
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-4 px-4 pb-4 pt-6 text-sm text-slate-300 align-top">
+                        <input type="checkbox" checked={hasPets} onChange={(event) => setHasPets(event.target.checked)}  className="h-5 w-5"/>   
+                        <div className={formStyles.label}>  has petsss  </div>
+                            
+                    </div>
+
+                    <div className="md:col-span-2"> 
+                        <span className={formStyles.span}> Notes </span>
+                        <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder="Optional booking notes" className={formStyles.textarea} />
+                    </div>
+            </div>
+
+            <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`}  >
+                    {isSaving ? "Saving..." : "Save booking"}
+            </button>
+        </form>
+    </main>
   );
 }
