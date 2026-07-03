@@ -269,7 +269,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                             <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Trip  </th>
                             <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Luggage  </th>
                             <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Has pet  </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Actions  </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>    </th>
                         </tr>
                     </thead>
                         <tbody>
@@ -322,13 +322,13 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                                     {chauffeurOptions.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
                                                 </select>
                                             </label>
-
-                                            <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
-                                                Edit
-                                            </Link>
                                             <button type="submit" className={formStyles.smallButton}>
                                                 Save
                                             </button>
+                                            <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
+                                                Edit booking
+                                            </Link>
+
                                         </form>
                                     </td>
                                 </tr>
