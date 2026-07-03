@@ -80,7 +80,7 @@ export const tableStyles = {
     header:                   "border-b border-white/10 bg-white/10 text-slate-300",
     headerTable:              "mt-12 text-2xl font-bold",
     headerTableSmall:         "mt-8 text-md font-bold",
-    tableHeaderCyan:          "border-b border-cyan-400/30 bg-cyan-400/10 text-slate-300",
+    tableHeaderCyan:          "border-b border-cyan-400/30 bg-cyan-400/10 text-cyan-300 text-md",
     rowWhite:                 "border-b border-white/10",
     rowCyan:                  "border-b border-cyan-400/30",
     cell:                     "p-4 text-slate-300",

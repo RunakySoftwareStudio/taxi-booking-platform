@@ -6,16 +6,25 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import Link from "next/link";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
+import { Fragment } from "react";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx 
 
 type TypeChauffeurRow = { id: string;  name: string;  email: string;  phone: string;  service_area: string | null;  account_status: string;};
 
 type TypeAssignedBookingRow = {
-    id: string;  pickup_location: string;  destination: string;  
-    pickup_date: string;  pickup_time: string;  passengers: number;  luggage: number;  
-    trip_type: string;  status: string;  notes: string | null;
-    clients: { name: string;  email: string;  phone: string; } | null;
+    id: string;
+    pickup_location: string;
+    destination: string;
+    pickup_date: string;
+    pickup_time: string;
+    passengers: number;
+    luggage: number;
+    has_pets: boolean;
+    trip_type: string;
+    status: string;
+    notes: string | null;
+    clients: { name: string; email: string; phone: string } | null;
 };
 
 //type TypePromiseChauffeurId = { params: Promise<{ chauffeurId: string; }>;};
@@ -34,6 +43,23 @@ type TypeVehicleRow =
     luggage_capacity: number;
     created_at: string;
 };
+
+/*
+    formatTripType converts database values into readable text.
+    Example:
+    "one-way"  → "One-way trip"
+    "business" → "Business trip"
+*/
+function formatTripType(tripType: string) {
+    const tripTypeLabels: Record<string, string> = {
+        "one-way": "One-way trip",
+        return: "Return trip",
+        airport: "Airport transfer",
+        business: "Business trip",
+    };
+    return tripTypeLabels[tripType] || tripType;
+}
+
 
 // Only update this booking if it belongs to this chauffeur.
 async function updateAssignedBookingStatus(formData: FormData) 
@@ -105,7 +131,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
     // get the list of bookings of this chauffeurid in booking table
     const { data: supabaseAdminBookings, error: bookingsError } = await supabaseAdmin
         .from("bookings")
-        .select (` id, pickup_location, destination, pickup_date, pickup_time, passengers, luggage, trip_type, status, notes, clients (name, email, phone) `)
+        .select (` id, pickup_location, destination, pickup_date, pickup_time, passengers, luggage, has_pets, trip_type, status, notes, clients (name, email, phone) `)
         .eq("chauffeur_id", chauffeurId)
         .order("pickup_date", { ascending: true })
         .order("pickup_time", { ascending: true });
@@ -243,8 +269,8 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
                         <td className={tableStyles.cell}>{vehicle.seats}</td>
                         <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
-                        <td className={tableStyles.cell}>{vehicle.vehicle_year}</td>
-                        <td className={tableStyles.cell}>{vehicle.vehicle_color}</td>
+                        <td className={tableStyles.cell}>{vehicle.vehicle_year?vehicle.vehicle_year:"---"}</td>
+                        <td className={tableStyles.cell}>{vehicle.vehicle_color?vehicle.vehicle_color:"---"}</td>
                         </tr>))}
 
                     {vehicleRows.length === 0 && ( <tr><td className={tableStyles.cellEmpty} colSpan={8}> No vehicles connected to this chauffeur yet. </td></tr> )}
@@ -252,7 +278,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 </table>
                 </div>
 
-                <h3 className={tableStyles.headerTableSmall}>My Bookings</h3>
+                <h3 className={tableStyles.headerTableSmall}>  Assigned bookings ({bookingRows.length})</h3>
                 {/* Mobile booking cards */}
                 <div className="mt-6 grid gap-4 lg:hidden">
                 {bookingRows.map((booking) => (
@@ -299,6 +325,21 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             <span className={mobileStyle.inforCaption}> Trip: </span>
                             <span className={mobileStyle.infoValue}>{booking.trip_type}</span>
                         </div>
+                        <div>
+                            <span className={mobileStyle.inforCaption}>  Has pets:  </span>
+                            <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                {booking.has_pets  ? "yes ✓" : "No"}
+                            </span>
+                        </div>
+                        <div>
+                            <span className={mobileStyle.inforCaption}> Luggage: </span>
+                            <span className={mobileStyle.infoValue}>{booking.luggage}</span>
+                        </div>
+                        
+                        <div>
+                            <span className={mobileStyle.inforCaption}>  Notes:  </span>
+                            <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
+                        </div>
                     </div>
 
                     <form action={updateAssignedBookingStatus} className="mt-5 grid gap-3">
@@ -320,58 +361,70 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 </div>
 
                 {/* Desktop booking table */}
-                <div className={`${tableStyles.tableDiv} hidden lg:block`}>
+                <div className={`${tableStyles.tableDiv} max-h-150 overflow-auto hidden lg:block`}>
                     <table className={tableStyles.table1000}>
-                        <thead className={tableStyles.tableHeaderCyan}>
-                        <tr>
-                            <th className={tableStyles.cellCaption}>Client</th>
-                            <th className={tableStyles.cellCaption}>Pickup</th>
-                            <th className={tableStyles.cellCaption}>Destination</th>
-                            <th className={tableStyles.cellCaption}>Date</th>
-                            <th className={tableStyles.cellCaption}>Time</th>
-                            <th className={tableStyles.cellCaption}>Passengers</th>
-                            <th className={tableStyles.cellCaption}>Trip type</th>
-                            <th className={tableStyles.cellCaption}>Status</th>
-                        </tr>
+                        <thead className={`${tableStyles.tableHeaderCyan} sticky top-0 z-10`}> 
+                            <tr>
+                                <th className={tableStyles.cellCaption}>Client</th>
+                                <th className={tableStyles.cellCaption}>Pickup</th>
+                                <th className={tableStyles.cellCaption}>Destination</th>
+                                <th className={tableStyles.cellCaption}>Date</th>
+                                <th className={tableStyles.cellCaption}>Time</th>
+                                <th className={tableStyles.cellCaption}>Passengers</th>
+                                <th className={tableStyles.cellCaption}>Luggage </th>
+                                <th className={tableStyles.cellCaption}>Pets</th>
+                                <th className={tableStyles.cellCaption}>Trip type</th>
+                                <th className={tableStyles.cellCaption}></th>
+                                <th className={tableStyles.cellCaption}></th>
+                            </tr>
                         </thead>
 
                         <tbody>
                         {bookingRows.map((booking) => (
-                            <tr key={booking.id} className="border-b border-white/10">
-                            <td className={tableStyles.cellCaption}>
-                                <div className={tableStyles.cellCaptionGroup}>
-                                {booking.clients?.name || "Unknown client"}
-                                </div>
-                                <div className={tableStyles.cellInfo}>
-                                {booking.clients?.email}
-                                </div>
-                                <div className={tableStyles.cellInfo}>
-                                {booking.clients?.phone}
-                                </div>
-                            </td>
-
-                            <td className={tableStyles.cell}>{booking.pickup_location}</td>
-                            <td className={tableStyles.cell}>{booking.destination}</td>
-                            <td className={tableStyles.cell}>{booking.pickup_date}</td>
-                            <td className={tableStyles.cell}>{booking.pickup_time}</td>
-                            <td className={tableStyles.cell}>{booking.passengers}</td>
-                            <td className={tableStyles.cell}>{booking.trip_type}</td>
-
-                            <td className={tableStyles.cellCaption}>
-                                <form action={updateAssignedBookingStatus} className="flex items-center gap-2">
-                                <input type="hidden" name="bookingId" value={booking.id} />
-                                <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
-
-                                <select name="status" defaultValue={booking.status} className={tableStyles.selectTable} >
-                                    {bookingStatusOptions.map((status) => (<option key={status} value={status}>{status} </option>))}
-                                </select>
-
-                                <button type="submit" className={formStyles.smallButton}>
-                                    Save
-                                </button>
-                                </form>
-                            </td>
-                            </tr>
+                            <Fragment key={booking.id}>                           
+                                <tr key={booking.id} className="border-b border-white/10">
+                                    <td className={tableStyles.cellCaption}>
+                                        <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"} </div>
+                                        <div className={tableStyles.cellInfo}> {booking.clients?.email} </div>
+                                        <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
+                                    </td>
+                                    <td className={tableStyles.cell}>{booking.pickup_location}</td>
+                                    <td className={tableStyles.cell}>{booking.destination}</td>     
+                                    <td className={tableStyles.cell}> {formatShortDate(booking.pickup_date)} </td>
+                                    <td className={tableStyles.cell}> {formatShortTime(booking.pickup_time)} </td>
+                                    <td className={tableStyles.cell}> Pax: {booking.passengers} </td>
+                                    <td className={tableStyles.cell}> LUGG: {booking.luggage} </td>
+                                    <td className={`${tableStyles.cell} whitespace-nowrap`}>
+                                        <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                            {booking.has_pets  ? "Pet ✓" : "No pet"}
+                                        </span>
+                                    </td>
+                                    <td className={tableStyles.cell}> {formatTripType(booking.trip_type)} </td>
+                                </tr>
+                                <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
+                                    <td colSpan={8} className="px-4 pb-4 pt-0 text-sm text-slate-300">
+                                        <div className="rounded-xl bg-slate-950/30 px-3 py-2">
+                                        <span className="font-semibold text-cyan-300">Notes: </span>
+                                        <span className="wrap-break-word"> {booking.notes || "-----"} </span>
+                                        </div>
+                                    </td>
+                                    <td colSpan={3} className="px-4 pb-4 pt-0 text-sm text-slate-300">
+                                        <form action={updateAssignedBookingStatus} className="flex items-end justify-end gap-3" >
+                                            <input type="hidden" name="bookingId" value={booking.id} />
+                                            <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
+                                            <label className="grid w-32 shrink-0 gap-1">
+                                                <span className ="font-semibold text-cyan-300 px-2 py-1">Booking status</span>
+                                                <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
+                                                    {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
+                                                </select>
+                                            </label>                                            
+                                            <button type="submit" className={formStyles.smallButton}>
+                                                Save
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            </Fragment>
                         ))}
 
                         {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}> No assigned bookings found yet.</td></tr> )}

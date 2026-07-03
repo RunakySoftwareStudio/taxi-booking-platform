@@ -217,17 +217,17 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                                 <span className={mobileStyle.infoValue}>{booking.trip_type}</span>
                                             </div>
                                         </div>
-
-                                        <div>
-                                            <span className={mobileStyle.inforCaption}>  Notes:  </span>
-                                            <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
-                                        </div>
                                         <div>
                                             <span className={mobileStyle.inforCaption}>  Has pets:  </span>
                                             <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
                                                 {booking.has_pets  ? "yes ✓" : "No"}
                                             </span>
                                         </div>
+                                        <div>
+                                            <span className={mobileStyle.inforCaption}>  Notes:  </span>
+                                            <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
+                                        </div>
+
                                 </div>
 
                                 <form action={updateBookingAdminFields} className="mt-2 grid gap-3">
@@ -256,24 +256,22 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                 </div>
 
                 {/* Desktop booking table */}
-                <div className={`${tableStyles.DivCyanList} hidden lg:block overflow-x-auto`}>
-                    <table className={`${tableStyles.table1000} min-w-312.5`}>
-                        <thead className={tableStyles.tableHeaderCyan}>
+                <div className={`${tableStyles.DivCyanList} hidden max-h-[75vh] overflow-auto scrollbar-thin scrollbar-thumb-cyan-700 scrollbar-track-slate-950 lg:block`}>
+                <table className={`${tableStyles.table1000} min-w-312.5`}>
+                    <thead className={tableStyles.tableHeaderCyan}>
                         <tr>
-                            <th className={tableStyles.cellCaption}>Client</th>
-                            <th className={tableStyles.cellCaption}>Pickup</th>
-                            <th className={tableStyles.cellCaption}>Destination</th>
-                            <th className={tableStyles.cellCaption}>Date</th>
-                            <th className={tableStyles.cellCaption}>Time</th>
-                            <th className={tableStyles.cellCaption}>Pax</th>
-                            <th className={tableStyles.cellCaption}>Trip </th>
-                            <th className={tableStyles.cellCaption}>Luggage</th>
-                            <th className={tableStyles.cellCaption}>Has pet</th>
-                            <th className={tableStyles.cellCaption}></th>
-                            
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Client </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Pickup  </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Destination </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Date  </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Time  </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Pax   </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Trip  </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Luggage  </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Has pet  </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Actions  </th>
                         </tr>
-                        </thead>
-
+                    </thead>
                         <tbody>
                             {bookingRows.map((booking) => (
                             <Fragment key={booking.id}>
@@ -292,7 +290,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                     <td className={tableStyles.cell}>{formatShortTime(booking.pickup_time)}</td>
                                     <td className={tableStyles.cell}>Pax:{" "}{booking.passengers}</td>
                                     <td className={tableStyles.cell}>Trip:{" "}{booking.trip_type}</td>
-                                    <td className={tableStyles.cell}>Luggage:{" "} {booking.luggage}</td>
+                                    <td className={tableStyles.cell}>LUGG:{" "} {booking.luggage}</td>
                                     <td className={`${tableStyles.cell} whitespace-nowrap`}>
                                         <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
                                             {booking.has_pets  ? "Pet ✓" : "No pet"}
@@ -303,24 +301,22 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
                                     <td colSpan={5} className="px-4 pb-4 pt-0 text-sm text-slate-300">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
-                                        <span className="font-semibold text-cyan-300">Notes: </span>
-                                        <span className="wrap-break-word"> {booking.notes || "-----"} </span>
+                                            <span className="font-semibold text-cyan-300">Notes: </span>
+                                            <span className="wrap-break-word"> {booking.notes || "-----"} </span>
                                         </div>
                                     </td>
 
                                     <td colSpan={4} className="px-4 pb-4 pt-0 text-sm text-slate-300">
                                         <form action={updateBookingAdminFields} className="flex items-end justify-end gap-3" >
                                             <input type="hidden" name="bookingId" value={booking.id} />
-
                                             <label className="grid w-32 shrink-0 gap-2">
-                                                <span>Booking status</span>
+                                                <span className="font-semibold text-cyan-300"> Booking status</span>
                                                 <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
                                                     {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
                                                 </select>
-                                            </label>
-
+                                            </label>                                            
                                             <label className="grid w-44 shrink-0 gap-2">
-                                                <span>Assigned chauffeur</span>
+                                                <span className="font-semibold text-cyan-300"> Assigned chauffeur</span>
                                                 <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={formStyles.selectForm} >
                                                     <option value="">Unassigned</option>
                                                     {chauffeurOptions.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
