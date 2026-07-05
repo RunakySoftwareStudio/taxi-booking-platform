@@ -1,3 +1,4 @@
+import TopMenu from "@/components/TopMenu";
 import ChauffeurRegistrationForm from "@/components/ChauffeurRegistrationForm";
 
 /**
@@ -6,19 +7,21 @@ import ChauffeurRegistrationForm from "@/components/ChauffeurRegistrationForm";
  * This page creates the public route:
  * /chauffeur-register
  *
- * The page itself only controls the page layout, title, and introduction text.
- * The real form logic is inside ChauffeurRegistrationForm.
+ * The page itself controls the page layout, header, title,
+ * introduction text, and then loads the registration form component.
  */
 export default function ChauffeurRegisterPage() {
   /**
    * Final page layout section
    *
-   * This return shows the full public chauffeur registration page.
-   * It uses a dark background, centered content, branding text,
-   * and then renders the form component.
+   * TopMenu gives the user access back to the main website navigation.
+   * Because TopMenu is fixed at the top of the screen, we use pt-32
+   * to create enough space below the header.
    */
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+    <main className="min-h-screen bg-slate-950 px-6 pb-16 pt-32 text-white">
+      <TopMenu />
+
       <div className="mx-auto max-w-3xl">
         <div className="mb-8 text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">  VOYΛ TAXI  </p>

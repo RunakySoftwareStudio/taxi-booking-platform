@@ -300,7 +300,7 @@ export default function ChauffeurRegistrationForm() {
    * to the review screen instead of sending data directly to Supabase.
    =========================================**/
   return (
-    <form  onSubmit={handleReviewRegistration} className="rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-xl" >
+    <form  onSubmit={handleReviewRegistration} className="rounded-2xl border border-cyan-400/30 bg-slate-900 p-6 shadow-xl" >
       <div className="grid gap-5">
         <FormField  label="Full name" inputName="name"  value={formData.name}  onChange={updateTextField("name")}   required />
         <FormField  label="Email"  inputName="email"  type="email"  value={formData.email} onChange={updateTextField("email")} required />
@@ -312,7 +312,7 @@ export default function ChauffeurRegistrationForm() {
         <input  type="checkbox"  checked={formData.acceptsPets}  onChange={handlePetsChange} className="h-5 w-5" />  I accept passengers with pets </label>
       </div>
 
-      <button type="submit" className="mt-8 w-full rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300" >
+      <button type="submit" className="mt-8 w-full rounded-xl border border-cyan-400/40 bg-slate-950/60 px-5 py-3 font-semibold text-cyan-200 transition hover:bg-cyan-400/10 hover:text-cyan-100">
         Review registration
       </button>
     </form>
