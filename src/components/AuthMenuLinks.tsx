@@ -28,10 +28,10 @@ export default function AuthMenuLinks() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-        async function loadProfile() {
-        const {data: { user }} = await supabase.auth.getUser();
+    async function loadProfile() {
+      const {data: { user }} = await supabase.auth.getUser();
 
-        if (!user) { setProfile(null);  setIsLoading(false);  return; }
+      if (!user) { setProfile(null);  setIsLoading(false);  return; }
 
         const { data } = await supabase
             .from("user_profiles")
@@ -41,34 +41,31 @@ export default function AuthMenuLinks() {
 
         setProfile(data as UserProfile | null);
         setIsLoading(false);
-        }
+      }
 
-        loadProfile();
-  }, [supabase]);
+      loadProfile();
+    }, [supabase]);
 
-  if (isLoading) { return null; }
+    if (isLoading) { return null; }
+    if (!profile) { return ( <Link href="/login" className={pageStyles.loginButtonHome} > Login </Link> ); }
+    if (profile.role === "admin") {
+      return (
+        <div className={pageStyles.authMenuGroup}>
+          <Link href="/admin" className={pageStyles.adminButtonHome}>
+            Admin
+          </Link>
 
-  if (!profile) {
-    return (
-    <Link href="/login" className={pageStyles.loginButtonHome} >
-        Login
-    </Link>
-    );
-  }
-
-  if (profile.role === "admin") {
-    return (
-      <div className={pageStyles.divFlex}>
-        <Link href="/admin" className={pageStyles.logButton}> Admin </Link>
-        <LogoutButton />
-      </div>
-    );
+          <LogoutButton />
+        </div>
+      );
   }
 
   if (profile.role === "chauffeur" && profile.chauffeur_id) {
     return (
-      <div className={pageStyles.divFlex}>
-        <Link href={`/chauffeur/${profile.chauffeur_id}`} className={pageStyles.logButton}> Dashboard </Link>
+      <div className={pageStyles.authMenuGroup}>
+        <Link  href={`/chauffeur/${profile.chauffeur_id}`} className={pageStyles.adminButtonHome} >
+          Dashboard
+        </Link>
         <LogoutButton />
       </div>
     );

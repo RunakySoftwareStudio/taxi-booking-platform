@@ -1,3 +1,4 @@
+import Link from "next/link";
 import TopMenu from "@/components/TopMenu";
 import HowItWorks from "@/components/HowItWorks";
 import ChauffeursPreview from "@/components/ChauffeursPreview";
@@ -14,15 +15,18 @@ export default function HomePage() {
         <h1 className="mt-6 text-4xl font-bold text-white md:text-6xl"> Book a professional chauffeur for your next trip </h1>
         <p className="mt-4 text-lg font-medium text-yellow-300">  Where the journey begins </p>
         <p className="mt-8 text-lg text-slate-200"> Find available chauffeurs, compare vehicles, request a trip, and stay  connected from booking to arrival. </p>
-      {/*
-              <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-6xl"> Book a professional chauffeur for your next trip </h1>
-        <p className="mt-6 max-w-2xl text-lg text-slate-300"> Find available chauffeurs, compare vehicles, request a trip, and stay connected from booking to arrival. </p>
-       */}
-
 
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-          <a href="#booking" className="rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300" > Book a Trip </a>
-          <a href="#chauffeurs" className="rounded-full border border-white/20 px-8 py-4 font-semibold text-white transition hover:bg-white hover:text-slate-950" > View Chauffeurs </a>
+          <a href="#booking"  className="rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300"  >
+            Book a Trip
+          </a>
+          <a href="#chauffeurs" className="rounded-full border border-white/20 px-8 py-4 font-semibold text-white transition hover:bg-white hover:text-slate-950">
+            View Chauffeurs
+          </a>
+          {/* Public button for chauffeurs who want to register themselves */}
+          <Link href="/chauffeur-register"  className="rounded-full border border-cyan-300 px-8 py-4 font-semibold text-cyan-300 transition hover:bg-cyan-300 hover:text-slate-950" >
+            Register as chauffeur
+          </Link>
         </div>
       </section>
 

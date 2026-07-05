@@ -19,7 +19,7 @@ export default function LogoutButton() {
   }
 
   return (
-    <button  type="button" onClick={handleLogout} disabled={isLoading} className={pageStyles.logButton} >
+    <button  type="button" onClick={handleLogout} disabled={isLoading} className={pageStyles.logoutButtonHome} >
         {isLoading ? "Signing out..." : "Logout"}
     </button>
   );

@@ -65,7 +65,10 @@ export const pageStyles = {
     errorMsgPage:             "mt-6 rounded-xl border-3 border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200",
     successMsgPage:           "mt-6 rounded-xl border-3 border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-200",
     logButton:                "text-sm text-slate-300 hover:text-cyan-300",
-    loginButtonHome:          "rounded-full border border-yellow-400 px-5 py-2 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10",
+    loginButtonHome:          "inline-flex items-center justify-center rounded-full border border-yellow-400 px-5 py-2 text-sm font-semibold text-yellow-300 transition hover:bg-yellow-400 hover:text-slate-950",
+    adminButtonHome:          "inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white hover:text-slate-950",
+    logoutButtonHome:         "inline-flex items-center justify-center rounded-full border border-red-400/40 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60",
+    authMenuGroup:            "flex items-center justify-end gap-3",
     divFlex:                  "flex items-start justify-between gap-4",
     MainPageCaptionYellow:    "mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"
 

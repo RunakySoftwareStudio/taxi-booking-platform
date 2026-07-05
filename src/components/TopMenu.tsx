@@ -23,6 +23,10 @@ export default function TopMenu() {
             <a href="#chauffeurs" className="transition hover:text-white"> Chauffeurs </a>
             <a href="#booking" className="transition hover:text-white"> Booking </a>
             <Link href="/status" className="text-sm text-slate-300 hover:text-cyan-300"> Check booking  </Link>
+            {/* Public link for chauffeurs who want to register themselves */}
+            <Link href="/chauffeur-register"  className="rounded-full border border-cyan-300 px-4 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-300 hover:text-slate-950" >
+              Register as chauffeur
+            </Link>
         </nav>
 
         <div className="shrink-0">
