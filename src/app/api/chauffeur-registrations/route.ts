@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { sendChauffeurRegistrationAdminEmail } from "@/lib/email/chauffeurRegistrationEmailNotifications";
 
 /**
  * ChauffeurRegistrationRequest
@@ -131,9 +132,28 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { message: "Could not save chauffeur registration.", },
         { status: 500 }
-      );
+      );     
     }
 
+    const adminEmailResult = await sendChauffeurRegistrationAdminEmail({
+        id: savedChauffeur.id,
+        name: savedChauffeur.name,
+        email: savedChauffeur.email,
+        phone,
+        companyName: companyName || null,
+        licenseNumber: licenseNumber || null,
+        serviceArea: serviceArea || null,
+        acceptsPets,
+        accountStatus: savedChauffeur.account_status,
+    });
+
+    if (!adminEmailResult.success) {
+      console.error(
+        "Chauffeur registration admin email failed:",
+        adminEmailResult.message
+      );
+    }
+    
     return NextResponse.json(
       {
         message: "Chauffeur registration submitted successfully.",

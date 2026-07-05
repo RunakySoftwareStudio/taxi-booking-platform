@@ -1,5 +1,5 @@
 /* ===========================================
-    → decides which booking emails must be prepared and sent
+    decides which booking emails must be prepared and sent
     This file is the manager/coordinator for booking emails.
     It does not create the email text itself.
     It does not send the email directly itself.
