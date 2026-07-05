@@ -57,6 +57,10 @@ function normalizeEmail(inputValue: unknown) {
  * 4. Checks if the email already exists
  * 5. Inserts a new chauffeur with pending_approval status
  * 6. Returns the new registration ID
+ * 
+ * A backend API route for chauffeur registration. The API receives JSON data from the frontend, validates required fields, 
+ * normalizes the email, checks for duplicate email addresses, inserts the chauffeur into Supabase, 
+ * and saves the new chauffeur with account_status = pending_approval.
  */
 export async function POST(request: Request) {
   try {

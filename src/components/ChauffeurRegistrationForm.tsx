@@ -35,6 +35,30 @@ type ChauffeurRegistrationFormData = {
   acceptsPets: boolean;
 };
 
+/*=========================================*
+ * SavedChauffeurRegistration
+ *
+ * This type describes the chauffeur registration data
+ * that comes back from our API after saving to Supabase.
+ =========================================*/
+type SavedChauffeurRegistration = {
+  id: string;
+  name: string;
+  email: string;
+  accountStatus: string;
+};
+
+/*=========================================*
+ * ChauffeurRegistrationApiResponse
+ *
+ * This type describes the JSON response from:
+ * /api/chauffeur-registrations
+ =========================================*/
+type ChauffeurRegistrationApiResponse = {
+  message: string;
+  registration?: SavedChauffeurRegistration;
+};
+
 /*=========================================**
  * initialFormData
  *
@@ -67,6 +91,30 @@ const initialFormData: ChauffeurRegistrationFormData = {
 export default function ChauffeurRegistrationForm() {
   const [formData, setFormData] = useState<ChauffeurRegistrationFormData>(initialFormData);
   const [registrationStep, setRegistrationStep] =  useState<RegistrationStep>("form");
+
+  /**
+     * submittedRegistration
+     *
+     * This stores the saved registration that comes back from Supabase.
+     * We need this so we can show the registration ID to the chauffeur.
+     */
+    const [submittedRegistration, setSubmittedRegistration] =    useState<SavedChauffeurRegistration | null>(null);
+
+    /**
+     * isSubmitting
+     *
+     * This is true while the form is being sent to the API.
+     * We use it to disable the Confirm button and show loading text.
+     */
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    /**
+     * errorMessage
+     *
+     * This stores an error message if the API request fails.
+     * Example: duplicate email or server error.
+     */
+    const [errorMessage, setErrorMessage] = useState("");
 
   /*=========================================**
    * updateTextField
@@ -120,38 +168,62 @@ export default function ChauffeurRegistrationForm() {
     setRegistrationStep("review");
   }
 
-  /*=========================================**
-   * handleConfirmRegistration
-   *
-   * This function runs when the user clicks Confirm registration.
-   *
-   * For now, it only moves to the submitted screen.
-   * In the next step, this is where we will call the API route.
-   =========================================**/
-  function handleConfirmRegistration() {
-    setRegistrationStep("submitted");
-  }
+    /*=========================================*
+     * handleConfirmRegistration
+     *
+     * This function runs when the user clicks Confirm registration.
+     *
+     * It sends the form data to our API route: /api/chauffeur-registrations
+     *
+     * If the API succeeds, we save the returned registration ID
+     * and move the user to the submitted screen.
+     ==================================================*/
+    async function handleConfirmRegistration() {
+        setErrorMessage("");
+        setIsSubmitting(true);
 
-  /*=========================================**
-   * handleEditRegistration
-   *
-   * This function sends the user back to the form screen
-   * so they can correct their details.
-   =========================================**/
-  function handleEditRegistration() {
-    setRegistrationStep("form");
-  }
+        try {
+            const response = await fetch("/api/chauffeur-registrations", {
+                method: "POST",
+                headers: {"Content-Type": "application/json", },
+                body: JSON.stringify(formData), });
+
+            const result = (await response.json()) as ChauffeurRegistrationApiResponse;
+
+            if (!response.ok || !result.registration) { setErrorMessage(  result.message || "Could not submit chauffeur registration." ); return;  }
+
+            setSubmittedRegistration(result.registration);
+            setRegistrationStep("submitted");
+        } 
+        catch {setErrorMessage("Could not connect to the server. Please try again later." ); } 
+        finally { setIsSubmitting(false);  }
+    }
+
+    /*=======================================*
+     * handleEditRegistration
+     *
+     * This function sends the user back to the form screen
+     * so they can correct their details.
+     *
+     * It also clears old error messages.
+     =========================================*/
+    function handleEditRegistration() {
+        setErrorMessage("");
+        setRegistrationStep("form");
+    }
 
   /*=========================================*
-   * handleNewRegistration
-   *
-   * This function clears the form and sends the user back
-   * to the first form screen.
-   =========================================*/
-  function handleNewRegistration() {
-    setFormData(initialFormData);
-    setRegistrationStep("form");
-  }
+    * handleNewRegistration
+    *
+    * This function clears the form, clears the saved registration,
+    * clears errors, and sends the user back to the first form screen.
+    */
+    function handleNewRegistration() {
+        setFormData(initialFormData);
+        setSubmittedRegistration(null);
+        setErrorMessage("");
+        setRegistrationStep("form");
+    }
 
   /*====================================*
    * Submitted screen section
@@ -164,14 +236,15 @@ export default function ChauffeurRegistrationForm() {
       <section className="rounded-2xl border border-cyan-400/30 bg-slate-900 p-6 shadow-xl">
         <h2 className="text-2xl font-bold text-cyan-300"> Registration ready </h2>
         <p className="mt-4 text-slate-300">
-          Your chauffeur registration form is working. In the next step, we will
-          connect this confirmation button to Supabase and save the registration
-          with status pending_approval.
+            Your chauffeur registration has been submitted successfully. Please save
+            your Registration ID. You can use it later to check your registration
+            status.
         </p>
         <div className="mt-6 rounded-xl bg-slate-800 p-4 text-sm text-slate-300">
-          <p> <span className="font-semibold text-white">Name:</span>{" "} {formData.name}</p>
-          <p> <span className="font-semibold text-white">Email:</span>{" "}  {formData.email} </p>
-          <p> <span className="font-semibold text-white">Status:</span>{" "}  pending_approval </p>
+          <p> <span className="font-semibold text-white">Registration ID:</span>{" "}  {submittedRegistration?.id}</p>
+          <p> <span className="font-semibold text-white">Name:</span>{" "} {submittedRegistration?.name}</p>
+          <p> <span className="font-semibold text-white">Email:</span>{" "}  {submittedRegistration?.email} </p>
+          <p> <span className="font-semibold text-white">Status:</span>{" "}  {submittedRegistration?.accountStatus} </p>
         </div>
         <button type="button" onClick={handleNewRegistration}  className="mt-6 rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300"  >
             Start new registration
@@ -201,14 +274,17 @@ export default function ChauffeurRegistrationForm() {
           <ReviewRow label="Accepts pets" value={formData.acceptsPets ? "Yes" : "No"} />
         </div>
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <button  type="button"  onClick={handleEditRegistration} className="rounded-xl border border-slate-600 px-5 py-3 font-semibold text-white hover:bg-slate-800">
-            Edit registration
-          </button>
+        {errorMessage ? ( <p className="mt-6 rounded-xl border border-red-400/40 bg-red-950/40 p-4 text-sm text-red-200"> {errorMessage} </p> ) : null}
 
-          <button type="button"  onClick={handleConfirmRegistration} className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300">
-            Confirm registration
-          </button>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <button  type="button"  onClick={handleEditRegistration} className="rounded-xl border border-slate-600 px-5 py-3 font-semibold text-white hover:bg-slate-800">
+                Edit registration
+            </button>
+
+            <button  type="button"  onClick={handleConfirmRegistration}  disabled={isSubmitting}
+                className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60">
+                {isSubmitting ? "Submitting..." : "Confirm registration"}
+            </button>
         </div>
       </section>
     );
