@@ -51,15 +51,9 @@ type ChauffeurStatusPageProps = {
  * If the date is missing or invalid, it returns "-".
  */
 function formatDateForDisplay(inputValue: string) {
-  if (!inputValue) {
-    return "-";
-  }
-
+  if (!inputValue) { return "-"; }
   const dateValue = new Date(inputValue);
-
-  if (Number.isNaN(dateValue.getTime())) {
-    return "-";
-  }
+  if (Number.isNaN(dateValue.getTime())) { return "-"; }
 
   return dateValue.toLocaleDateString("en-GB");
 }
@@ -78,14 +72,9 @@ function formatDateForDisplay(inputValue: string) {
  *
  * If the registration is found, we show the current account status.
  */
-export default function ChauffeurStatusPage({
-  initialRegistrationId = "",
-}: ChauffeurStatusPageProps) {
+export default function ChauffeurStatusPage({initialRegistrationId = "",}: ChauffeurStatusPageProps) {
   const safeInitialRegistrationId = initialRegistrationId ?? "";
-
-  const [registration, setRegistration] =
-    useState<ChauffeurStatusResult | null>(null);
-
+  const [registration, setRegistration] =useState<ChauffeurStatusResult | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -101,7 +90,6 @@ export default function ChauffeurStatusPage({
     eventValue.preventDefault();
 
     const formData = new FormData(eventValue.currentTarget);
-
     const statusRequest = {
       registrationId: String(formData.get("registrationId") || ""),
       email: String(formData.get("email") || ""),
@@ -114,9 +102,7 @@ export default function ChauffeurStatusPage({
     try {
       const response = await fetch("/api/chauffeur-status", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: {"Content-Type": "application/json", },
         body: JSON.stringify(statusRequest),
       });
 
@@ -124,22 +110,15 @@ export default function ChauffeurStatusPage({
 
       if (!response.ok || !result.registration) {
         setRegistration(null);
-        setErrorMessage(
-          result.message || "Chauffeur registration not found."
-        );
+        setErrorMessage( result.message || "Chauffeur registration not found." );
         return;
       }
 
       setRegistration(result.registration);
     } catch (error) {
       console.error("Could not find chauffeur registration:", error);
-
-      setErrorMessage(
-        "Chauffeur registration not found. Please check your registration ID and email."
-      );
-    } finally {
-      setIsLoading(false);
-    }
+      setErrorMessage("Chauffeur registration not found. Please check your registration ID and email." );
+    } finally { setIsLoading(false); }
   }
 
   /**
@@ -154,70 +133,35 @@ export default function ChauffeurStatusPage({
   return (
     <main className={pageStyles.main}>
       <div className={pageStyles.container}>
-        <Link href="/" className={formStyles.formInfoCell}>
-          ← Back to homepage
-        </Link>
+        <Link href="/" className={formStyles.formInfoCell}>  ← Back to homepage </Link>
+        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Chauffeur registration status </p>
+        <h1 className={pageStyles.pageTitle}> Check your chauffeur registration </h1>
+        <p className={pageStyles.pageDescription}> Enter your registration ID and email address to view the current status of your chauffeur registration. </p>
 
-        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
-          Chauffeur registration status
-        </p>
-
-        <h1 className={pageStyles.pageTitle}>
-          Check your chauffeur registration
-        </h1>
-
-        <p className={pageStyles.pageDescription}>
-          Enter your registration ID and email address to view the current
-          status of your chauffeur registration.
-        </p>
-
-        <form
-          onSubmit={handleStatusSearch}
-          className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6"
-        >
+        <form onSubmit={handleStatusSearch} className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6" >
           <div className={formStyles.formDivGridCol2}>
             <label className="block">
               <span className={formStyles.span}>Registration ID</span>
-
-              <input
-                name="registrationId"
-                defaultValue={safeInitialRegistrationId}
-                required
-                placeholder="Paste your registration ID"
-                className={`${formStyles.inputWFullCyan} break-all`}
-              />
+              <input name="registrationId" defaultValue={safeInitialRegistrationId} required placeholder="Paste your registration ID" className={`${formStyles.inputWFullCyan} break-all`}  />
             </label>
 
             <label className="block">
               <span className={formStyles.span}>Email address</span>
-
-              <input
-                name="email"
-                type="email"
-                required
-                placeholder="you@example.com"
-                className={formStyles.inputWFullCyan}
-              />
+              <input name="email" type="email" required  placeholder="you@example.com" className={formStyles.inputWFullCyan} />
             </label>
           </div>
 
           <button
-            type="submit"
-            disabled={isLoading}
-            className={`mt-8 ${formStyles.primaryButtonOutside} disabled:cursor-not-allowed disabled:opacity-60`}
-          >
+            type="submit"  disabled={isLoading}  className={`mt-8 ${formStyles.primaryButtonOutside} disabled:cursor-not-allowed disabled:opacity-60`} >
             {isLoading ? "Searching..." : "Check registration status"}
           </button>
 
-          {errorMessage ? (
-            <p className={tableStyles.errorCell}>{errorMessage}</p>
-          ) : null}
+          {errorMessage ? (<p className={tableStyles.errorCell}>{errorMessage}</p> ) : null}
         </form>
 
         {registration ? (
           <section className={formStyles.form}>
-            <h3 className={formStyles.formH5MediumSemiBold}>
-              Registration Status:{" "}
+            <h3 className={formStyles.formH5MediumSemiBold}>  Registration Status:{" "}
               <span className={formStyles.formPCyan}>
                 {registration.accountStatus}
               </span>
@@ -228,43 +172,20 @@ export default function ChauffeurStatusPage({
               <StatusRow label="Name" value={registration.name} />
               <StatusRow label="Email" value={registration.email} />
               <StatusRow label="Phone" value={registration.phone} />
-              <StatusRow
-                label="Company name"
-                value={registration.companyName || "-"}
-              />
-              <StatusRow
-                label="License number"
-                value={registration.licenseNumber || "-"}
-              />
-              <StatusRow
-                label="Service area"
-                value={registration.serviceArea || "-"}
-              />
-              <StatusRow
-                label="Accepts pets"
-                value={registration.acceptsPets ? "Yes" : "No"}
-              />
-              <StatusRow
-                label="Submitted on"
-                value={formatDateForDisplay(registration.createdAt)}
-              />
+              <StatusRow label="Company name" value={registration.companyName || "-"} />
+              <StatusRow label="License number" value={registration.licenseNumber || "-"} />
+              <StatusRow label="Service area" value={registration.serviceArea || "-"} />
+              <StatusRow label="Accepts pets" value={registration.acceptsPets ? "Yes" : "No"} />
+              <StatusRow label="Submitted on" value={formatDateForDisplay(registration.createdAt)} />
             </div>
 
             <div className={formStyles.formDivCyan}>
               <h3 className={formStyles.formLabel}>What this status means</h3>
-
-              <p className={formStyles.formInfoCellCaption}>
-                pending_approval means your registration was received and is
-                waiting for admin review.
-              </p>
-
-              <p className={formStyles.formInfoCellCaption}>
-                approved means your chauffeur account has been accepted.
-              </p>
-
-              <p className={formStyles.formInfoCellCaption}>
-                inactive or suspended means your account is not currently active.
-              </p>
+              <ul className="mt-3 list-disc space-y-2 pl-5">
+                <li className={formStyles.formInfoCellCaption}> Pending_approval means your registration was received and is waiting for admin review. </li>
+                <li className={formStyles.formInfoCellCaption}> Approved means your chauffeur account has been accepted.  </li>
+                <li className={formStyles.formInfoCellCaption}> Inactive or suspended means your account is not currently active. </li>
+              </ul>
             </div>
           </section>
         ) : null}
@@ -296,7 +217,7 @@ function StatusRow({ label, value }: StatusRowProps) {
         {label}
       </p>
 
-      <p className="mt-2 break-words text-white">{value}</p>
+      <p className="mt-2 wrap-break-words text-white">{value}</p>
     </div>
   );
 }

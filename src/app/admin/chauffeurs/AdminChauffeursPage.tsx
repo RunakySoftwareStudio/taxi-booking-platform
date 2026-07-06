@@ -27,11 +27,55 @@ type ChauffeurRow = {
     accepts_pets: boolean; 
     created_at: string;
 };
+
+/**
+ * getChauffeurStatusSortPriority
+ *
+ * This helper decides the display order of chauffeur statuses.
+ *
+ * pending_approval should be first because admin needs to review it.
+ * approved chauffeurs come after that.
+ * suspended and inactive chauffeurs are less urgent.
+ */
+function getChauffeurStatusSortPriority(accountStatus: string) {
+    if (accountStatus === "pending_approval") {   return 0;  }
+    if (accountStatus === "approved") {  return 1; }
+    if (accountStatus === "suspended") { return 2; }
+    if (accountStatus === "inactive") { return 3; }
+
+    return 4;
+}
+
+/**
+ * getNextQuickAccountStatus
+ *
+ * This helper decides what the quick action button should do.
+ *
+ * pending_approval, inactive, and suspended can be moved to approved.
+ * approved can be moved to inactive.
+ */
+function getNextQuickAccountStatus(accountStatus: string) {
+    if (accountStatus === "approved") {  return "inactive"; }
+    return "approved";
+}
+
+/**
+ * getQuickAccountStatusButtonText
+ *
+ * This helper decides the text on the quick action button.
+ */
+function getQuickAccountStatusButtonText(accountStatus: string) {
+    if (accountStatus === "pending_approval") { return "Approve"; }
+    if (accountStatus === "approved") { return "Deactivate"; }
+    return "Activate";
+}
+
 async function changeChauffeurActiveStatus(formData: FormData) {
     "use server";
 
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const nextAccountStatus = String(formData.get("nextAccountStatus") || "");
+    const currentAccountStatus = String(formData.get("currentAccountStatus") || "");
 
     if (!chauffeurId || !nextAccountStatus) { redirect("/admin/chauffeurs?error=missing-fields");  }
     if (nextAccountStatus !== "approved" && nextAccountStatus !== "inactive") { redirect("/admin/chauffeurs?error=invalid-status");  }
@@ -47,7 +91,8 @@ async function changeChauffeurActiveStatus(formData: FormData) {
     }
 
     revalidatePath("/admin/chauffeurs");
-    if (nextAccountStatus === "approved") {redirect("/admin/chauffeurs?success=chauffeur-activated");  }
+    if ( nextAccountStatus === "approved" && currentAccountStatus === "pending_approval") { redirect("/admin/chauffeurs?success=chauffeur-approved");}
+    if (nextAccountStatus === "approved") { redirect("/admin/chauffeurs?success=chauffeur-activated");}
     redirect("/admin/chauffeurs?success=chauffeur-deactivated");
 }
 
@@ -132,11 +177,20 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
         If second chauffeur is inactive, keep first one above.
         If both have same kind of status, sort by name.
     =============================================*/
-    const sortedChauffeurRows = (chauffeurRows ?? []).sort((firstChauffeur, secondChauffeur) => {
-        if (firstChauffeur.account_status === "inactive" && secondChauffeur.account_status !== "inactive" ) { return 1; }
-        if (firstChauffeur.account_status !== "inactive" && secondChauffeur.account_status === "inactive" ) { return -1; }
-        return firstChauffeur.name.localeCompare(secondChauffeur.name);
-    });
+    const sortedChauffeurRows = [...chauffeurRows].sort(
+        (firstChauffeur, secondChauffeur) => { const firstPriority = getChauffeurStatusSortPriority( firstChauffeur.account_status );
+            const secondPriority = getChauffeurStatusSortPriority(secondChauffeur.account_status );
+            if (firstPriority !== secondPriority) { return firstPriority - secondPriority; }
+            if (firstChauffeur.account_status === "pending_approval") {
+                return (
+                    new Date(secondChauffeur.created_at).getTime() -
+                    new Date(firstChauffeur.created_at).getTime()
+                );
+            }
+
+            return firstChauffeur.name.localeCompare(secondChauffeur.name);
+        }
+    );
       
     const { data: chauffeurStatuses, error: chauffeurStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status",  });
     if (chauffeurStatusError) { console.error("Could not load chauffeur statuses:", chauffeurStatusError); }
@@ -155,6 +209,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 {pageMessage.error === "duplicate-email" && ( <p className={pageStyles.errorMsgPage}> A chauffeur with this email address already exists. </p> )}
                 {pageMessage.error === "add-chauffeur-failed" && (<p className={pageStyles.errorMsgPage}> Could not add chauffeur. Please try again. </p> )}
                 {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> Could not update chauffeur status.</p> )}
+                {pageMessage.success === "chauffeur-approved" && (<p className={pageStyles.successMsgPage}> Chauffeur approved successfully. </p>)} 
                 {pageMessage.success === "chauffeur-activated" && (<p className={pageStyles.successMsgPage}> Chauffeur activated successfully. </p>)}
                 {pageMessage.error === "deactivate-chauffeur-failed" && (<p className={pageStyles.errorMsgPage}> Could not deactivate chauffeur. Please try again. </p>)}
                 {pageMessage.success === "chauffeur-deactivated" && (<p className={pageStyles.successMsgPage}> Chauffeur deactivated successfully.</p>)}
@@ -219,37 +274,42 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                 <span className= {mobileStyle.infoValue} >{chauffeur.service_area || "- - -"}</span>
                             </p>
                             <div className="mt-2 grid grid-cols-2 gap-3">
-                                
-                                    <div className="">
-                                        <span className= {mobileStyle.inforCaption}>Rating: </span>
-                                        <span className= {mobileStyle.infoValue} >{chauffeur.rating}</span>
-                                    </div>
-                                    <div className="">
-                                        <span className={mobileStyle.inforCaption}>  Pets:  </span>
-                                        <span  className={chauffeur.accepts_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed } >
-                                            {chauffeur.accepts_pets ? " Yes ✓ " : " No ✕ "}
+                                <div className="">
+                                    <span className= {mobileStyle.inforCaption}>Rating: </span>
+                                    <span className= {mobileStyle.infoValue} >{chauffeur.rating}</span>
+                                </div>
+                                <div className="">
+                                    <span className={mobileStyle.inforCaption}>  Pets:  </span>
+                                    <span  className={chauffeur.accepts_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed } >
+                                        {chauffeur.accepts_pets ? " Yes ✓ " : " No ✕ "}
+                                    </span>
+                                </div>        
+                                <form  id={`status-form-${chauffeur.id}`} action={updateChauffeurStatus}  className="mt-1">
+                                    <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+                                    <div className="grid grid-cols-2">
+                                        <span>
+                                            <label htmlFor={`status-${chauffeur.id}`} className={mobileStyle.inforCaption}> Status: </label>
                                         </span>
-                                    </div>                     
-
-                                    <form  action={updateChauffeurStatus} className="mt-1 flex items-center gap-2">
-                                        <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                                        <label htmlFor={`status-${chauffeur.id}`} className={mobileStyle.inforCaption}> Status: </label>
-                                        <select id={`status-${chauffeur.id}`} name="accountStatus" defaultValue={chauffeur.account_status} className={mobileStyle.selectOption}>
-                                            {chauffeurStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
-                                        </select>
-                                    </form>
+                                        <span>
+                                            <select  id={`status-${chauffeur.id}`}  name="accountStatus"  defaultValue={chauffeur.account_status} className={mobileStyle.selectOption} >
+                                                {chauffeurStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
+                                            </select>
+                                        </span>
+                                    </div>
+                                </form>
                             </div>
                         </div>
-                        <div className="mt-5 flex flex-wrap items-center gap-3">
-                            <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
-                                Details
-                            </Link>
+                        <div className="mt-3 flex flex-wrap items-center gap-3">  
+                            <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>  Details  </Link>
 
+                            {/*explanation: save button submits this form: <form id={`status-form-${chauffeur.id}`} action={updateChauffeurStatus}>*/}
+                            <button  type="submit" form={`status-form-${chauffeur.id}`} className={formStyles.smallButton} >  Save  </button>
                             <form action={changeChauffeurActiveStatus}>
                                 <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                                <input type="hidden" name="nextAccountStatus" value={chauffeur.account_status === "inactive" ? "approved" : "inactive"} />
-                                <button type="submit" className={ chauffeur.account_status === "inactive" ? formStyles.activateButton : formStyles.deActiveDeleteButton } >
-                                    {chauffeur.account_status === "inactive" ? "Activate" : "Deactivate"}
+                                <input type="hidden" name="currentAccountStatus"  value={chauffeur.account_status} />
+                                <input type="hidden" name="nextAccountStatus"  value={getNextQuickAccountStatus(chauffeur.account_status)}  />
+                                <button type="submit"  className={ chauffeur.account_status === "approved" ? formStyles.deActiveDeleteButton : formStyles.activateButton  }  >
+                                {getQuickAccountStatusButtonText(chauffeur.account_status)}
                                 </button>
                             </form>
                         </div>
@@ -265,7 +325,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                         <thead className={tableStyles.tableHeaderCyan}>
                             <tr>
                                 <th className={tableStyles.cellCaption}>Name</th>
-                                <th className={tableStyles.cellCaption}>Email</th>
+                               
                                 <th className={tableStyles.cellCaption}>Phone</th>
                                 <th className={tableStyles.cellCaption}>Service area</th>
                                 <th className={tableStyles.cellCaption}>Rating</th>
@@ -278,8 +338,10 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                         <tbody>
                             {sortedChauffeurRows.map((chauffeur) => (
                                 <tr key={chauffeur.id}  className={ chauffeur.account_status === "inactive" ? `${tableStyles.rowCyan} opacity-50` : tableStyles.rowCyan } >
-                                <td className="p-4 font-medium text-white"> {chauffeur.name} </td>
-                                    <td className={tableStyles.cell}>{chauffeur.email}</td>
+                                    <td className="p-4 align-top">
+                                        <span className="block font-medium text-white"> {chauffeur.name} </span>
+                                        <span className="mt-1 block text-sm text-slate-400 break-all"> {chauffeur.email} </span>
+                                    </td>
                                     <td className={tableStyles.cell}>{chauffeur.phone}</td>
                                     <td className={tableStyles.cell}> {chauffeur.service_area || "-"} </td>
                                     <td className={tableStyles.cell}>{chauffeur.rating}</td>                                   
@@ -292,7 +354,6 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                     <td className={tableStyles.cellCaption}>
                                         <form action={updateChauffeurStatus} className="flex items-center gap-2">
                                             <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-
                                             <select name="accountStatus" defaultValue={chauffeur.account_status} className={formStyles.selectForm}>
                                                 {/* This is normal selection of status options
                                                     <option value="pending_approval">pending_approval</option> 
@@ -315,10 +376,10 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                             </Link>
                                             <form action={changeChauffeurActiveStatus}>
                                                 <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                                                <input type="hidden" name="nextAccountStatus" value={chauffeur.account_status === "inactive" ? "approved" : "inactive"} />
-                                                <button type="submit" 
-                                                    className={chauffeur.account_status === "inactive" ? formStyles.activateButton : formStyles.deActiveDeleteButton } >
-                                                    {chauffeur.account_status === "inactive" ? "Activate" : "Deactivate" }
+                                                <input type="hidden" name="currentAccountStatus"  value={chauffeur.account_status} />
+                                                <input type="hidden" name="nextAccountStatus"  value={getNextQuickAccountStatus(chauffeur.account_status)}  />
+                                                <button type="submit"  className={ chauffeur.account_status === "approved" ? formStyles.deActiveDeleteButton : formStyles.activateButton  }  >
+                                                {getQuickAccountStatusButtonText(chauffeur.account_status)}
                                                 </button>
                                             </form>
                                         </div>
