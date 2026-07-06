@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ChangeEvent, FormEvent, useState } from "react";
 import { buttonStyles } from "@/styles/classNames";
 
@@ -247,9 +248,14 @@ export default function ChauffeurRegistrationForm() {
           <p> <span className="font-semibold text-white">Email:</span>{" "}  {submittedRegistration?.email} </p>
           <p> <span className="font-semibold text-white">Status:</span>{" "}  {submittedRegistration?.accountStatus} </p>
         </div>
-        <button type="button" onClick={handleNewRegistration} className={`mt-8 ${buttonStyles.normalSoftCyan}`}>
-            Start new registration
-        </button>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Link href={`/chauffeur-status?registrationId=${submittedRegistration?.id ?? ""}`} className={buttonStyles.normalSoftCyan} >
+              Check registration status
+          </Link>
+          <button type="button"  onClick={handleNewRegistration}  className={buttonStyles.normalNeutral} >
+              Start new registration
+          </button>
+        </div>
       </section>
     );
   }
