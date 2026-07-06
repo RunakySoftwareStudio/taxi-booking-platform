@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useState } from "react";
+import { buttonStyles } from "@/styles/classNames";
 
 /*=========================================**
  * RegistrationStep
@@ -246,7 +247,7 @@ export default function ChauffeurRegistrationForm() {
           <p> <span className="font-semibold text-white">Email:</span>{" "}  {submittedRegistration?.email} </p>
           <p> <span className="font-semibold text-white">Status:</span>{" "}  {submittedRegistration?.accountStatus} </p>
         </div>
-        <button type="button" onClick={handleNewRegistration}  className="mt-6 rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300"  >
+        <button type="button" onClick={handleNewRegistration} className={`mt-8 ${buttonStyles.normalSoftCyan}`}>
             Start new registration
         </button>
       </section>
@@ -277,12 +278,12 @@ export default function ChauffeurRegistrationForm() {
         {errorMessage ? ( <p className="mt-6 rounded-xl border border-red-400/40 bg-red-950/40 p-4 text-sm text-red-200"> {errorMessage} </p> ) : null}
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button  type="button"  onClick={handleEditRegistration} className="rounded-xl border border-slate-600 px-5 py-3 font-semibold text-white hover:bg-slate-800">
+            <button  type="button"  onClick={handleEditRegistration} className={buttonStyles.normalNeutral}>
                 Edit registration
             </button>
 
             <button  type="button"  onClick={handleConfirmRegistration}  disabled={isSubmitting}
-                className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60">
+                className={`${buttonStyles.normalSoftCyan} ${buttonStyles.disabled}`}>
                 {isSubmitting ? "Submitting..." : "Confirm registration"}
             </button>
         </div>
@@ -312,7 +313,7 @@ export default function ChauffeurRegistrationForm() {
         <input  type="checkbox"  checked={formData.acceptsPets}  onChange={handlePetsChange} className="h-5 w-5" />  I accept passengers with pets </label>
       </div>
 
-      <button type="submit" className="mt-8 w-full rounded-xl border border-cyan-400/40 bg-slate-950/60 px-5 py-3 font-semibold text-cyan-200 transition hover:bg-cyan-400/10 hover:text-cyan-100">
+      <button type="submit" className={buttonStyles.fullWidthSoftCyan}>
         Review registration
       </button>
     </form>
