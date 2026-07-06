@@ -113,3 +113,11 @@ export const mobileStyle ={
     article:                        "rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white",
     line:                           "border-t border-cyan-400/60 pt-4"  ,
 };
+
+export const buttonStyles = {
+    fullWidthSoftCyan:        "mt-8 w-full rounded-xl border border-cyan-400/40 bg-slate-950/60 px-5 py-3 font-semibold text-cyan-200 transition hover:bg-cyan-400/10 hover:text-cyan-100",
+    normalSoftCyan:           "rounded-xl border border-cyan-400/40 bg-slate-950/60 px-5 py-3 font-semibold text-cyan-200 transition hover:bg-cyan-400/10 hover:text-cyan-100",
+    normalNeutral:            "rounded-xl border border-slate-600 px-5 py-3 font-semibold text-white transition hover:bg-slate-800",
+    fullWidthNeutral:         "mt-8 w-full rounded-xl border border-slate-600 px-5 py-3 font-semibold text-white transition hover:bg-slate-800",
+    disabled:                 "disabled:cursor-not-allowed disabled:opacity-60",
+};
