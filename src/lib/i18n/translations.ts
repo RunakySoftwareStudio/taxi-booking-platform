@@ -181,7 +181,112 @@ export const translations = {
       nl: "Goedgekeurd",
     },
   },
-
+  bookingForm: {
+    label: {
+      en: "Booking",
+      nl: "Boeking",
+    },
+    title: {
+      en: "Request your taxi trip",
+      nl: "Vraag uw taxirit aan",
+    },
+    description: {
+      en: "Enter your trip details and the platform will help connect you with an available chauffeur.",
+      nl: "Vul uw ritgegevens in en het platform helpt u verbinding te maken met een beschikbare chauffeur.",
+    },
+    pickupLabel: {
+      en: "Pickup location",
+      nl: "Ophaallocatie",
+    },
+    pickupPlaceholder: {
+      en: "Amsterdam Central Station",
+      nl: "Amsterdam Centraal Station",
+    },
+    destinationLabel: {
+      en: "Destination",
+      nl: "Bestemming",
+    },
+    destinationPlaceholder: {
+      en: "Schiphol Airport",
+      nl: "Schiphol Airport",
+    },
+    dateLabel: {
+      en: "Date",
+      nl: "Datum",
+    },
+    timeLabel: {
+      en: "Time",
+      nl: "Tijd",
+    },
+    passengersLabel: {
+      en: "Passengers",
+      nl: "Passagiers",
+    },
+    passengersPlaceholder: {
+      en: "2",
+      nl: "2",
+    },
+    luggageLabel: {
+      en: "Luggage",
+      nl: "Bagage",
+    },
+    luggagePlaceholder: {
+      en: "1",
+      nl: "1",
+    },
+    nameLabel: {
+      en: "Your name",
+      nl: "Uw naam",
+    },
+    namePlaceholder: {
+      en: "Your full name",
+      nl: "Uw volledige naam",
+    },
+    phoneLabel: {
+      en: "Phone number",
+      nl: "Telefoonnummer",
+    },
+    phonePlaceholder: {
+      en: "+31 6 12345678",
+      nl: "+31 6 12345678",
+    },
+    phoneTitle: {
+      en: "Please enter a valid phone number. Use numbers, +, spaces, or - only.",
+      nl: "Vul een geldig telefoonnummer in. Gebruik alleen cijfers, +, spaties of -.",
+    },
+    emailLabel: {
+      en: "Email address",
+      nl: "E-mailadres",
+    },
+    emailPlaceholder: {
+      en: "client@example.com",
+      nl: "klant@example.com",
+    },
+    tripTypeLabel: {
+      en: "Trip type",
+      nl: "Rittype",
+    },
+    selectTripType: {
+      en: "Select trip type",
+      nl: "Selecteer rittype",
+    },
+    hasPetsLabel: {
+      en: "Has pets",
+      nl: "Heeft huisdieren",
+    },
+    notesLabel: {
+      en: "Extra notes",
+      nl: "Extra opmerkingen",
+    },
+    notesPlaceholder: {
+      en: "Flight number, child seat request, exact pickup point, or other information...",
+      nl: "Vluchtnummer, kinderzitje, exacte ophaalplek of andere informatie...",
+    },
+    reviewBookingButton: {
+      en: "Review booking",
+      nl: "Boeking controleren",
+    },
+  },
   language: {
     label: {
       en: "Language",

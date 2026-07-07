@@ -1,11 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { type BookingRequest } from "@/types/bookingType";
 import { type BookingSummary } from "@/types/bookingSummaryType";
 import { tripTypes } from "@/data/tripTypeData";
 import { formStyles, pageStyles, tableStyles } from "@/styles/classNames";
+import { getTranslation } from "@/lib/i18n/translations";
+import { useLanguage } from "@/components/LanguageProvider";
+import Link from "next/link";
 
 function getTodayDateInputValue() {
   const today = new Date();
@@ -17,6 +19,11 @@ function getTodayDateInputValue() {
 }
 
 export default function BookingForm() {
+    const { languageCode } = useLanguage();
+
+    // getBookingFormText returns translated text for this booking form.
+    // This keeps the JSX shorter than repeating getTranslation everywhere.
+    function getBookingFormText(textKey: string) { return getTranslation("bookingForm", textKey, languageCode); }
     const [submitted, setSubmitted] = useState(false);
     const [submittedBooking, setSubmittedBooking] = useState<BookingSummary | null>(null);
     const [bookingDraft, setBookingDraft] = useState<BookingRequest | null>(null);
@@ -119,9 +126,9 @@ export default function BookingForm() {
     <section id="booking" className="bg-slate-900 px-4 py-16 text-white sm:px-6 sm:py-24">
         <div className="mx-auto max-w-6xl">
             <div className="max-w-2xl">
-                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"> Booking </p>
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl"> Request your taxi trip </h2>
-                <p className="mt-4 text-slate-300"> Enter your trip details and the platform will help connect you with an available chauffeur. </p>
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"> {getBookingFormText("label")} </p>
+                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl"> {getBookingFormText("title")} </h2>
+                <p className="mt-4 text-slate-300"> {getBookingFormText("description")} </p>
             </div>
 
             {isReviewing && bookingDraft ? (
@@ -203,70 +210,68 @@ export default function BookingForm() {
                 <form onSubmit={handleReviewBooking} className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
                     <div className="grid gap-5 sm:gap-6 md:grid-cols-2">
                         <div>
-                            <label htmlFor="pickup" className="mb-2 block text-sm font-medium"> Pickup location </label>
-                            <input id="pickup" name="pickup" type="text" required placeholder="Amsterdam Central Station" defaultValue={bookingDraft?.pickup || ""} className={formStyles.inputUserPage} />
+                            <label htmlFor="pickup" className="mb-2 block text-sm font-medium"> {getBookingFormText("pickupLabel")} </label>
+                            <input id="pickup" name="pickup" type="text" required placeholder={getBookingFormText("pickupPlaceholder")} defaultValue={bookingDraft?.pickup || ""} className={formStyles.inputUserPage} />                        </div>
+                        <div>
+                            <label htmlFor="destination" className="mb-2 block text-sm font-medium"> {getBookingFormText("destinationLabel")} </label>
+                            <input id="destination" name="destination" type="text" required placeholder={getBookingFormText("destinationPlaceholder")} defaultValue={bookingDraft?.destination || ""} className={formStyles.inputUserPage} />
                         </div>
 
                         <div>
-                            <label htmlFor="destination" className="mb-2 block text-sm font-medium" > Destination </label>
-                            <input id="destination" name="destination" type="text" required placeholder="Schiphol Airport" defaultValue={bookingDraft?.destination || ""} className={formStyles.inputUserPage} />
-                        </div>
-
-                        <div>
-                            <label htmlFor="date" className="mb-2 block text-sm font-medium"> Date </label>
+                            <label htmlFor="date" className="mb-2 block text-sm font-medium"> {getBookingFormText("dateLabel")} </label>
                             <input id="date" name="date" type="date" min={todayDate} max="2099-12-31" required defaultValue={bookingDraft?.date || ""} className={formStyles.inputDateUserPage} />
                         </div>
 
                         <div>
-                            <label htmlFor="time" className="mb-2 block text-sm font-medium"> Time </label>
+                            <label htmlFor="time" className="mb-2 block text-sm font-medium"> {getBookingFormText("timeLabel")} </label>
                             <input id="time" name="time" type="time" required defaultValue={bookingDraft?.time || ""} className={formStyles.inputDateUserPage} />
                         </div>
 
                         <div>
-                            <label htmlFor="passengers"  className="mb-2 block text-sm font-medium"> Passengers </label>
-                            <input id="passengers" name="passengers" type="number" min="1" required placeholder="2" defaultValue={bookingDraft?.passengers || ""} className={formStyles.inputUserPage} />
+                            <label htmlFor="passengers" className="mb-2 block text-sm font-medium"> {getBookingFormText("passengersLabel")} </label>
+                            <input id="passengers" name="passengers" type="number" min="1" required placeholder={getBookingFormText("passengersPlaceholder")} defaultValue={bookingDraft?.passengers || ""} className={formStyles.inputUserPage} />
                         </div>
 
                         <div>
-                            <label htmlFor="luggage" className="mb-2 block text-sm font-medium"> Luggage </label>
-                            <input id="luggage" name="luggage" type="number"  min="0" placeholder="1" defaultValue={bookingDraft?.luggage || ""} className={formStyles.inputUserPage}/>
+                            <label htmlFor="luggage" className="mb-2 block text-sm font-medium"> {getBookingFormText("luggageLabel")} </label>
+                            <input id="luggage" name="luggage" type="number" min="0" placeholder={getBookingFormText("luggagePlaceholder")} defaultValue={bookingDraft?.luggage || ""} className={formStyles.inputUserPage}/>
                         </div>
 
                         <div>
-                            <label htmlFor="name" className="mb-2 block text-sm font-medium"> Your name</label>
-                            <input id="name" name="name" type="text" required placeholder="Your full name" defaultValue={bookingDraft?.name || ""} className={formStyles.inputUserPage} />
+                            <label htmlFor="name" className="mb-2 block text-sm font-medium"> {getBookingFormText("nameLabel")} </label>
+                            <input id="name" name="name" type="text" required placeholder={getBookingFormText("namePlaceholder")} defaultValue={bookingDraft?.name || ""} className={formStyles.inputUserPage} />
                         </div>
 
                         <div>
-                            <label htmlFor="phone" className="mb-2 block text-sm font-medium"> Phone number </label>
-                            <input id="phone" name="phone" type="tel" required inputMode="tel" pattern="\+?[0-9 ]{7,20}" title="Please enter a valid phone number. Use numbers, +, spaces, or - only." placeholder="+31 6 12345678" defaultValue={bookingDraft?.phone || ""} className={formStyles.inputUserPage}/>
+                            <label htmlFor="phone" className="mb-2 block text-sm font-medium"> {getBookingFormText("phoneLabel")} </label>
+                            <input id="phone" name="phone" type="tel" required inputMode="tel" pattern="\+?[0-9 ]{7,20}" title={getBookingFormText("phoneTitle")} placeholder={getBookingFormText("phonePlaceholder")} defaultValue={bookingDraft?.phone || ""} className={formStyles.inputUserPage}/>
                         </div>
 
                         <div>
-                            <label htmlFor="email" className="mb-2 block text-sm font-medium"> Email address </label>
-                            <input id="email" name="email" type="email" required placeholder="client@example.com" defaultValue={bookingDraft?.email || ""} className={formStyles.inputUserPage}/>
+                            <label htmlFor="email" className="mb-2 block text-sm font-medium"> {getBookingFormText("emailLabel")} </label>
+                            <input id="email" name="email" type="email" required placeholder={getBookingFormText("emailPlaceholder")} defaultValue={bookingDraft?.email || ""} className={formStyles.inputUserPage}/>
                         </div>
 
                         <div>
-                            <label htmlFor="tripType" className="mb-2 block text-sm font-medium"> Trip type </label>
+                            <label htmlFor="tripType" className="mb-2 block text-sm font-medium"> {getBookingFormText("tripTypeLabel")} </label>
                             <select id="tripType" name="tripType" required defaultValue={bookingDraft?.tripType || ""} className={formStyles.inputDateUserPage} >
-                                <option value=""> Select trip type </option>
+                                <option value=""> {getBookingFormText("selectTripType")} </option>
                                 {tripTypes.map((tripType) => ( <option key={tripType.value} value={tripType.value}> {tripType.label} </option>))}
                             </select>
                         </div>
 
                         <label className="flex items-center gap-3 text-sm text-white">
-                            <input type="checkbox" name="has_pets" checked={hasPets} onChange={(event) => setHasPets(event.target.checked)}  className="h-5 w-5" />
-                            Has pets
+                            <input type="checkbox" name="has_pets" checked={hasPets} onChange={(event) => setHasPets(event.target.checked)} className="h-5 w-5" />
+                            {getBookingFormText("hasPetsLabel")}
                         </label>
                     </div>
 
                     <div className="mt-5 sm:mt-6">
-                        <label htmlFor="notes" className="mb-2 block text-sm font-medium"> Extra notes </label>
-                        <textarea id="notes" name="notes"  rows={4} placeholder="Flight number, child seat request, exact pickup point, or other information..." defaultValue={bookingDraft?.notes || ""} className={formStyles.textareaMainPg}/>
+                        <label htmlFor="notes" className="mb-2 block text-sm font-medium"> {getBookingFormText("notesLabel")} </label>
+                        <textarea id="notes" name="notes" rows={4} placeholder={getBookingFormText("notesPlaceholder")} defaultValue={bookingDraft?.notes || ""} className={formStyles.textareaMainPg}/>
                     </div>
 
-                    <button type="submit" className={formStyles.submitSmallButtonUserPage}> Review booking </button>
+                    <button type="submit" className={formStyles.submitSmallButtonUserPage}> {getBookingFormText("reviewBookingButton")} </button>
                 </form>
             )}
 
