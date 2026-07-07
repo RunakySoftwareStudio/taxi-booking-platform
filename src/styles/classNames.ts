@@ -108,6 +108,28 @@ export const homePageStyles = {
     mobileQuickLinks:           "mt-8 flex flex-wrap justify-center gap-3 text-sm lg:hidden",
     mobileQuickLink:            "rounded-full border border-white/10 px-4 py-2 text-slate-200 transition hover:border-cyan-300 hover:text-cyan-300",
 };
+
+/*
+  howItWorksStyles keeps the layout classes for the How It Works homepage section.
+
+  This keeps HowItWorks.tsx easier to read:
+    - the component focuses on content and translation keys
+    - this object focuses on Tailwind layout and styling
+*/
+export const howItWorksStyles = {
+    section:                    "bg-slate-900 px-6 py-24 text-white",
+    container:                  "mx-auto max-w-6xl",
+    intro:                      "max-w-2xl",
+    label:                      "mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400",
+    title:                      "text-3xl font-bold tracking-tight sm:text-4xl",
+    description:                "mt-4 text-slate-300",
+    stepGrid:                   "mt-12 grid gap-6 md:grid-cols-3",
+    stepCard:                   "rounded-2xl border border-white/10 bg-white/5 p-6",
+    stepNumber:                 "mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 font-bold text-slate-950",
+    stepTitle:                  "text-xl font-semibold",
+    stepDescription:            "mt-3 text-slate-300",
+};
+
 export const tableStyles = {
     wrapper:                  "mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5",
     table900:                 "w-full min-w-[900px] text-left text-sm",

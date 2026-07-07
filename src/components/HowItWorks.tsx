@@ -1,31 +1,42 @@
+/*
+  HowItWorks explains the booking process on the public homepage.
+
+  In Version 5:
+    - visible text uses TranslatedText for English/Dutch support
+    - layout classes are stored in howItWorksStyles
+*/
+
+import { TranslatedText } from "@/components/TranslatedText";
+import { howItWorksStyles } from "@/styles/classNames";
+
 export default function HowItWorks() 
 {
   return (
-    <section id="how-it-works" className="bg-slate-900 px-6 py-24 text-white">
-      <div className="mx-auto max-w-6xl">
-        <div className="max-w-2xl">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400"> How it works  </p>
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl"> Book a chauffeur in three simple steps </h2>
-          <p className="mt-4 text-slate-300"> The platform helps clients find available chauffeurs, request a trip, and stay informed until the ride is completed.  </p>
+    <section id="how-it-works" className={howItWorksStyles.section}>
+      <div className={howItWorksStyles.container}>
+        <div className={howItWorksStyles.intro}>
+          <p className={howItWorksStyles.label}> <TranslatedText sectionName="howItWorks" textKey="label" /> </p>
+          <h2 className={howItWorksStyles.title}> <TranslatedText sectionName="howItWorks" textKey="title" /> </h2>
+          <p className={howItWorksStyles.description}> <TranslatedText sectionName="howItWorks" textKey="description" /> </p>
         </div>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 font-bold text-slate-950"> 1 </div>
-            <h3 className="text-xl font-semibold">Enter trip details</h3>
-            <p className="mt-3 text-slate-300"> The client enters pickup location, destination, date, time, passengers, and luggage information. </p>
+        <div className={howItWorksStyles.stepGrid}>
+          <div className={howItWorksStyles.stepCard}>
+            <div className={howItWorksStyles.stepNumber}> 1 </div>
+            <h3 className={howItWorksStyles.stepTitle}> <TranslatedText sectionName="howItWorks" textKey="stepOneTitle" /> </h3>
+            <p className={howItWorksStyles.stepDescription}> <TranslatedText sectionName="howItWorks" textKey="stepOneDescription" /> </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 font-bold text-slate-950"> 2 </div>
-            <h3 className="text-xl font-semibold">View chauffeurs</h3>
-            <p className="mt-3 text-slate-300"> The client sees available chauffeurs with vehicle type, rating, service area, and availability status. </p>
+          <div className={howItWorksStyles.stepCard}>
+            <div className={howItWorksStyles.stepNumber}> 2 </div>
+            <h3 className={howItWorksStyles.stepTitle}> <TranslatedText sectionName="howItWorks" textKey="stepTwoTitle" /> </h3>
+            <p className={howItWorksStyles.stepDescription}> <TranslatedText sectionName="howItWorks" textKey="stepTwoDescription" /> </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 font-bold text-slate-950"> 3 </div>
-            <h3 className="text-xl font-semibold">Book the trip</h3>
-            <p className="mt-3 text-slate-300"> The client sends the booking request, receives confirmation, and can contact the chauffeur when needed. </p>
+          <div className={howItWorksStyles.stepCard}>
+            <div className={howItWorksStyles.stepNumber}> 3 </div>
+            <h3 className={howItWorksStyles.stepTitle}> <TranslatedText sectionName="howItWorks" textKey="stepThreeTitle" /> </h3>
+            <p className={howItWorksStyles.stepDescription}> <TranslatedText sectionName="howItWorks" textKey="stepThreeDescription" /> </p>
           </div>
         </div>
       </div>

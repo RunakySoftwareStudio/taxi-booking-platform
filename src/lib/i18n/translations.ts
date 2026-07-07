@@ -108,7 +108,45 @@ export const translations = {
       nl: "Controleer uw registratiestatus",
     },
   },
-
+  howItWorks: {
+    label: {
+      en: "How it works",
+      nl: "Hoe het werkt",
+    },
+    title: {
+      en: "Book a chauffeur in three simple steps",
+      nl: "Boek een chauffeur in drie eenvoudige stappen",
+    },
+    description: {
+      en: "The platform helps clients find available chauffeurs, request a trip, and stay informed until the ride is completed.",
+      nl: "Het platform helpt klanten beschikbare chauffeurs te vinden, een rit aan te vragen en op de hoogte te blijven tot de rit is voltooid.",
+    },
+    stepOneTitle: {
+      en: "Enter trip details",
+      nl: "Vul ritgegevens in",
+    },
+    stepOneDescription: {
+      en: "The client enters pickup location, destination, date, time, passengers, and luggage information.",
+      nl: "De klant vult de ophaallocatie, bestemming, datum, tijd, passagiers en bagagegegevens in.",
+    },
+    stepTwoTitle: {
+      en: "View chauffeurs",
+      nl: "Bekijk chauffeurs",
+    },
+    stepTwoDescription: {
+      en: "The client sees available chauffeurs with vehicle type, rating, service area, and availability status.",
+      nl: "De klant ziet beschikbare chauffeurs met voertuigtype, beoordeling, servicegebied en beschikbaarheidsstatus.",
+    },
+    stepThreeTitle: {
+      en: "Book the trip",
+      nl: "Boek de rit",
+    },
+    stepThreeDescription: {
+      en: "The client sends the booking request, receives confirmation, and can contact the chauffeur when needed.",
+      nl: "De klant verstuurt de boekingsaanvraag, ontvangt een bevestiging en kan indien nodig contact opnemen met de chauffeur.",
+    },
+  },
+  
   language: {
     label: {
       en: "Language",
