@@ -1,39 +1,79 @@
+/*
+  HomePage is the public landing page for Voya Taxi.
+
+  It shows:
+    - the top menu
+    - the hero section
+    - main booking and chauffeur buttons
+    - chauffeur registration status link
+    - mobile quick links
+    - How it works
+    - chauffeur preview
+    - booking form
+
+  The layout classes are stored in homePageStyles so this file stays easier to read.
+*/
+
 import Link from "next/link";
 import TopMenu from "@/components/TopMenu";
 import HowItWorks from "@/components/HowItWorks";
 import ChauffeursPreview from "@/components/ChauffeursPreview";
 import BookingForm from "@/components/BookingForm";
+import { homePageStyles } from "@/styles/classNames";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className={homePageStyles.main}>
       <TopMenu />
 
-      <section className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 text-center">
-        <p ></p>
-        <p className="text-md font-bold uppercase tracking-[0.2em] text-yellow-400"> VOYΛ TΛXI </p>
-        <h1 className="mt-6 text-4xl font-bold text-white md:text-6xl"> Book a professional chauffeur for your next trip </h1>
-        <p className="mt-4 text-lg font-medium text-yellow-300">  Where the journey begins </p>
-        <p className="mt-8 text-lg text-slate-200"> Find available chauffeurs, compare vehicles, request a trip, and stay  connected from booking to arrival. </p>
+      <section className={homePageStyles.heroSection}>
+        <p className={homePageStyles.brandText}>VOYΛ TΛXI</p>
+        <h1 className={homePageStyles.heroTitle}> Book a professional chauffeur for your next trip </h1>
+        <p className={homePageStyles.slogan}>Where the journey begins</p>
+        <p className={homePageStyles.description}> Find available chauffeurs, compare vehicles, request a trip, and stay connected from booking to arrival. </p>
 
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-          <a href="#booking"  className="rounded-full bg-yellow-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-yellow-300"  >
+        <div className={homePageStyles.heroButtonGroup}>
+          <a href="#booking" className={homePageStyles.primaryHeroButton}>
             Book a Trip
           </a>
-          <a href="#chauffeurs" className="rounded-full border border-white/20 px-8 py-4 font-semibold text-white transition hover:bg-white hover:text-slate-950">
+
+          <a href="#chauffeurs"  className={homePageStyles.secondaryHeroButton} >
             View Chauffeurs
           </a>
-          {/* Public button for chauffeurs who want to register themselves */}
-          <Link href="/chauffeur-register"  className="rounded-full border border-cyan-300 px-8 py-4 font-semibold text-cyan-300 transition hover:bg-cyan-300 hover:text-slate-950" >
+
+          {/* Public button for chauffeurs who want to register themselves. */}
+          <Link href="/chauffeur-register" className={homePageStyles.chauffeurRegisterButton} >
             Register as chauffeur
+          </Link>
+        </div>
+
+        {/* This link helps chauffeurs check the progress of their registration. */}
+        <p className={homePageStyles.chauffeurStatusText}>
+          Already registered as a chauffeur?{" "}
+          <Link  href="/chauffeur-status"  className={homePageStyles.chauffeurStatusLink} >
+            Check your registration status
+          </Link>
+        </p>
+
+        {/* Mobile quick links replace the hidden desktop menu links on small screens. */}
+        <div className={homePageStyles.mobileQuickLinks}>
+          <a href="#how-it-works" className={homePageStyles.mobileQuickLink}>
+            How it works
+          </a>
+          <a href="#chauffeurs" className={homePageStyles.mobileQuickLink}>
+            Chauffeurs
+          </a>
+          <a href="#booking" className={homePageStyles.mobileQuickLink}>
+            Booking
+          </a>
+          <Link href="/status" className={homePageStyles.mobileQuickLink}>
+            Check booking
           </Link>
         </div>
       </section>
 
       <HowItWorks />
-
       <ChauffeursPreview />
-      
       <BookingForm />
     </main>
   );

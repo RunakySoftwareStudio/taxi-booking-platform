@@ -8,7 +8,7 @@
 
   Mobile note:
   On small screens, Admin + Logout can take too much space.
-  So logged-in users get one compact "Account" dropdown on mobile.
+  So logged-in users get one compact "User" dropdown on mobile.
 */
 
 "use client";
@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import LogoutButton from "@/components/LogoutButton";
-import { pageStyles } from "@/styles/classNames";
+import { authMenuStyles, pageStyles } from "@/styles/classNames";
 
 // UserProfile describes the account role connected to the logged-in user.
 // Admin users go to /admin. Chauffeur users go to their own dashboard.
@@ -34,16 +34,8 @@ export default function AuthMenuLinks() {
   useEffect(() => {
     // loadProfile checks the logged-in user and loads their role from user_profiles.
     async function loadProfile() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setProfile(null);
-        setIsLoading(false);
-        return;
-      }
-
+      const { data: { user }} = await supabase.auth.getUser();
+      if (!user) { setProfile(null); setIsLoading(false); return; }
       const { data } = await supabase
         .from("user_profiles")
         .select("role, chauffeur_id")
@@ -57,45 +49,24 @@ export default function AuthMenuLinks() {
     loadProfile();
   }, [supabase]);
 
-  if (isLoading) {
-    return null;
-  }
-
-  if (!profile) {
-    return (
-      <Link href="/login" className={pageStyles.loginButtonHome}>
-        Login
-      </Link>
-    );
-  }
+  if (isLoading) { return null; }
+  if (!profile) { return (<Link href="/login" className={pageStyles.loginButtonHome}>  Login </Link> );  }
 
   if (profile.role === "admin") {
     return (
       <>
         {/* Mobile account menu: saves space in the top menu. */}
-        <details className="relative sm:hidden">
-        <summary
-          className="cursor-pointer list-none rounded-full border border-white/20 px-3 py-2 text-xs font-semibold text-white sm:text-sm"
-          aria-label="Open account menu"
-        >
-          User
-        </summary>
-
-          <div className="absolute right-0 mt-2 flex min-w-36 flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950 p-3 shadow-xl">
-            <Link href="/admin" className={pageStyles.adminButtonHome}>
-              Admin
-            </Link>
-
+        <details className={authMenuStyles.mobileDetails}>
+          <summary className={authMenuStyles.mobileSummary}  aria-label="Open account menu" >  User </summary>
+          <div className={`${authMenuStyles.mobileDropdown} ${authMenuStyles.adminDropdownWidth}`}  >
+            <Link href="/admin" className={pageStyles.adminButtonHome}>  Admin </Link>
             <LogoutButton />
           </div>
         </details>
 
         {/* Desktop account links: show Admin and Logout separately. */}
-        <div className={`hidden sm:flex ${pageStyles.authMenuGroup}`}>
-          <Link href="/admin" className={pageStyles.adminButtonHome}>
-            Admin
-          </Link>
-
+        <div className={`${authMenuStyles.desktopGroup} ${pageStyles.authMenuGroup}`} >
+          <Link href="/admin" className={pageStyles.adminButtonHome}> Admin </Link>
           <LogoutButton />
         </div>
       </>
@@ -104,36 +75,19 @@ export default function AuthMenuLinks() {
 
   if (profile.role === "chauffeur" && profile.chauffeur_id) {
     return (
-      <>
+      <> {/* <> means:  Group these elements for React,but do not create an extra HTML element in the browser. */}
         {/* Mobile account menu: saves space in the top menu. */}
-        <details className="relative sm:hidden">
-        <summary
-          className="cursor-pointer list-none rounded-full border border-white/20 px-3 py-2 text-xs font-semibold text-white sm:text-sm"
-          aria-label="Open account menu">
-          User
-        </summary>
-
-          <div className="absolute right-0 mt-2 flex min-w-40 flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950 p-3 shadow-xl">
-            <Link
-              href={`/chauffeur/${profile.chauffeur_id}`}
-              className={pageStyles.adminButtonHome}
-            >
-              Dashboard
-            </Link>
-
+        <details className={authMenuStyles.mobileDetails}>
+          <summary className={authMenuStyles.mobileSummary} aria-label="Open account menu" > User </summary>
+          <div className={`${authMenuStyles.mobileDropdown} ${authMenuStyles.chauffeurDropdownWidth}`} >
+            <Link href={`/chauffeur/${profile.chauffeur_id}`}  className={pageStyles.adminButtonHome} > Dashboard </Link>
             <LogoutButton />
           </div>
         </details>
 
         {/* Desktop account links: show Dashboard and Logout separately. */}
-        <div className={`hidden sm:flex ${pageStyles.authMenuGroup}`}>
-          <Link
-            href={`/chauffeur/${profile.chauffeur_id}`}
-            className={pageStyles.adminButtonHome}
-          >
-            Dashboard
-          </Link>
-
+        <div className={`${authMenuStyles.desktopGroup} ${pageStyles.authMenuGroup}`} >
+          <Link href={`/chauffeur/${profile.chauffeur_id}`}  className={pageStyles.adminButtonHome}> Dashboard </Link>
           <LogoutButton />
         </div>
       </>
