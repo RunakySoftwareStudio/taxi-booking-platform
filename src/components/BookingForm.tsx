@@ -116,7 +116,7 @@ export default function BookingForm() {
             setHasPets(false);
         } catch (error) {
             console.error("Could not submit booking:", error);
-            setErrorMessage("Something went wrong. Please try again.");
+            setErrorMessage(getBookingFormText("submitErrorMessage"));
         } finally {
             setIsSending(false);
         }
@@ -276,79 +276,79 @@ export default function BookingForm() {
             )}
 
             {!isReviewing && errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
-            {submitted && (<div className={pageStyles.successMsgPage}> Your booking request has been received. We will connect you with an available chauffeur. </div>) }
+            {submitted && (<div className={pageStyles.successMsgPage}> {getBookingFormText("bookingReceivedMessage")} </div>) }
 
             {submittedBooking && (
             <div ref={bookingResultRef}>
                 <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950 p-6">
-                    <h5 className={formStyles.formH3SemiBold}> Booking summary: </h5>
+                    <h5 className={formStyles.formH3SemiBold}> {getBookingFormText("bookingSummaryTitle")} </h5>
                     <div className="mt-6">                       
                         <div>
-                            <span className={formStyles.formPCyan}> Name:   </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryNameLabel")} </span>
                             <span className={formStyles.formP}>{submittedBooking.name}</span>
                         </div>
                         <div className="grid grid-cols-2">
                             <div>
-                                <span className={formStyles.formPCyan}> Email:   </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryEmailLabel")} </span>
                                 <span className={formStyles.formP}> {submittedBooking.email} </span>
                             </div>
                             <div>
-                                <span className={formStyles.formPCyan}> Phone:   </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryPhoneLabel")} </span>
                                 <span className={formStyles.formP}> {submittedBooking.phone} </span>
                             </div>
                         </div>
                         <div>
-                            <span className= {formStyles.formPCyan}>Pickup: </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryPickupLabel")} </span>
                             <span className= {formStyles.formP} >{submittedBooking.pickup}</span>
                         </div>
                         <div>
-                            <span className= {formStyles.formPCyan}>Destination: </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryDestinationLabel")} </span>
                             <span className= {formStyles.formP} >{submittedBooking.destination}</span>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2">
                         <div>
-                            <span className={formStyles.formPCyan}> Date:  </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryDateLabel")} </span>
                             <span className={formStyles.formP}>{submittedBooking.date}</span>
                         </div>
                         <div>
-                            <span className={formStyles.formPCyan}> Time:  </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryTimeLabel")} </span>
                             <span className={formStyles.formP}>{submittedBooking.time}</span>
                         </div>
                         <div>
-                            <span className={formStyles.formPCyan}> Passengers:  </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryPassengersLabel")} </span>
                             <span className={formStyles.formP}>{submittedBooking.passengers}</span>
                         </div>
                         <div>
-                            <span className={formStyles.formPCyan}> Luggage:  </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryLuggageLabel")} </span>
                             <span className={formStyles.formP}>{submittedBooking.luggage}</span>
                         </div>
                         <div>
-                            <span className={formStyles.formPCyan}> Trip type:  </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryTripTypeLabel")} </span>
                             <span className={formStyles.formP}>{submittedBooking.tripType}</span>
                         </div>
                         <div>
-                            <span className={formStyles.formPCyan}> Status:  </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryStatusLabel")} </span>
                             <span className={formStyles.formP}>{submittedBooking.status}</span>
                         </div>
                         <div className= "mt-1">
-                            <span className={formStyles.formPCyan}> Has pets:  </span>
-                                <span  className={ submittedBooking.hasPets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                           <span className={formStyles.formPCyan}> {getBookingFormText("summaryHasPetsLabel")} </span>
+                            <span  className={ submittedBooking.hasPets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
                                     {submittedBooking.hasPets ? "✓" : "X"}
                             </span>
                         </div>
 
                     </div>
                     <div className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
-                        <p className={formStyles.formH5MediumSemiBold}> Your booking reference </p>
+                        <p className={formStyles.formH5MediumSemiBold}> {getBookingFormText("bookingReferenceTitle")} </p>
                         {/* explanation: This is important because booking IDs are long. On mobile, break-all allows the ID to wrap safely instead of pushing the layout wider. */}
                         <p className={`${formStyles.formPYellow} break-all`}> {submittedBooking.id} </p>
-                        <p className={formStyles.formP}> Save this booking reference. You can use it later together with your email address to check your booking status. </p>
+                        <p className={formStyles.formP}> {getBookingFormText("bookingReferenceDescription")} </p>
                         {/* explanation: Now the booking ID goes to the status page through the URL. */}
                         <div className= "mt-8">
                             <Link href={`/status?bookingId=${submittedBooking.id}`} className={formStyles.submitSmallButtonUserPage} >
-                                Check booking status
+                                {getBookingFormText("checkBookingStatusButton")}
                             </Link>
                         </div>
                     </div>

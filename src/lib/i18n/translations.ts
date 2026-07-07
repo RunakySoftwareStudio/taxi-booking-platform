@@ -354,6 +354,38 @@ export const translations = {
       en: "Confirm booking",
       nl: "Boeking bevestigen",
     },
+        submitErrorMessage: {
+      en: "Something went wrong. Please try again.",
+      nl: "Er is iets misgegaan. Probeer het opnieuw.",
+    },
+    bookingReceivedMessage: {
+      en: "Your booking request has been received. We will connect you with an available chauffeur.",
+      nl: "Uw boekingsaanvraag is ontvangen. Wij brengen u in contact met een beschikbare chauffeur.",
+    },
+    bookingSummaryTitle: {
+      en: "Booking summary:",
+      nl: "Boekingsoverzicht:",
+    },
+    summaryTripTypeLabel: {
+      en: "Trip type:",
+      nl: "Rittype:",
+    },
+    summaryStatusLabel: {
+      en: "Status:",
+      nl: "Status:",
+    },
+    bookingReferenceTitle: {
+      en: "Your booking reference",
+      nl: "Uw boekingsreferentie",
+    },
+    bookingReferenceDescription: {
+      en: "Save this booking reference. You can use it later together with your email address to check your booking status.",
+      nl: "Bewaar deze boekingsreferentie. U kunt deze later samen met uw e-mailadres gebruiken om uw boekingsstatus te controleren.",
+    },
+    checkBookingStatusButton: {
+      en: "Check booking status",
+      nl: "Boekingsstatus controleren",
+    },
   },
   
   language: {
