@@ -1,5 +1,15 @@
 import type { LanguageCode } from "./languages";
 
+/*
+  translations.ts stores public website text in one central place.
+
+  Each text has:
+    en: English text
+    nl: Dutch text
+
+  This is the first simple i18n system for Voya Taxi.
+*/
+
 // TranslationEntry describes one translated text.
 // Every text must have an English and Dutch version.
 type TranslationEntry = Record<LanguageCode, string>;
@@ -17,6 +27,22 @@ export const translations = {
     home: {
       en: "Home",
       nl: "Home",
+    },
+    howItWorks: {
+      en: "How it works",
+      nl: "Hoe het werkt",
+    },
+    chauffeurs: {
+      en: "Chauffeurs",
+      nl: "Chauffeurs",
+    },
+    booking: {
+      en: "Booking",
+      nl: "Boeken",
+    },
+    checkBooking: {
+      en: "Check booking",
+      nl: "Boeking controleren",
     },
     bookingStatus: {
       en: "Booking status",
@@ -46,24 +72,40 @@ export const translations = {
 
   homepage: {
     brandName: {
-      en: "VOYΛ TAXI",
-      nl: "VOYΛ TAXI",
+      en: "VOYΛ TΛXI",
+      nl: "VOYΛ TΛXI",
+    },
+    heroTitle: {
+      en: "Book a professional chauffeur for your next trip",
+      nl: "Boek een professionele chauffeur voor uw volgende rit",
     },
     slogan: {
       en: "Where the journey begins",
       nl: "Waar de reis begint",
     },
-    heroTitle: {
-      en: "Reliable taxi booking for every journey",
-      nl: "Betrouwbare taxireservering voor elke reis",
+    description: {
+      en: "Find available chauffeurs, compare vehicles, request a trip, and stay connected from booking to arrival.",
+      nl: "Vind beschikbare chauffeurs, vergelijk voertuigen, vraag een rit aan en blijf verbonden van boeking tot aankomst.",
     },
-    heroDescription: {
-      en: "Book your ride, review your details, and follow your booking status online.",
-      nl: "Reserveer uw rit, controleer uw gegevens en volg de status van uw boeking online.",
+    bookTrip: {
+      en: "Book a Trip",
+      nl: "Boek een rit",
     },
-    bookNow: {
-      en: "Book now",
-      nl: "Nu boeken",
+    viewChauffeurs: {
+      en: "View Chauffeurs",
+      nl: "Bekijk chauffeurs",
+    },
+    registerAsChauffeur: {
+      en: "Register as chauffeur",
+      nl: "Registreer als chauffeur",
+    },
+    alreadyRegisteredChauffeur: {
+      en: "Already registered as a chauffeur?",
+      nl: "Al geregistreerd als chauffeur?",
+    },
+    checkRegistrationStatus: {
+      en: "Check your registration status",
+      nl: "Controleer uw registratiestatus",
     },
   },
 
