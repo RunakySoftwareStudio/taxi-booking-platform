@@ -173,21 +173,30 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
     const chauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
 
     /*=============================================
-        If first chauffeur is inactive, move it down.
-        If second chauffeur is inactive, keep first one above.
-        If both have same kind of status, sort by name.
+    Sort chauffeur rows for the admin list.
+    const sortedChauffeurRows = [...chauffeurRows] means:
+        1. Copy chauffeurRows
+        2. Sort the copy
+        3. Keep the original chauffeurRows unchanged
+
+    firstPriority and secondPriority are numbers created from chauffeur statuses.
+    They help sort() place important statuses like pending_approval at the top.
+
+    Sorting rules:
+        1. Different status priority: sort by priority number.
+        2. Same status and pending_approval: newest registration first.
+        3. Same status but not pending_approval: sort by chauffeur name.
+
+        They help .sort() place important statuses like pending_approval at the top of the admin list, instead of sorting statuses alphabetically.
     =============================================*/
     const sortedChauffeurRows = [...chauffeurRows].sort(
-        (firstChauffeur, secondChauffeur) => { const firstPriority = getChauffeurStatusSortPriority( firstChauffeur.account_status );
+        (firstChauffeur, secondChauffeur) => { 
+            const firstPriority = getChauffeurStatusSortPriority( firstChauffeur.account_status );
             const secondPriority = getChauffeurStatusSortPriority(secondChauffeur.account_status );
             if (firstPriority !== secondPriority) { return firstPriority - secondPriority; }
             if (firstChauffeur.account_status === "pending_approval") {
-                return (
-                    new Date(secondChauffeur.created_at).getTime() -
-                    new Date(firstChauffeur.created_at).getTime()
-                );
+                return ( new Date(secondChauffeur.created_at).getTime() - new Date(firstChauffeur.created_at).getTime() );
             }
-
             return firstChauffeur.name.localeCompare(secondChauffeur.name);
         }
     );
