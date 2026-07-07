@@ -286,7 +286,76 @@ export const translations = {
       en: "Review booking",
       nl: "Boeking controleren",
     },
+    reviewLabel: {
+      en: "Review booking",
+      nl: "Boeking controleren",
+    },
+    reviewTitle: {
+      en: "Please check your booking details before sending.",
+      nl: "Controleer uw boekingsgegevens voordat u deze verstuurt.",
+    },
+    summaryNameLabel: {
+      en: "Name:",
+      nl: "Naam:",
+    },
+    summaryPhoneLabel: {
+      en: "Phone:",
+      nl: "Telefoon:",
+    },
+    summaryEmailLabel: {
+      en: "Email:",
+      nl: "E-mail:",
+    },
+    summaryPickupLabel: {
+      en: "Pickup:",
+      nl: "Ophaallocatie:",
+    },
+    summaryDestinationLabel: {
+      en: "Destination:",
+      nl: "Bestemming:",
+    },
+    summaryDateLabel: {
+      en: "Date:",
+      nl: "Datum:",
+    },
+    summaryTimeLabel: {
+      en: "Time:",
+      nl: "Tijd:",
+    },
+    summaryPassengersLabel: {
+      en: "Passengers:",
+      nl: "Passagiers:",
+    },
+    summaryLuggageLabel: {
+      en: "Luggage:",
+      nl: "Bagage:",
+    },
+    summaryTripLabel: {
+      en: "Trip:",
+      nl: "Rit:",
+    },
+    summaryHasPetsLabel: {
+      en: "Has pets:",
+      nl: "Heeft huisdieren:",
+    },
+    summaryExtraNotesLabel: {
+      en: "Extra notes:",
+      nl: "Extra opmerkingen:",
+    },
+    backToEditButton: {
+      en: "Back to edit",
+      nl: "Terug naar bewerken",
+    },
+    sendingButton: {
+      en: "Sending...",
+      nl: "Bezig met versturen...",
+    },
+    confirmBookingButton: {
+      en: "Confirm booking",
+      nl: "Boeking bevestigen",
+    },
   },
+  
   language: {
     label: {
       en: "Language",

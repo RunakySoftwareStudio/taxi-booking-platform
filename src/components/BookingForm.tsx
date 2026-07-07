@@ -133,53 +133,53 @@ export default function BookingForm() {
 
             {isReviewing && bookingDraft ? (
                 <div className="mt-8 rounded-2xl border-2 border-cyan-300/40 bg-slate-950 p-4 sm:mt-12 sm:p-6">
-                    <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Review booking </p>
-                    <h3 className={formStyles.formH3SemiBold}> Please check your booking details before sending. </h3>
+                    <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> {getBookingFormText("reviewLabel")} </p>
+                    <h3 className={formStyles.formH3SemiBold}> {getBookingFormText("reviewTitle")} </h3>
 
                     <div className="mt-6 space-y-2">
-                                                <div>
-                        <span className={formStyles.formPCyan}> Name: </span>
+                        <div>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryNameLabel")} </span>
                             <span className={formStyles.formP}>{bookingDraft.name}</span>
                         </div>
                         <div>
-                            <span className={formStyles.formPCyan}> Phone: </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryPhoneLabel")} </span>
                             <span className={formStyles.formP}>{bookingDraft.phone}</span>
                         </div>
                         <div className="md:col-span-2">
-                            <span className={formStyles.formPCyan}> Email: </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryEmailLabel")} </span>
                             <span className={formStyles.formP}>{bookingDraft.email}</span>
                         </div>
                         <p>
-                            <span className={formStyles.formPCyan}> Pickup: </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryPickupLabel")} </span>
                             <span className={formStyles.formP}>{bookingDraft.pickup}</span>
                         </p>
                         <p>
-                            <span className={formStyles.formPCyan}> Destination: </span>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryDestinationLabel")} </span>
                             <span className={formStyles.formP}>{bookingDraft.destination}</span>
                         </p>
                         <div className="grid gap-2 grid-cols-2">
                             <div>
-                                <span className={formStyles.formPCyan}> Date: </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryDateLabel")} </span>
                                 <span className={formStyles.formP}>{bookingDraft.date}</span>
                             </div>
                             <div>
-                                <span className={formStyles.formPCyan}> Time: </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryTimeLabel")} </span>
                                 <span className={formStyles.formP}>{bookingDraft.time}</span>
                             </div>
                             <div>
-                                <span className={formStyles.formPCyan}> Passengers: </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryPassengersLabel")} </span>
                                 <span className={formStyles.formP}>{bookingDraft.passengers}</span>
                             </div>
                             <div>
-                                <span className={formStyles.formPCyan}> Luggage: </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryLuggageLabel")} </span>
                                 <span className={formStyles.formP}>{bookingDraft.luggage || "0"}</span>
                             </div>
                             <div>
-                                <span className={formStyles.formPCyan}> Trip: </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryTripLabel")} </span>
                                 <span className={formStyles.formP}>{getTripTypeLabel(bookingDraft.tripType)}</span>
                             </div>
                             <div>
-                                <span className={formStyles.formPCyan}> Has pets: </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryHasPetsLabel")} </span>
                                 <span className={bookingDraft.hasPets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>
                                     {bookingDraft.hasPets ? "✓" : "X"}
                                 </span>
@@ -188,7 +188,7 @@ export default function BookingForm() {
 
                         {bookingDraft.notes && (
                             <div className="md:col-span-2">
-                                <span className={formStyles.formPCyan}> Extra notes: </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryExtraNotesLabel")} </span>
                                 <span className={formStyles.formP}>{bookingDraft.notes}</span>
                             </div>
                         )}
@@ -198,11 +198,11 @@ export default function BookingForm() {
 
                     <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                         <button type="button" onClick={handleBackToEdit} className={formStyles.submitSmallButtonUserPage}>
-                            Back to edit
+                            {getBookingFormText("backToEditButton")}
                         </button>
 
                         <button type="button" onClick={handleConfirmBooking} disabled={isSending} className={formStyles.submitSmallButtonUserPage}>
-                            {isSending ? "Sending..." : "Confirm booking"}
+                            {isSending ? getBookingFormText("sendingButton") : getBookingFormText("confirmBookingButton")}
                         </button>
                     </div>
                 </div>
