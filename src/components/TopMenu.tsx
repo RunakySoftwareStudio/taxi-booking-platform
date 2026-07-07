@@ -1,6 +1,20 @@
+/*
+  TopMenu is the fixed navigation bar at the top of the website.
+
+  It contains:
+    - the Voya Taxi logo
+    - public navigation links
+    - the language switcher
+    - login/logout/admin links from AuthMenuLinks
+
+  In Version 5, we add LanguageSwitcher here so visitors can choose
+  between English and Dutch.
+*/
+
 import Link from "next/link";
 import AuthMenuLinks from "@/components/AuthMenuLinks";
 import Image from "next/image";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 /*
   jump to the right section:
     <a href="#how-it-works"> this is important to jump to the right section when we click on the href.
@@ -23,13 +37,11 @@ export default function TopMenu() {
             <a href="#chauffeurs" className="transition hover:text-white"> Chauffeurs </a>
             <a href="#booking" className="transition hover:text-white"> Booking </a>
             <Link href="/status" className="text-sm text-slate-300 hover:text-cyan-300"> Check booking  </Link>
-            {/* Public link for chauffeurs who want to register themselves */}
-            <Link href="/chauffeur-register"  className="rounded-full border border-cyan-300 px-4 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-300 hover:text-slate-950" >
-              Register as chauffeur
-            </Link>
         </nav>
 
-        <div className="shrink-0">
+        <div className="flex shrink-0 items-center gap-3">
+          {/* LanguageSwitcher changes the selected language for public pages. */}
+          <LanguageSwitcher />
           <AuthMenuLinks />
         </div>
       </div>
