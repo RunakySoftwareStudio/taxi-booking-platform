@@ -147,6 +147,41 @@ export const translations = {
     },
   },
   
+  chauffeurPreview: {
+    label: {
+      en: "Chauffeurs",
+      nl: "Chauffeurs",
+    },
+    title: {
+      en: "View available chauffeurs before booking",
+      nl: "Bekijk beschikbare chauffeurs voordat u boekt",
+    },
+    description: {
+      en: "Clients can compare approved chauffeurs by vehicle, service area, and availability before sending a booking request.",
+      nl: "Klanten kunnen goedgekeurde chauffeurs vergelijken op voertuig, servicegebied en beschikbaarheid voordat zij een boekingsaanvraag versturen.",
+    },
+    noApprovedChauffeurs: {
+      en: "No approved chauffeurs are available yet.",
+      nl: "Er zijn nog geen goedgekeurde chauffeurs beschikbaar.",
+    },
+    vehicleNotAdded: {
+      en: "Vehicle not added yet",
+      nl: "Voertuig nog niet toegevoegd",
+    },
+    serviceAreaNotAdded: {
+      en: "Service area not added yet",
+      nl: "Servicegebied nog niet toegevoegd",
+    },
+    noAvailabilityToday: {
+      en: "No availability today",
+      nl: "Vandaag afwezig",
+    },
+    approved: {
+      en: "Approved",
+      nl: "Goedgekeurd",
+    },
+  },
+
   language: {
     label: {
       en: "Language",

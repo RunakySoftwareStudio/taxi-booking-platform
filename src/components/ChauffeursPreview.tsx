@@ -1,9 +1,29 @@
-import { supabaseAdmin } from "@/lib/supabaseServer";
+/*
+  ChauffeursPreview shows a small public preview of approved chauffeurs.
 
+  This is an async server component because it loads chauffeur, vehicle,
+  and availability data from Supabase before rendering the homepage section.
+
+  In Version 5:
+    - visible static text uses TranslatedText for English/Dutch support
+    - layout classes are stored in chauffeurPreviewStyles
+*/
+
+import { TranslatedText } from "@/components/TranslatedText";
+import { supabaseAdmin } from "@/lib/supabaseServer";
+import { chauffeurPreviewStyles } from "@/styles/classNames";
+
+// ChauffeurRow describes the chauffeur data needed for this preview section.
 type ChauffeurRow = {id: string;  name: string;  service_area: string | null;  account_status: string;};
+
+// VehicleRow describes the vehicle data shown under each chauffeur.
 type VehicleRow = {id: string; chauffeur_id: string; brand: string; model: string; vehicle_type: string;};
+
+// AvailabilityRow describes today's availability status for each chauffeur.
 type AvailabilityRow = {id: string; chauffeur_id: string; available_date: string; status: string;};
 
+// getTodayDateInputValue returns today's date in YYYY-MM-DD format.
+// Supabase date filters expect this format when comparing with available_date.
 function getTodayDateInputValue() {
     const today = new Date();
     const year = today.getFullYear();
@@ -15,9 +35,10 @@ function getTodayDateInputValue() {
 
 export default async function ChauffeursPreview() {
   const todayDate = getTodayDateInputValue();
+
   const { data: chauffeurRows, error: chauffeursError } = await supabaseAdmin
       .from("chauffeurs")
-      .select("id, name, service_area, account_status,accepts_pets")
+      .select("id, name, service_area, account_status, accepts_pets")
       .eq("account_status", "approved")
       .order("name", { ascending: true })
       .limit(6);
@@ -35,7 +56,7 @@ export default async function ChauffeursPreview() {
           .in("chauffeur_id", chauffeurIds)
       : { data: [], error: null };
 
-  if (vehiclesError) {console.error("Could not load chauffeur vehicles preview:", vehiclesError);  }
+  if (vehiclesError) { console.error("Could not load chauffeur vehicles preview:", vehiclesError); }
 
   const { data: availabilityRows, error: availabilityError } =
     chauffeurIds.length > 0
@@ -46,39 +67,46 @@ export default async function ChauffeursPreview() {
           .eq("available_date", todayDate)
       : { data: [], error: null };
 
-  if (availabilityError) { console.error("Could not load chauffeur availability preview:", availabilityError );  }
+  if (availabilityError) { console.error("Could not load chauffeur availability preview:", availabilityError); }
 
   const vehicles = (vehicleRows ?? []) as VehicleRow[];
   const availability = (availabilityRows ?? []) as AvailabilityRow[];
 
   return (
-    
-    <section id="chauffeurs" className="bg-slate-950 px-6 py-20 text-white">
-      <div className="mx-auto max-w-6xl">
-        <p className="text-sm font-bold uppercase tracking-[0.4em] text-yellow-400">  Chauffeurs </p>
-        <h2 className="mt-4 text-3xl font-bold md:text-4xl">  View available chauffeurs before booking  </h2>
-        <p className="mt-4 max-w-2xl text-slate-300">  Clients can compare approved chauffeurs by vehicle, service area, and availability before sending a booking request.  </p>
+    <section id="chauffeurs" className={chauffeurPreviewStyles.section}>
+      <div className={chauffeurPreviewStyles.container}>
+        <p className={chauffeurPreviewStyles.label}> <TranslatedText sectionName="chauffeurPreview" textKey="label" /> </p>
+        <h2 className={chauffeurPreviewStyles.title}> <TranslatedText sectionName="chauffeurPreview" textKey="title" /> </h2>
+        <p className={chauffeurPreviewStyles.description}> <TranslatedText sectionName="chauffeurPreview" textKey="description" /> </p>
+
         {
           chauffeurs.length === 0 ? 
-            (<p className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-300"> No approved chauffeurs are available yet.  </p> ) 
-            : ( <div className="mt-12 grid gap-6 md:grid-cols-3">
+            (<p className={chauffeurPreviewStyles.emptyMessage}> <TranslatedText sectionName="chauffeurPreview" textKey="noApprovedChauffeurs" /> </p>) 
+            : ( <div className={chauffeurPreviewStyles.grid}>
                   {chauffeurs.map((chauffeur) => 
                       { 
-                        const chauffeurVehicle = vehicles.find( (vehicle) => vehicle.chauffeur_id === chauffeur.id  );
-                        const todayAvailability = availability.find( (item) => item.chauffeur_id === chauffeur.id );
-                        const availabilityText = todayAvailability  ? todayAvailability.status  : "No availability today";
+                        const chauffeurVehicle = vehicles.find((vehicle) => vehicle.chauffeur_id === chauffeur.id);
+                        const todayAvailability = availability.find((item) => item.chauffeur_id === chauffeur.id);
 
                         return (
-                            <article key={chauffeur.id}  className="rounded-2xl border border-white/10 bg-white/5 p-6" >
-                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-yellow-400 text-xl font-bold text-slate-950">
-                                  {chauffeur.name.charAt(0).toUpperCase()}
-                                </div>
-                                <h3 className="mt-6 text-xl font-bold">{chauffeur.name}</h3>
-                                <p className="mt-3 text-slate-200">  {chauffeurVehicle  ? `${chauffeurVehicle.brand} ${chauffeurVehicle.model}` : "Vehicle not added yet"}  </p>
-                                <p className="mt-1 text-sm text-slate-400">  {chauffeur.service_area || "Service area not added yet"} </p>
-                                <div className="mt-6 flex items-center justify-between">                    
-                                  <span className="rounded-full bg-slate-700 px-4 py-2 text-sm font-semibold text-white"> {availabilityText} </span>
-                                  <span className="text-sm font-semibold text-yellow-400">  Approved  </span>
+                            <article key={chauffeur.id} className={chauffeurPreviewStyles.card}>
+                                <div className={chauffeurPreviewStyles.avatar}> {chauffeur.name.charAt(0).toUpperCase()} </div>
+                                <h3 className={chauffeurPreviewStyles.name}>{chauffeur.name}</h3>
+
+                                <p className={chauffeurPreviewStyles.vehicle}>
+                                  {chauffeurVehicle ? `${chauffeurVehicle.brand} ${chauffeurVehicle.model}` : <TranslatedText sectionName="chauffeurPreview" textKey="vehicleNotAdded" />}
+                                </p>
+
+                                <p className={chauffeurPreviewStyles.serviceArea}>
+                                  {chauffeur.service_area || <TranslatedText sectionName="chauffeurPreview" textKey="serviceAreaNotAdded" />}
+                                </p>
+
+                                <div className={chauffeurPreviewStyles.statusRow}>                    
+                                  <span className={chauffeurPreviewStyles.availabilityBadge}>
+                                    {todayAvailability ? todayAvailability.status : <TranslatedText sectionName="chauffeurPreview" textKey="noAvailabilityToday" />}
+                                  </span>
+
+                                  <span className={chauffeurPreviewStyles.approvedBadge}> <TranslatedText sectionName="chauffeurPreview" textKey="approved" /> </span>
                                 </div>
                             </article>  
                           );

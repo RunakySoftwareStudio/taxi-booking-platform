@@ -130,6 +130,31 @@ export const howItWorksStyles = {
     stepDescription:            "mt-3 text-slate-300",
 };
 
+/*
+  chauffeurPreviewStyles keeps the layout classes for the chauffeur preview section.
+
+  This keeps ChauffeursPreview.tsx easier to read:
+    - the component focuses on data and translated content
+    - this object focuses on Tailwind layout and styling
+*/
+export const chauffeurPreviewStyles = {
+    section:                    "bg-slate-950 px-6 py-20 text-white",
+    container:                  "mx-auto max-w-6xl",
+    label:                      "text-sm font-bold uppercase tracking-[0.4em] text-yellow-400",
+    title:                      "mt-4 text-3xl font-bold md:text-4xl",
+    description:                "mt-4 max-w-2xl text-slate-300",
+    emptyMessage:               "mt-12 rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-300",
+    grid:                       "mt-12 grid gap-6 md:grid-cols-3",
+    card:                       "rounded-2xl border border-white/10 bg-white/5 p-6",
+    avatar:                     "flex h-14 w-14 items-center justify-center rounded-full bg-yellow-400 text-xl font-bold text-slate-950",
+    name:                       "mt-6 text-xl font-bold",
+    vehicle:                    "mt-3 text-slate-200",
+    serviceArea:                "mt-1 text-sm text-slate-400",
+    statusRow:                  "mt-6 flex items-center justify-between",
+    availabilityBadge:          "rounded-full bg-slate-700 px-4 py-2 text-sm font-semibold text-white",
+    approvedBadge:              "text-sm font-semibold text-yellow-400",
+};
+
 export const tableStyles = {
     wrapper:                  "mt-10 overflow-x-auto rounded-2xl border border-white/10 bg-white/5",
     table900:                 "w-full min-w-[900px] text-left text-sm",
