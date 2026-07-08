@@ -1,97 +1,69 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+/*
+  LanguageProvider makes the selected language available to client components.
 
-import {
-  defaultLanguage,
-  isLanguageCode,
-  type LanguageCode,
-} from "@/lib/i18n/languages";
+  Important hydration note:
+  The server does not have access to localStorage.
+  To prevent a hydration mismatch, the server and first browser render both use
+  the default language first. After hydration, React reads localStorage and
+  updates the language if the user saved another choice.
+*/
+
+import { createContext, useCallback,  useContext, useMemo, useSyncExternalStore, type ReactNode,} from "react";
+import { defaultLanguage, isLanguageCode, type LanguageCode,} from "@/lib/i18n/languages";
 
 // This key is the name we use to save the selected language in the browser.
-// The saved value will be either "en" or "nl".
 const languageStorageKey = "voya-taxi-language";
 
-// LanguageContextValue describes the data that our language context provides.
-// Components can read the current language and change it through setLanguageCode.
-type LanguageContextValue = {
-  languageCode: LanguageCode;
-  setLanguageCode: (nextLanguageCode: LanguageCode) => void;
-};
+// This custom event updates the language in the same browser tab.
+// The normal "storage" event mostly helps when localStorage changes in another tab.
+const languageChangeEventName = "voya-taxi-language-change";
 
-const LanguageContext = createContext<LanguageContextValue | undefined>(
-  undefined,
-);
+// LanguageContextValue describes the data that our language context provides.
+type LanguageContextValue = {  languageCode: LanguageCode;  setLanguageCode: (nextLanguageCode: LanguageCode) => void;};
+const LanguageContext = createContext<LanguageContextValue | undefined>(  undefined,);
 
 // LanguageProviderProps describes what props the LanguageProvider accepts.
-// children means: all components inside this provider.
-type LanguageProviderProps = {
-  children: ReactNode;
-};
+// children means all components/pages inside this provider.
+type LanguageProviderProps = {  children: ReactNode;};
 
-// Reads the saved language when the component starts.
-// We use this function as the initial value for useState.
-// This avoids calling setState directly inside useEffect.
-function getInitialLanguageCode(): LanguageCode {
-  if (typeof window === "undefined") {
-    return defaultLanguage;
-  }
-
+// getStoredLanguageCode reads the saved language from localStorage.
+// If localStorage is not available or the value is invalid, we use English.
+function getStoredLanguageCode(): LanguageCode {
+  if (typeof window === "undefined") {    return defaultLanguage;  }
   const savedLanguageCode = window.localStorage.getItem(languageStorageKey);
-
-  if (savedLanguageCode && isLanguageCode(savedLanguageCode)) {
-    return savedLanguageCode;
-  }
-
+  if (savedLanguageCode && isLanguageCode(savedLanguageCode)) { return savedLanguageCode;  }
   return defaultLanguage;
 }
 
-// LanguageProvider makes the selected language available to other components.
-// Later, public pages can use this provider to show English or Dutch text.
-export function LanguageProvider({ children }: LanguageProviderProps) {
-  const [languageCode, setLanguageCodeState] = useState<LanguageCode>(
-    getInitialLanguageCode,
-  );
+// getServerLanguageCode is used during server rendering and hydration.
+// It must return the same value on server and first browser render.
+function getServerLanguageCode(): LanguageCode {  return defaultLanguage;}
 
-  // Changes the language in React state and saves it in the browser.
-  // useCallback keeps this function stable, which helps with useMemo below.
-  const setLanguageCode = useCallback((nextLanguageCode: LanguageCode) => {
-    setLanguageCodeState(nextLanguageCode);
-    window.localStorage.setItem(languageStorageKey, nextLanguageCode);
-  }, []);
+// subscribeToLanguageChanges tells React when the external language value changes.
+function subscribeToLanguageChanges(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(languageChangeEventName, onStoreChange);
 
-  // contextValue is the object that will be shared with child components.
-  // useMemo prevents creating a new object unless the language actually changes.
-  const contextValue = useMemo(
-    () => ({
-      languageCode,
-      setLanguageCode,
-    }),
-    [languageCode, setLanguageCode],
-  );
-
-  return (
-    <LanguageContext.Provider value={contextValue}>
-      {children}
-    </LanguageContext.Provider>
-  );
+  return () => { window.removeEventListener("storage", onStoreChange); window.removeEventListener(languageChangeEventName, onStoreChange);  };
 }
 
-// useLanguage is a helper hook.
-// It lets other components easily read and change the selected language.
+// LanguageProvider shares the selected language with all child components.
+export function LanguageProvider({ children }: LanguageProviderProps) {
+  const languageCode = useSyncExternalStore( subscribeToLanguageChanges, getStoredLanguageCode, getServerLanguageCode, );
+
+  // setLanguageCode saves the new language and notifies the current tab.
+  const setLanguageCode = useCallback((nextLanguageCode: LanguageCode) => {window.localStorage.setItem(languageStorageKey, nextLanguageCode); window.dispatchEvent(new Event(languageChangeEventName));  }, []);
+  const contextValue = useMemo( () => ({ languageCode, setLanguageCode, }), [languageCode, setLanguageCode],  );
+
+  return ( <LanguageContext.Provider value={contextValue}> {children} </LanguageContext.Provider>  );
+}
+
+// useLanguage is a helper hook for reading and changing the selected language.
 export function useLanguage() {
   const contextValue = useContext(LanguageContext);
-
-  if (!contextValue) {
-    throw new Error("useLanguage must be used inside LanguageProvider");
-  }
+  if (!contextValue) { throw new Error("useLanguage must be used inside LanguageProvider"); }
 
   return contextValue;
 }
