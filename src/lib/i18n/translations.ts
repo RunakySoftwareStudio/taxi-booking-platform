@@ -23,6 +23,109 @@ type TranslationSection = Record<string, TranslationEntry>;
 type TranslationDictionary = Record<string, TranslationSection>;
 
 export const translations = {
+    chauffeurStatusPage: {
+    backToHomepage: {
+      en: "← Back to homepage",
+      nl: "← Terug naar homepage",
+    },
+    label: {
+      en: "Chauffeur registration status",
+      nl: "Chauffeur registratiestatus",
+    },
+    title: {
+      en: "Check your chauffeur registration",
+      nl: "Controleer uw chauffeurregistratie",
+    },
+    description: {
+      en: "Enter your registration ID and email address to view the current status of your chauffeur registration.",
+      nl: "Vul uw registratie-ID en e-mailadres in om de huidige status van uw chauffeurregistratie te bekijken.",
+    },
+    registrationIdLabel: {
+      en: "Registration ID",
+      nl: "Registratie-ID",
+    },
+    registrationIdPlaceholder: {
+      en: "Paste your registration ID",
+      nl: "Plak uw registratie-ID",
+    },
+    emailLabel: {
+      en: "Email address",
+      nl: "E-mailadres",
+    },
+    emailPlaceholder: {
+      en: "you@example.com",
+      nl: "u@example.com",
+    },
+    searchingButton: {
+      en: "Searching...",
+      nl: "Bezig met zoeken...",
+    },
+    checkStatusButton: {
+      en: "Check registration status",
+      nl: "Registratiestatus controleren",
+    },
+    notFoundMessage: {
+      en: "Chauffeur registration not found. Please check your registration ID and email.",
+      nl: "Chauffeurregistratie niet gevonden. Controleer uw registratie-ID en e-mailadres.",
+    },
+    registrationStatusTitle: {
+      en: "Registration Status:",
+      nl: "Registratiestatus:",
+    },
+    nameLabel: {
+      en: "Name",
+      nl: "Naam",
+    },
+    phoneLabel: {
+      en: "Phone",
+      nl: "Telefoon",
+    },
+    companyNameLabel: {
+      en: "Company name",
+      nl: "Bedrijfsnaam",
+    },
+    licenseNumberLabel: {
+      en: "License number",
+      nl: "Vergunningsnummer",
+    },
+    serviceAreaLabel: {
+      en: "Service area",
+      nl: "Servicegebied",
+    },
+    acceptsPetsLabel: {
+      en: "Accepts pets",
+      nl: "Accepteert huisdieren",
+    },
+    submittedOnLabel: {
+      en: "Submitted on",
+      nl: "Ingediend op",
+    },
+    yes: {
+      en: "Yes",
+      nl: "Ja",
+    },
+    no: {
+      en: "No",
+      nl: "Nee",
+    },
+    statusMeaningTitle: {
+      en: "What this status means",
+      nl: "Wat deze status betekent",
+    },
+    pendingExplanation: {
+      en: "Pending approval means your registration was received and is waiting for admin review.",
+      nl: "In afwachting van goedkeuring betekent dat uw registratie is ontvangen en wacht op beoordeling door de beheerder.",
+    },
+    approvedExplanation: {
+      en: "Approved means your chauffeur account has been accepted.",
+      nl: "Goedgekeurd betekent dat uw chauffeursaccount is geaccepteerd.",
+    },
+    inactiveExplanation: {
+      en: "Inactive or suspended means your account is not currently active.",
+      nl: "Inactief of geschorst betekent dat uw account momenteel niet actief is.",
+    },
+  },
+
     bookingStatusPage: {
     backToHomepage: {
       en: "← Back to homepage",
@@ -129,7 +232,7 @@ export const translations = {
       nl: "Er is nog geen chauffeur toegewezen.",
     },
   },
-  
+
   navigation: {
     home: {
       en: "Home",
@@ -215,6 +318,7 @@ export const translations = {
       nl: "Controleer uw registratiestatus",
     },
   },
+  
   howItWorks: {
     label: {
       en: "How it works",

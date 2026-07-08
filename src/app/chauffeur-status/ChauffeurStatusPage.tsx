@@ -1,8 +1,22 @@
 "use client";
 
+/*
+  ChauffeurStatusPage lets a chauffeur check the status of a registration.
+
+  The chauffeur enters:
+    - registration ID
+    - email address
+
+  In Version 5, the visible page text uses the language system so this page
+  can switch between English and Dutch.
+*/
+
 import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { formStyles, pageStyles, tableStyles } from "@/styles/classNames";
+import { getTranslation } from "@/lib/i18n/translations";
+import { useLanguage } from "@/components/LanguageProvider";
+import type { LanguageCode } from "@/lib/i18n/languages";
 
 /**
  * ChauffeurStatusResult
@@ -48,14 +62,17 @@ type ChauffeurStatusPageProps = {
  * formatDateForDisplay
  *
  * This helper converts the database createdAt date into a readable date.
+ * The selected language decides which date locale we use.
  * If the date is missing or invalid, it returns "-".
  */
-function formatDateForDisplay(inputValue: string) {
+function formatDateForDisplay(inputValue: string, languageCode: LanguageCode) {
   if (!inputValue) { return "-"; }
+
   const dateValue = new Date(inputValue);
   if (Number.isNaN(dateValue.getTime())) { return "-"; }
 
-  return dateValue.toLocaleDateString("en-GB");
+  const dateLocale = languageCode === "nl" ? "nl-NL" : "en-GB";
+  return dateValue.toLocaleDateString(dateLocale);
 }
 
 /**
@@ -73,8 +90,14 @@ function formatDateForDisplay(inputValue: string) {
  * If the registration is found, we show the current account status.
  */
 export default function ChauffeurStatusPage({initialRegistrationId = "",}: ChauffeurStatusPageProps) {
+  const { languageCode } = useLanguage();
+
+  // getChauffeurStatusText returns translated text for this page.
+  // This keeps the JSX shorter and easier to read.
+  function getChauffeurStatusText(textKey: string) { return getTranslation("chauffeurStatusPage", textKey, languageCode); }
+
   const safeInitialRegistrationId = initialRegistrationId ?? "";
-  const [registration, setRegistration] =useState<ChauffeurStatusResult | null>(null);
+  const [registration, setRegistration] = useState<ChauffeurStatusResult | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -110,14 +133,14 @@ export default function ChauffeurStatusPage({initialRegistrationId = "",}: Chauf
 
       if (!response.ok || !result.registration) {
         setRegistration(null);
-        setErrorMessage( result.message || "Chauffeur registration not found." );
+        setErrorMessage(getChauffeurStatusText("notFoundMessage"));
         return;
       }
 
       setRegistration(result.registration);
     } catch (error) {
       console.error("Could not find chauffeur registration:", error);
-      setErrorMessage("Chauffeur registration not found. Please check your registration ID and email." );
+      setErrorMessage(getChauffeurStatusText("notFoundMessage"));
     } finally { setIsLoading(false); }
   }
 
@@ -133,27 +156,26 @@ export default function ChauffeurStatusPage({initialRegistrationId = "",}: Chauf
   return (
     <main className={pageStyles.main}>
       <div className={pageStyles.container}>
-        <Link href="/" className={formStyles.formInfoCell}>  ← Back to homepage </Link>
-        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> Chauffeur registration status </p>
-        <h1 className={pageStyles.pageTitle}> Check your chauffeur registration </h1>
-        <p className={pageStyles.pageDescription}> Enter your registration ID and email address to view the current status of your chauffeur registration. </p>
+        <Link href="/" className={formStyles.formInfoCell}> {getChauffeurStatusText("backToHomepage")} </Link>
+        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> {getChauffeurStatusText("label")} </p>
+        <h1 className={pageStyles.pageTitle}> {getChauffeurStatusText("title")} </h1>
+        <p className={pageStyles.pageDescription}> {getChauffeurStatusText("description")} </p>
 
         <form onSubmit={handleStatusSearch} className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6" >
           <div className={formStyles.formDivGridCol2}>
             <label className="block">
-              <span className={formStyles.span}>Registration ID</span>
-              <input name="registrationId" defaultValue={safeInitialRegistrationId} required placeholder="Paste your registration ID" className={`${formStyles.inputWFullCyan} break-all`}  />
+              <span className={formStyles.span}> {getChauffeurStatusText("registrationIdLabel")} </span>
+              <input name="registrationId" defaultValue={safeInitialRegistrationId} required placeholder={getChauffeurStatusText("registrationIdPlaceholder")} className={`${formStyles.inputWFullCyan} break-all`}  />
             </label>
 
             <label className="block">
-              <span className={formStyles.span}>Email address</span>
-              <input name="email" type="email" required  placeholder="you@example.com" className={formStyles.inputWFullCyan} />
+              <span className={formStyles.span}> {getChauffeurStatusText("emailLabel")} </span>
+              <input name="email" type="email" required placeholder={getChauffeurStatusText("emailPlaceholder")} className={formStyles.inputWFullCyan} />
             </label>
           </div>
 
-          <button
-            type="submit"  disabled={isLoading}  className={`mt-8 ${formStyles.primaryButtonOutside} disabled:cursor-not-allowed disabled:opacity-60`} >
-            {isLoading ? "Searching..." : "Check registration status"}
+          <button type="submit" disabled={isLoading} className={`mt-8 ${formStyles.primaryButtonOutside} disabled:cursor-not-allowed disabled:opacity-60`} >
+            {isLoading ? getChauffeurStatusText("searchingButton") : getChauffeurStatusText("checkStatusButton")}
           </button>
 
           {errorMessage ? (<p className={tableStyles.errorCell}>{errorMessage}</p> ) : null}
@@ -161,30 +183,28 @@ export default function ChauffeurStatusPage({initialRegistrationId = "",}: Chauf
 
         {registration ? (
           <section className={formStyles.form}>
-            <h3 className={formStyles.formH5MediumSemiBold}>  Registration Status:{" "}
-              <span className={formStyles.formPCyan}>
-                {registration.accountStatus}
-              </span>
+            <h3 className={formStyles.formH5MediumSemiBold}> {getChauffeurStatusText("registrationStatusTitle")}{" "}
+              <span className={formStyles.formPCyan}>{registration.accountStatus}</span>
             </h3>
 
             <div className="mt-8 grid gap-4 text-sm text-slate-300 md:grid-cols-2">
-              <StatusRow label="Registration ID" value={registration.id} />
-              <StatusRow label="Name" value={registration.name} />
-              <StatusRow label="Email" value={registration.email} />
-              <StatusRow label="Phone" value={registration.phone} />
-              <StatusRow label="Company name" value={registration.companyName || "-"} />
-              <StatusRow label="License number" value={registration.licenseNumber || "-"} />
-              <StatusRow label="Service area" value={registration.serviceArea || "-"} />
-              <StatusRow label="Accepts pets" value={registration.acceptsPets ? "Yes" : "No"} />
-              <StatusRow label="Submitted on" value={formatDateForDisplay(registration.createdAt)} />
+              <StatusRow label={getChauffeurStatusText("registrationIdLabel")} value={registration.id} />
+              <StatusRow label={getChauffeurStatusText("nameLabel")} value={registration.name} />
+              <StatusRow label={getChauffeurStatusText("emailLabel")} value={registration.email} />
+              <StatusRow label={getChauffeurStatusText("phoneLabel")} value={registration.phone} />
+              <StatusRow label={getChauffeurStatusText("companyNameLabel")} value={registration.companyName || "-"} />
+              <StatusRow label={getChauffeurStatusText("licenseNumberLabel")} value={registration.licenseNumber || "-"} />
+              <StatusRow label={getChauffeurStatusText("serviceAreaLabel")} value={registration.serviceArea || "-"} />
+              <StatusRow label={getChauffeurStatusText("acceptsPetsLabel")} value={registration.acceptsPets ? getChauffeurStatusText("yes") : getChauffeurStatusText("no")} />
+              <StatusRow label={getChauffeurStatusText("submittedOnLabel")} value={formatDateForDisplay(registration.createdAt, languageCode)} />
             </div>
 
             <div className={formStyles.formDivCyan}>
-              <h3 className={formStyles.formLabel}>What this status means</h3>
+              <h3 className={formStyles.formLabel}> {getChauffeurStatusText("statusMeaningTitle")} </h3>
               <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li className={formStyles.formInfoCellCaption}> Pending_approval means your registration was received and is waiting for admin review. </li>
-                <li className={formStyles.formInfoCellCaption}> Approved means your chauffeur account has been accepted.  </li>
-                <li className={formStyles.formInfoCellCaption}> Inactive or suspended means your account is not currently active. </li>
+                <li className={formStyles.formInfoCellCaption}> {getChauffeurStatusText("pendingExplanation")} </li>
+                <li className={formStyles.formInfoCellCaption}> {getChauffeurStatusText("approvedExplanation")} </li>
+                <li className={formStyles.formInfoCellCaption}> {getChauffeurStatusText("inactiveExplanation")} </li>
               </ul>
             </div>
           </section>
@@ -213,10 +233,7 @@ type StatusRowProps = {
 function StatusRow({ label, value }: StatusRowProps) {
   return (
     <div className="rounded-xl border border-cyan-400/20 bg-slate-950/40 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300">
-        {label}
-      </p>
-
+      <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300"> {label} </p>
       <p className="mt-2 wrap-break-words text-white">{value}</p>
     </div>
   );
