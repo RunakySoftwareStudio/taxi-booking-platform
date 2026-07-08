@@ -203,3 +203,19 @@ export const buttonStyles = {
     fullWidthNeutral:         "mt-8 w-full rounded-xl border border-slate-600 px-5 py-3 font-semibold text-white transition hover:bg-slate-800",
     disabled:                 "disabled:cursor-not-allowed disabled:opacity-60",
 };
+
+/*
+  maintenancePageStyles keeps the layout classes for the maintenance page.
+
+  This page is shown when MAINTENANCE_MODE is set to true.
+  Keeping these classes here makes MaintenancePage.tsx easier to read.
+*/
+export const maintenancePageStyles = {
+    page:                       "min-h-screen bg-slate-950 px-6 py-20 text-white",
+    card:                       "mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 p-8 text-center sm:p-12",
+    label:                      "text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400",
+    title:                      "mt-4 text-3xl font-bold text-white sm:text-5xl",
+    description:                "mt-6 text-lg text-slate-300",
+    note:                       "mt-6 text-sm text-slate-400",
+    brand:                      "mt-8 text-lg font-bold text-yellow-300",
+};
