@@ -23,6 +23,113 @@ type TranslationSection = Record<string, TranslationEntry>;
 type TranslationDictionary = Record<string, TranslationSection>;
 
 export const translations = {
+    bookingStatusPage: {
+    backToHomepage: {
+      en: "← Back to homepage",
+      nl: "← Terug naar homepage",
+    },
+    label: {
+      en: "Booking status",
+      nl: "Boekingsstatus",
+    },
+    title: {
+      en: "Check your taxi booking",
+      nl: "Controleer uw taxiboeking",
+    },
+    description: {
+      en: "Enter your booking id and email address to view the current status of your trip.",
+      nl: "Vul uw boekings-ID en e-mailadres in om de huidige status van uw rit te bekijken.",
+    },
+    bookingIdLabel: {
+      en: "Booking id",
+      nl: "Boekings-ID",
+    },
+    bookingIdPlaceholder: {
+      en: "Paste your booking id",
+      nl: "Plak uw boekings-ID",
+    },
+    emailLabel: {
+      en: "Email address",
+      nl: "E-mailadres",
+    },
+    emailPlaceholder: {
+      en: "you@example.com",
+      nl: "u@example.com",
+    },
+    searchingButton: {
+      en: "Searching...",
+      nl: "Bezig met zoeken...",
+    },
+    checkStatusButton: {
+      en: "Check status",
+      nl: "Status controleren",
+    },
+    bookingNotFound: {
+      en: "Booking not found. Please check your booking id and email.",
+      nl: "Boeking niet gevonden. Controleer uw boekings-ID en e-mailadres.",
+    },
+    bookingStatusTitle: {
+      en: "Booking Status:",
+      nl: "Boekingsstatus:",
+    },
+    nameLabel: {
+      en: "Name:",
+      nl: "Naam:",
+    },
+    emailSummaryLabel: {
+      en: "Email:",
+      nl: "E-mail:",
+    },
+    phoneLabel: {
+      en: "Phone:",
+      nl: "Telefoon:",
+    },
+    pickupLabel: {
+      en: "Pickup:",
+      nl: "Ophaallocatie:",
+    },
+    destinationLabel: {
+      en: "Destination:",
+      nl: "Bestemming:",
+    },
+    dateLabel: {
+      en: "Date:",
+      nl: "Datum:",
+    },
+    timeLabel: {
+      en: "Time:",
+      nl: "Tijd:",
+    },
+    passengersLabel: {
+      en: "Passengers:",
+      nl: "Passagiers:",
+    },
+    luggageLabel: {
+      en: "Luggage:",
+      nl: "Bagage:",
+    },
+    tripTypeLabel: {
+      en: "Trip type:",
+      nl: "Rittype:",
+    },
+    statusLabel: {
+      en: "Status:",
+      nl: "Status:",
+    },
+    hasPetsLabel: {
+      en: "Has pets:",
+      nl: "Heeft huisdieren:",
+    },
+    assignedChauffeurTitle: {
+      en: "Assigned chauffeur",
+      nl: "Toegewezen chauffeur",
+    },
+    noChauffeurAssigned: {
+      en: "No chauffeur has been assigned yet.",
+      nl: "Er is nog geen chauffeur toegewezen.",
+    },
+  },
+  
   navigation: {
     home: {
       en: "Home",
