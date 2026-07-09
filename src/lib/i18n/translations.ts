@@ -23,6 +23,134 @@ type TranslationSection = Record<string, TranslationEntry>;
 type TranslationDictionary = Record<string, TranslationSection>;
 
 export const translations = {
+  
+    chauffeurRegisterPage: {
+    brand: {
+      en: "VOYΛ TAXI",
+      nl: "VOYΛ TAXI",
+    },
+    title: {
+      en: "Register as chauffeur",
+      nl: "Registreer als chauffeur",
+    },
+    description: {
+      en: "Join Voya Taxi and send your chauffeur registration request for admin approval.",
+      nl: "Word chauffeur bij Voya Taxi en verstuur uw registratieaanvraag voor goedkeuring door de beheerder.",
+    },
+    fullNameLabel: {
+      en: "Full name",
+      nl: "Volledige naam",
+    },
+    emailLabel: {
+      en: "Email",
+      nl: "E-mail",
+    },
+    phoneLabel: {
+      en: "Phone",
+      nl: "Telefoon",
+    },
+    companyNameLabel: {
+      en: "Company name",
+      nl: "Bedrijfsnaam",
+    },
+    licenseNumberLabel: {
+      en: "License number",
+      nl: "Vergunningsnummer",
+    },
+    serviceAreaLabel: {
+      en: "Service area",
+      nl: "Servicegebied",
+    },
+    serviceAreaPlaceholder: {
+      en: "Example: Almere, Amsterdam, Lelystad",
+      nl: "Voorbeeld: Almere, Amsterdam, Lelystad",
+    },
+    acceptsPetsLabel: {
+      en: "I accept passengers with pets",
+      nl: "Ik accepteer passagiers met huisdieren",
+    },
+    reviewRegistrationButton: {
+      en: "Review registration",
+      nl: "Registratie controleren",
+    },
+    submitErrorMessage: {
+      en: "Could not submit chauffeur registration.",
+      nl: "Chauffeurregistratie kon niet worden verstuurd.",
+    },
+    serverErrorMessage: {
+      en: "Could not connect to the server. Please try again later.",
+      nl: "Kan geen verbinding maken met de server. Probeer het later opnieuw.",
+    },
+        reviewTitle: {
+      en: "Review registration",
+      nl: "Registratie controleren",
+    },
+    reviewDescription: {
+      en: "Please check the chauffeur registration details before confirming.",
+      nl: "Controleer de chauffeurregistratiegegevens voordat u bevestigt.",
+    },
+    yes: {
+      en: "Yes",
+      nl: "Ja",
+    },
+    no: {
+      en: "No",
+      nl: "Nee",
+    },
+    editRegistrationButton: {
+      en: "Edit registration",
+      nl: "Registratie aanpassen",
+    },
+    submittingButton: {
+      en: "Submitting...",
+      nl: "Bezig met versturen...",
+    },
+    confirmRegistrationButton: {
+      en: "Confirm registration",
+      nl: "Registratie bevestigen",
+    },
+        submittedTitle: {
+      en: "Registration ready",
+      nl: "Registratie ontvangen",
+    },
+    submittedDescription: {
+      en: "Your chauffeur registration has been submitted successfully. Please save your Registration ID. You can use it later to check your registration status.",
+      nl: "Uw chauffeurregistratie is succesvol verstuurd. Bewaar uw registratie-ID goed. U kunt deze later gebruiken om uw registratiestatus te controleren.",
+    },
+    registrationIdLabel: {
+      en: "Registration ID:",
+      nl: "Registratie-ID:",
+    },
+    statusLabel: {
+      en: "Status:",
+      nl: "Status:",
+    },
+    checkRegistrationStatusButton: {
+      en: "Check registration status",
+      nl: "Registratiestatus controleren",
+    },
+    startNewRegistrationButton: {
+      en: "Start new registration",
+      nl: "Nieuwe registratie starten",
+    },
+    statusPendingApproval: {
+      en: "Pending approval",
+      nl: "In afwachting van goedkeuring",
+    },
+    statusApproved: {
+      en: "Approved",
+      nl: "Goedgekeurd",
+    },
+    statusInactive: {
+      en: "Inactive",
+      nl: "Inactief",
+    },
+    statusSuspended: {
+      en: "Suspended",
+      nl: "Geschorst",
+    },
+  },
+
     chauffeurStatusPage: {
     backToHomepage: {
       en: "← Back to homepage",

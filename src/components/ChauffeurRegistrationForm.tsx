@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useState } from "react";
 import { buttonStyles } from "@/styles/classNames";
+import { getTranslation } from "@/lib/i18n/translations";
+import { useLanguage } from "@/components/LanguageProvider";
 
 /*=========================================**
  * RegistrationStep
@@ -91,6 +93,23 @@ const initialFormData: ChauffeurRegistrationFormData = {
  * and save the registration in Supabase.
  =========================================**/
 export default function ChauffeurRegistrationForm() {
+    const { languageCode } = useLanguage();
+
+  // getChauffeurRegisterText returns translated text for this registration form.
+  // This keeps the JSX shorter and easier to read.
+  function getChauffeurRegisterText(textKey: string) { return getTranslation("chauffeurRegisterPage", textKey, languageCode); }
+
+  // getAccountStatusLabel converts the database status into readable page text.
+  // Example: pending_approval becomes "Pending approval" or "In afwachting van goedkeuring".
+  function getAccountStatusLabel(accountStatus: string) {
+    if (accountStatus === "pending_approval") { return getChauffeurRegisterText("statusPendingApproval"); }
+    if (accountStatus === "approved") { return getChauffeurRegisterText("statusApproved"); }
+    if (accountStatus === "inactive") { return getChauffeurRegisterText("statusInactive"); }
+    if (accountStatus === "suspended") { return getChauffeurRegisterText("statusSuspended"); }
+
+    return accountStatus;
+  }
+
   const [formData, setFormData] = useState<ChauffeurRegistrationFormData>(initialFormData);
   const [registrationStep, setRegistrationStep] =  useState<RegistrationStep>("form");
 
@@ -192,12 +211,12 @@ export default function ChauffeurRegistrationForm() {
 
             const result = (await response.json()) as ChauffeurRegistrationApiResponse;
 
-            if (!response.ok || !result.registration) { setErrorMessage(  result.message || "Could not submit chauffeur registration." ); return;  }
+            if (!response.ok || !result.registration) { setErrorMessage(result.message || getChauffeurRegisterText("submitErrorMessage")); return; }
 
             setSubmittedRegistration(result.registration);
             setRegistrationStep("submitted");
         } 
-        catch {setErrorMessage("Could not connect to the server. Please try again later." ); } 
+        catch { setErrorMessage(getChauffeurRegisterText("serverErrorMessage")); }
         finally { setIsSubmitting(false);  }
     }
 
@@ -236,24 +255,23 @@ export default function ChauffeurRegistrationForm() {
   if (registrationStep === "submitted") {
     return (
       <section className="rounded-2xl border border-cyan-400/30 bg-slate-900 p-6 shadow-xl">
-        <h2 className="text-2xl font-bold text-cyan-300"> Registration ready </h2>
-        <p className="mt-4 text-slate-300">
-            Your chauffeur registration has been submitted successfully. Please save
-            your Registration ID. You can use it later to check your registration
-            status.
-        </p>
+        <h2 className="text-2xl font-bold text-cyan-300"> {getChauffeurRegisterText("submittedTitle")} </h2>
+        <p className="mt-4 text-slate-300"> {getChauffeurRegisterText("submittedDescription")} </p>
+
         <div className="mt-6 rounded-xl bg-slate-800 p-4 text-sm text-slate-300">
-          <p> <span className="font-semibold text-white">Registration ID:</span>{" "}  {submittedRegistration?.id}</p>
-          <p> <span className="font-semibold text-white">Name:</span>{" "} {submittedRegistration?.name}</p>
-          <p> <span className="font-semibold text-white">Email:</span>{" "}  {submittedRegistration?.email} </p>
-          <p> <span className="font-semibold text-white">Status:</span>{" "}  {submittedRegistration?.accountStatus} </p>
+          <p> <span className="font-semibold text-white">{getChauffeurRegisterText("registrationIdLabel")}</span>{" "} {submittedRegistration?.id}</p>
+          <p> <span className="font-semibold text-white">{getChauffeurRegisterText("fullNameLabel")}:</span>{" "} {submittedRegistration?.name}</p>
+          <p> <span className="font-semibold text-white">{getChauffeurRegisterText("emailLabel")}:</span>{" "} {submittedRegistration?.email} </p>
+          <p> <span className="font-semibold text-white">{getChauffeurRegisterText("statusLabel")}</span>{" "} {submittedRegistration ? getAccountStatusLabel(submittedRegistration.accountStatus) : "-"} </p>
         </div>
+
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link href={`/chauffeur-status?registrationId=${submittedRegistration?.id ?? ""}`} className={buttonStyles.normalSoftCyan} >
-              Check registration status
+              {getChauffeurRegisterText("checkRegistrationStatusButton")}
           </Link>
-          <button type="button"  onClick={handleNewRegistration}  className={buttonStyles.normalNeutral} >
-              Start new registration
+
+          <button type="button" onClick={handleNewRegistration} className={buttonStyles.normalNeutral} >
+              {getChauffeurRegisterText("startNewRegistrationButton")}
           </button>
         </div>
       </section>
@@ -269,28 +287,29 @@ export default function ChauffeurRegistrationForm() {
   if (registrationStep === "review") {
     return (
       <section className="rounded-2xl border border-cyan-400/30 bg-slate-900 p-6 shadow-xl">
-        <h2 className="text-2xl font-bold text-cyan-300"> Review registration </h2>
-        <p className="mt-2 text-slate-300"> Please check the chauffeur registration details before confirming. </p>
+        <h2 className="text-2xl font-bold text-cyan-300"> {getChauffeurRegisterText("reviewTitle")} </h2>
+        <p className="mt-2 text-slate-300"> {getChauffeurRegisterText("reviewDescription")} </p>
+
         <div className="mt-6 grid gap-4 text-sm text-slate-300">
-          <ReviewRow label="Name" value={formData.name} />
-          <ReviewRow label="Email" value={formData.email} />
-          <ReviewRow label="Phone" value={formData.phone} />
-          <ReviewRow label="Company name" value={formData.companyName || "-"} />
-          <ReviewRow label="License number"  value={formData.licenseNumber || "-"}   />
-          <ReviewRow label="Service area" value={formData.serviceArea || "-"} />
-          <ReviewRow label="Accepts pets" value={formData.acceptsPets ? "Yes" : "No"} />
+          <ReviewRow label={getChauffeurRegisterText("fullNameLabel")} value={formData.name} />
+          <ReviewRow label={getChauffeurRegisterText("emailLabel")} value={formData.email} />
+          <ReviewRow label={getChauffeurRegisterText("phoneLabel")} value={formData.phone} />
+          <ReviewRow label={getChauffeurRegisterText("companyNameLabel")} value={formData.companyName || "-"} />
+          <ReviewRow label={getChauffeurRegisterText("licenseNumberLabel")} value={formData.licenseNumber || "-"} />
+          <ReviewRow label={getChauffeurRegisterText("serviceAreaLabel")} value={formData.serviceArea || "-"} />
+          <ReviewRow label={getChauffeurRegisterText("acceptsPetsLabel")} value={formData.acceptsPets ? getChauffeurRegisterText("yes") : getChauffeurRegisterText("no")} />
         </div>
 
         {errorMessage ? ( <p className="mt-6 rounded-xl border border-red-400/40 bg-red-950/40 p-4 text-sm text-red-200"> {errorMessage} </p> ) : null}
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button  type="button"  onClick={handleEditRegistration} className={buttonStyles.normalNeutral}>
-                Edit registration
+            <button type="button" onClick={handleEditRegistration} className={buttonStyles.normalNeutral}>
+                {getChauffeurRegisterText("editRegistrationButton")}
             </button>
 
-            <button  type="button"  onClick={handleConfirmRegistration}  disabled={isSubmitting}
+            <button type="button" onClick={handleConfirmRegistration} disabled={isSubmitting}
                 className={`${buttonStyles.normalSoftCyan} ${buttonStyles.disabled}`}>
-                {isSubmitting ? "Submitting..." : "Confirm registration"}
+                {isSubmitting ? getChauffeurRegisterText("submittingButton") : getChauffeurRegisterText("confirmRegistrationButton")}
             </button>
         </div>
       </section>
@@ -309,18 +328,18 @@ export default function ChauffeurRegistrationForm() {
   return (
     <form  onSubmit={handleReviewRegistration} className="rounded-2xl border border-cyan-400/30 bg-slate-900 p-6 shadow-xl" >
       <div className="grid gap-5">
-        <FormField  label="Full name" inputName="name"  value={formData.name}  onChange={updateTextField("name")}   required />
-        <FormField  label="Email"  inputName="email"  type="email"  value={formData.email} onChange={updateTextField("email")} required />
-        <FormField  label="Phone" inputName="phone"  type="tel"  value={formData.phone}  onChange={updateTextField("phone")}  required  />
-        <FormField  label="Company name"  inputName="companyName"  value={formData.companyName} onChange={updateTextField("companyName")}  />
-        <FormField  label="License number" inputName="licenseNumber" value={formData.licenseNumber} onChange={updateTextField("licenseNumber")} />
-        <FormField  label="Service area" inputName="serviceArea" value={formData.serviceArea}  onChange={updateTextField("serviceArea")} placeholder="Example: Almere, Amsterdam, Lelystad" />
+        <FormField  label={getChauffeurRegisterText("fullNameLabel")} inputName="name"  value={formData.name}  onChange={updateTextField("name")}   required />
+        <FormField  label={getChauffeurRegisterText("emailLabel")}  inputName="email"  type="email"  value={formData.email} onChange={updateTextField("email")} required />
+        <FormField  label={getChauffeurRegisterText("phoneLabel")} inputName="phone"  type="tel"  value={formData.phone}  onChange={updateTextField("phone")}  required  />
+        <FormField  label={getChauffeurRegisterText("companyNameLabel")}  inputName="companyName"  value={formData.companyName} onChange={updateTextField("companyName")}  />
+        <FormField  label={getChauffeurRegisterText("licenseNumberLabel")} inputName="licenseNumber" value={formData.licenseNumber} onChange={updateTextField("licenseNumber")} />
+        <FormField  label={getChauffeurRegisterText("serviceAreaLabel")} inputName="serviceArea" value={formData.serviceArea}  onChange={updateTextField("serviceArea")} placeholder={getChauffeurRegisterText("serviceAreaPlaceholder")} />
         <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-800 p-4 text-sm text-slate-300">
-        <input  type="checkbox"  checked={formData.acceptsPets}  onChange={handlePetsChange} className="h-5 w-5" />  I accept passengers with pets </label>
+        <input  type="checkbox"  checked={formData.acceptsPets}  onChange={handlePetsChange} className="h-5 w-5" />  {getChauffeurRegisterText("acceptsPetsLabel")} </label>
       </div>
 
       <button type="submit" className={buttonStyles.fullWidthSoftCyan}>
-        Review registration
+        {getChauffeurRegisterText("reviewRegistrationButton")}
       </button>
     </form>
   );
