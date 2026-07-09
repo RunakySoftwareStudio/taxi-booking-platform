@@ -40,6 +40,12 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
         <p className={pageStyles.pageLabelUpper}>Admin</p>
         <h1 className={pageStyles.pageTitle}>Edit chauffeur details</h1>
         <p className={pageStyles.pageDescription}> Update chauffeur contact details and account status. </p>
+        <div className="mt-6 rounded-2xl border border-cyan-400/30 bg-slate-900/70 p-4">
+          <p className="text-sm font-semibold text-cyan-300"> Chauffeur reference </p>
+          <p className="mt-2 break-all font-mono text-sm text-slate-200"> {chauffeurRow.id} </p>
+          <p className="mt-2 text-xs text-slate-400"> Use this reference when checking or supporting a chauffeur registration. </p>
+        </div>
+
 
         <AdminChauffeurEditForm chauffeur={chauffeurRow}   accountStatusOptions={(accountStatuses ?? []) as string[]}  />
       </div>

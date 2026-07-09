@@ -70,6 +70,17 @@ function getQuickAccountStatusButtonText(accountStatus: string) {
     return "Activate";
 }
 
+/**
+ * formatShortChauffeurReference
+ *
+ * This shows a short version of the chauffeur ID in the admin list.
+ * The full chauffeur ID is shown on the edit chauffeur page.
+ */
+function formatShortChauffeurReference(chauffeurId: string) {
+    if (!chauffeurId) { return "-"; }
+    return chauffeurId.slice(0, 8);
+}
+
 async function changeChauffeurActiveStatus(formData: FormData) {
     "use server";
 
@@ -266,6 +277,10 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                         <div className={ chauffeur.account_status === "inactive" ? `${formStyles.inactiveDivNoBorder} opacity-50` : formStyles.ativeDivNoBorder } >
                             <div className="border-b border-white/10 pb-4">
                                 <p className="mt-1">
+                                    <span className={mobileStyle.inforCaption}>Ref: </span>
+                                    <span className={`${mobileStyle.infoValue} break-all`}>{formatShortChauffeurReference(chauffeur.id)}</span>
+                                </p>
+                                <p className="mt-1">
                                     <span className= {mobileStyle.inforCaption}>{chauffeur.account_status === "inactive" ? "Not active:" : "Name:" }  </span>
                                     <span className= {mobileStyle.infoValue} >{chauffeur.name}</span>
                                 </p>
@@ -349,6 +364,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                 <tr key={chauffeur.id}  className={ chauffeur.account_status === "inactive" ? `${tableStyles.rowCyan} opacity-50` : tableStyles.rowCyan } >
                                     <td className="p-4 align-top">
                                         <span className="block font-medium text-white"> {chauffeur.name} </span>
+                                        <span className="mt-1 block text-xs text-cyan-300"> Ref: {formatShortChauffeurReference(chauffeur.id)} </span>
                                         <span className="mt-1 block text-sm text-slate-400 break-all"> {chauffeur.email} </span>
                                     </td>
                                     <td className={tableStyles.cell}>{chauffeur.phone}</td>
