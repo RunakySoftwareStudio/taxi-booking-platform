@@ -23,6 +23,64 @@ type TranslationSection = Record<string, TranslationEntry>;
 type TranslationDictionary = Record<string, TranslationSection>;
 
 export const translations = {
+    loginPage: {
+    backToHomepage: {
+      en: "← Back to homepage",
+      nl: "← Terug naar homepage",
+    },
+    label: {
+      en: "Login",
+      nl: "Inloggen",
+    },
+    title: {
+      en: "Sign in",
+      nl: "Inloggen",
+    },
+    description: {
+      en: "Sign in to manage bookings, chauffeurs, clients, and vehicles.",
+      nl: "Log in om boekingen, chauffeurs, klanten en voertuigen te beheren.",
+    },
+    emailLabel: {
+      en: "Email address",
+      nl: "E-mailadres",
+    },
+    emailPlaceholder: {
+      en: "admin@example.com",
+      nl: "admin@example.com",
+    },
+    passwordLabel: {
+      en: "Password",
+      nl: "Wachtwoord",
+    },
+    passwordPlaceholder: {
+      en: "Your password",
+      nl: "Uw wachtwoord",
+    },
+    signingInButton: {
+      en: "Signing in...",
+      nl: "Bezig met inloggen...",
+    },
+    signInButton: {
+      en: "Sign in",
+      nl: "Inloggen",
+    },
+    loginFailedMessage: {
+      en: "Login failed. Please check your email and password.",
+      nl: "Inloggen mislukt. Controleer uw e-mailadres en wachtwoord.",
+    },
+    userNotFoundMessage: {
+      en: "Login failed. User could not be found.",
+      nl: "Inloggen mislukt. Gebruiker kon niet worden gevonden.",
+    },
+    profileNotFoundMessage: {
+      en: "Login failed. No user profile was found.",
+      nl: "Inloggen mislukt. Er is geen gebruikersprofiel gevonden.",
+    },
+    roleNotConfiguredMessage: {
+      en: "Login failed. Your account role is not configured correctly.",
+      nl: "Inloggen mislukt. De rol van uw account is niet correct ingesteld.",
+    },
+  },
   
     chauffeurRegisterPage: {
     brand: {

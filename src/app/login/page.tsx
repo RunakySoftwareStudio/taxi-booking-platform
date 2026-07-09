@@ -23,10 +23,7 @@ export default async function Page() {
     .maybeSingle();
 
   if (profile?.role === "admin") { redirect("/admin");  }
-
-  if (profile?.role === "chauffeur" && profile.chauffeur_id) {
-    redirect(`/chauffeur/${profile.chauffeur_id}`);
-  }
+  if (profile?.role === "chauffeur" && profile.chauffeur_id) { redirect(`/chauffeur/${profile.chauffeur_id}`); }
 
   return <LoginPage />;
 }
