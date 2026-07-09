@@ -7,6 +7,7 @@ import Link from "next/link";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import { Fragment } from "react";
+import { TranslatedText } from "@/components/TranslatedText";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx 
 
@@ -45,21 +46,46 @@ type TypeVehicleRow =
 };
 
 /*
-    formatTripType converts database values into readable text.
-    Example:
-    "one-way"  → "One-way trip"
-    "business" → "Business trip"
+  getTripTypeTextKey converts the database trip type
+  into a translation key for readable page text.
 */
-function formatTripType(tripType: string) {
-    const tripTypeLabels: Record<string, string> = {
-        "one-way": "One-way trip",
-        return: "Return trip",
-        airport: "Airport transfer",
-        business: "Business trip",
-    };
-    return tripTypeLabels[tripType] || tripType;
+function getTripTypeTextKey(tripType: string) {
+    if (tripType === "one_way" || tripType === "one-way") { return "tripTypeOneWay"; }
+    if (tripType === "return") { return "tripTypeReturn"; }
+    if (tripType === "airport") { return "tripTypeAirport"; }
+    if (tripType === "business") { return "tripTypeBusiness"; }
+
+    return "";
 }
 
+/*
+  getBookingStatusTextKey converts the database booking status
+  into a translation key for readable dropdown text.
+*/
+function getBookingStatusTextKey(statusValue: string) {
+    if (statusValue === "pending") { return "bookingStatusPending"; }
+    if (statusValue === "approved") { return "bookingStatusApproved"; }
+    if (statusValue === "accepted") { return "bookingStatusAccepted"; }
+    if (statusValue === "assigned") { return "bookingStatusAssigned"; }
+    if (statusValue === "completed") { return "bookingStatusCompleted"; }
+    if (statusValue === "cancelled") { return "bookingStatusCancelled"; }
+    if (statusValue === "rejected") { return "bookingStatusRejected"; }
+    if (statusValue === "confirmed") { return "bookingStatusConfirmed"; }
+
+    return "";
+}
+/*
+  getChauffeurAccountStatusTextKey converts the database account status
+  into a translation key for readable page text.
+*/
+function getChauffeurAccountStatusTextKey(accountStatus: string) {
+    if (accountStatus === "pending_approval") { return "statusPendingApproval"; }
+    if (accountStatus === "approved") { return "statusApproved"; }
+    if (accountStatus === "inactive") { return "statusInactive"; }
+    if (accountStatus === "suspended") { return "statusSuspended"; }
+
+    return "";
+}
 
 // Only update this booking if it belongs to this chauffeur.
 async function updateAssignedBookingStatus(formData: FormData) 
@@ -96,8 +122,9 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
     const authSupabase = await createAuthClient();
     const { data: { user }, } = await authSupabase.auth.getUser();
     let backLinkHref = "/";
-    let backLinkText = "← Back to homepage";
+    let backLinkTextKey = "backToHomepage";
     let isAdminUser = false;
+
 
     if (user) {
         const { data: profile } = await authSupabase
@@ -106,7 +133,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
         .eq("user_id", user.id)
         .maybeSingle();
 
-        if (profile?.role === "admin") { backLinkHref = "/admin/chauffeurs";  backLinkText = "← Back to admin chauffeurs";  isAdminUser = true;}
+        if (profile?.role === "admin") { backLinkHref = "/admin/chauffeurs"; backLinkTextKey = "backToAdminChauffeurs"; isAdminUser = true; }
     }
 
     // get chauffeur data of this chauffeur id
@@ -122,7 +149,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
         return (
             <main className={pageStyles.main}>
                 <div className={pageStyles.containerMedium}>
-                    <p className={pageStyles.errorMsg}> Could not load chauffeur. </p>
+                    <p className={pageStyles.errorMsg}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="couldNotLoadChauffeur" /> </p>
                 </div>
             </main>
         );
@@ -157,34 +184,37 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
     const { data: supabaseAdminBookingStatuses, error: bookingStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "booking_status" });
     if (bookingStatusError) { console.error("Could not load booking statuses:", bookingStatusError);}
     const bookingStatusOptions = (supabaseAdminBookingStatuses ?? []) as string[];
+    const chauffeurAccountStatusTextKey = getChauffeurAccountStatusTextKey(chauffeurRow.account_status);
 
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}> 
                 <div className="flex items-start justify-between gap-4">
-                    <Link href={backLinkHref} className={formStyles.link}> {backLinkText} </Link>
+                    <Link href={backLinkHref} className={formStyles.link}> <TranslatedText sectionName="chauffeurDashboardPage" textKey={backLinkTextKey} /> </Link>
                     <LogoutButton />
                 </div>
-                <p className={pageStyles.pageLabelUpper}> Chauffeur </p>
-                <h1 className={pageStyles.pageTitle}> Welcome, {chauffeurRow.name} </h1>
-                <p className={pageStyles.pageDescription}> Here you can see bookings assigned to you. </p>
+                <p className={pageStyles.pageLabelUpper}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="chauffeurLabel" /> </p>
+                <h1 className={pageStyles.pageTitle}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="welcomePrefix" /> {chauffeurRow.name} </h1>
+                <p className={pageStyles.pageDescription}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="description" /> </p>
                 
-                {pageMessage.success === "status-updated" && (<p className={pageStyles.successMsgPage}> Booking status updated successfully. </p>)}
-                {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> Please select the required booking information. </p>)}
-                {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> Could not update booking status. Please try again.</p>)}
+                {pageMessage.success === "status-updated" && (<p className={pageStyles.successMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdatedSuccess" /> </p>)}
+                {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="missingFieldsError" /> </p>)}
+                {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdateFailedError" /> </p>)}
 
                 <div className="mt-8 grid gap-4 md:grid-cols-3">
                     <div className={formStyles.info}>
-                        <p className={formStyles.formInputInfoCaption}>Email</p>
+                        <p className={formStyles.formInputInfoCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="emailLabel" /> </p>
                         <p className={formStyles.formInputInfoValue}>{chauffeurRow.email}</p>
                     </div>
                     <div className={formStyles.info}>
-                        <p className={formStyles.formInputInfoCaption}>Phone</p>
+                        <p className={formStyles.formInputInfoCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="phoneLabel" /> </p>
                         <p className={formStyles.formInputInfoValue}>{chauffeurRow.phone}</p>
                     </div>
                     <div className={formStyles.info}>
-                        <p className={formStyles.formInputInfoCaption}>Status</p>
-                        <p className={formStyles.formInputInfoValue}>{chauffeurRow.account_status}</p>
+                        <p className={formStyles.formInputInfoCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusLabel" /> </p>
+                        <p className={formStyles.formInputInfoValue}>
+                            {chauffeurAccountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={chauffeurAccountStatusTextKey} /> : chauffeurRow.account_status}
+                        </p>
                     </div>
                 </div>
                 {/*====================================                
@@ -194,54 +224,54 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 ==========================================*/}
                 <div className="mt-8 flex flex-wrap items-center gap-4">
                     <Link  href={`/chauffeur/${chauffeurRow.id}/availability`} className={formStyles.primaryButtonOutside}  >
-                        Manage availability
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="manageAvailabilityButton" />
                     </Link>
 
                     {isAdminUser && ( 
                         <Link  href={`/admin/chauffeurs/${chauffeurRow.id}`} className={formStyles.primaryButtonOutside}  >
-                            Edit details
+                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="editDetailsButton" />
                         </Link>
                     )}
                 </div>
 
-                <h3 className={tableStyles.headerTableSmall}>My vehicles</h3>
-                {/* Mobile vehicle cards */}
+                <h3 className={tableStyles.headerTableSmall}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="myVehiclesTitle" /> </h3>
+                {/* Mobile vehicle cards  */}
                 <div className="mt-6 grid gap-4 lg:hidden">
                     {vehicleRows.map((vehicle) => (
                     <article key={vehicle.id} className={mobileStyle.article}>
                         <div>
-                            <span className= {mobileStyle.inforCaption}>Brand(Model): </span>
+                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="brandModelLabel" />
                             <span className={mobileStyle.infoValue}> {vehicle.brand} ({vehicle.model})</span>
                         </div>
                         <div className="mt-4 grid grid-cols-2 gap-1">
                             <div>
-                                <span className= {mobileStyle.inforCaption}>License: </span>
+                                <span className= {mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="licenseLabel" />: </span>
                                 <span className= {mobileStyle.infoValue} >{vehicle.license_plate}</span>
                             </div>
                             <div>
-                                <span className={mobileStyle.inforCaption}> Type: </span>
+                                <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="typeLabel" /> :</span>
                                 <span className={mobileStyle.infoValue} >{vehicle.vehicle_type}</span>
                             </div>
                             <div>
-                                <span className={mobileStyle.inforCaption}> Seats: </span>
+                                <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="seatsLabel" />: </span>
                                 <span className={mobileStyle.infoValue} >{vehicle.seats}</span>
                             </div>
                             <div>
-                                <span className={mobileStyle.inforCaption}> Luggage: </span>
+                                <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="luggageLabel" />: </span>
                                 <span className={mobileStyle.infoValue} >{vehicle.luggage_capacity}</span>
                             </div>
                             <div>
-                                <span className={mobileStyle.inforCaption}> Year: </span>
+                                <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="yearLabel" /> :</span>
                                 <span className={mobileStyle.infoValue} >{vehicle.vehicle_year?vehicle.vehicle_year:"---"}</span>
                             </div>
                             <div>
-                                <span className={mobileStyle.inforCaption}> Color: </span>
+                                <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="colorLabel" />: </span>
                                 <span className={mobileStyle.infoValue} >{vehicle.vehicle_color?vehicle.vehicle_color: "---" }</span>
                             </div>
                         </div>
                     </article>  ))}
 
-                    {vehicleRows.length === 0 && ( <div className={tableStyles.cellEmpty}> No vehicles connected to this chauffeur yet. </div>  )}
+                    {vehicleRows.length === 0 && ( <div className={tableStyles.cellEmpty}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" /> </div>  )}
                 </div>
 
                 {/* Desktop vehicle table */}
@@ -249,14 +279,14 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 <table className={tableStyles.table1000}>
                     <thead className={tableStyles.tableHeaderCyan}>
                     <tr>
-                        <th className={tableStyles.cellCaption}>Brand</th>
-                        <th className={tableStyles.cellCaption}>Model</th>
-                        <th className={tableStyles.cellCaption}>License plate</th>
-                        <th className={tableStyles.cellCaption}>Type</th>
-                        <th className={tableStyles.cellCaption}>Seats</th>
-                        <th className={tableStyles.cellCaption}>Luggage</th>
-                        <th className={tableStyles.cellCaption}>Year</th>
-                        <th className={tableStyles.cellCaption}>Color</th>
+                        <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="brandLabel" /> </th>
+                        <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="modelLabel" /> </th>
+                        <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="licensePlateLabel" /> </th>
+                        <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="typeLabel" /> </th>
+                        <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="seatsLabel" /> </th>
+                        <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="luggageLabel" /> </th>
+                        <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="yearLabel" /> </th>
+                        <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="colorLabel" /> </th>
                     </tr>
                     </thead>
 
@@ -273,71 +303,73 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         <td className={tableStyles.cell}>{vehicle.vehicle_color?vehicle.vehicle_color:"---"}</td>
                         </tr>))}
 
-                    {vehicleRows.length === 0 && ( <tr><td className={tableStyles.cellEmpty} colSpan={8}> No vehicles connected to this chauffeur yet. </td></tr> )}
+                    {vehicleRows.length === 0 && ( <tr><td className={tableStyles.cellEmpty} colSpan={8}> <tr><td className={tableStyles.cellEmpty} colSpan={8}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" /> </td></tr> </td></tr> )}
                     </tbody>
                 </table>
                 </div>
 
-                <h3 className={tableStyles.headerTableSmall}>  Assigned bookings ({bookingRows.length})</h3>
-                {/* Mobile booking cards */}
+                <h3 className={tableStyles.headerTableSmall}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="assignedBookingsTitle" /> ({bookingRows.length})</h3>
+                {/* Mobile booking cards  */}
                 <div className="mt-6 grid gap-4 lg:hidden">
                 {bookingRows.map((booking) => (
                     <article key={booking.id}  className={mobileStyle.article}>
                     <div className="border-b border-white/10 pb-4">
                             <div>
-                                <span className= {mobileStyle.inforCaption}>Client: </span>
-                                <span className= {mobileStyle.infoValue}>{booking.clients?.name || "Unknown client"}</span>
+                                <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="clientLabel" />: </span> </span>
+                                <span className= {mobileStyle.infoValue}>{booking.clients?.name || <TranslatedText sectionName="chauffeurDashboardPage" textKey="unknownClient" />}</span>
                             </div>
                             <div>
-                                <span className= {mobileStyle.inforCaption}>Mail: </span>
+                                <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="mailLabel" />: </span></span>
                                 <span className= {mobileStyle.infoValue} >{booking.clients?.email}</span>
                             </div>
                             <div>
-                                <span className= {mobileStyle.inforCaption}>Phone: </span>
+                                <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="phoneLabel" />: </span> </span>
                                 <span className= {mobileStyle.infoValue} >{booking.clients?.phone}</span>
                             </div>     
                             <div>
-                                <span className={mobileStyle.inforCaption}> Pickup: </span>
-                                <span className="mt-1 text-cyan-300">{booking.pickup_location}</span>
+                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="pickupLabel" />: </span> </span>
+                                <span className={mobileStyle.infoValue}>{booking.pickup_location}</span>
                             </div>
                             <div>
-                                <span className={mobileStyle.inforCaption}> Destination: </span>
+                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="destinationLabel" />: </span></span>
                                 <span className={mobileStyle.infoValue}>{booking.destination}</span>
                             </div>                       
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
                         <div>
-                            <span className={mobileStyle.inforCaption}> Date: </span>
+                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="dateLabel" />: </span> </span>
                             <span className={mobileStyle.infoValue}>{formatShortDate(booking.pickup_date)}</span>
                         </div>
                         <div>
-                            <span className={mobileStyle.inforCaption}> Time: </span>
+                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="timeLabel" />: </span></span>
                             <span className={mobileStyle.infoValue}>{formatShortTime(booking.pickup_time)}</span>
                         </div>
 
                         <div>
-                            <span className={mobileStyle.inforCaption}> Pax: </span>
+                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="paxLabel" />: </span> </span>
                             <span className={mobileStyle.infoValue}>{booking.passengers}</span>
                         </div>
 
                         <div>
-                            <span className={mobileStyle.inforCaption}> Trip: </span>
-                            <span className={mobileStyle.infoValue}>{booking.trip_type}</span>
-                        </div>
-                        <div>
-                            <span className={mobileStyle.inforCaption}>  Has pets:  </span>
-                            <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
-                                {booking.has_pets  ? "yes ✓" : "No"}
+                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="tripLabel" />: </span> </span>
+                            <span className={mobileStyle.infoValue}>
+                                {getTripTypeTextKey(booking.trip_type) ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={getTripTypeTextKey(booking.trip_type)} /> : booking.trip_type}
                             </span>
                         </div>
                         <div>
-                            <span className={mobileStyle.inforCaption}> Luggage: </span>
+                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="hasPetsLabel" />: </span>  </span>
+                            <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                {booking.has_pets ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}
+                            </span>
+                        </div>
+                        <div>
+                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="luggageLabel" />: </span> </span>
                             <span className={mobileStyle.infoValue}>{booking.luggage}</span>
                         </div>
                         
                         <div>
-                            <span className={mobileStyle.inforCaption}>  Notes:  </span>
+                            <span className={mobileStyle.inforCaption}>  <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span>  </span>
                             <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
                         </div>
                     </div>
@@ -347,17 +379,25 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
 
                         <select name="status"  defaultValue={booking.status}  className={`${tableStyles.selectTable} w-full`}>
-                            {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
+                           {bookingStatusOptions.map((status) => {
+                                const bookingStatusTextKey = getBookingStatusTextKey(status);
+
+                                return (
+                                    <option key={status} value={status}>
+                                        {bookingStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={bookingStatusTextKey} /> : status}
+                                    </option>
+                                );
+                            })}
                         </select>
 
                         <button type="submit" className={formStyles.smallButton}>
-                        Save
+                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
                         </button>
                     </form>
                     </article>
                 ))}
 
-                {bookingRows.length === 0 && ( <div className={tableStyles.cellEmpty}>  No assigned bookings found yet.  </div>)}
+                {bookingRows.length === 0 && ( <div className={tableStyles.cellEmpty}>  <TranslatedText sectionName="chauffeurDashboardPage" textKey="noAssignedBookingsMessage" />  </div>)}
                 </div>
 
                 {/* Desktop booking table */}
@@ -365,17 +405,15 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                     <table className={tableStyles.table1000}>
                         <thead className={`${tableStyles.tableHeaderCyan} sticky top-0 z-10`}> 
                             <tr>
-                                <th className={tableStyles.cellCaption}>Client</th>
-                                <th className={tableStyles.cellCaption}>Pickup</th>
-                                <th className={tableStyles.cellCaption}>Destination</th>
-                                <th className={tableStyles.cellCaption}>Date</th>
-                                <th className={tableStyles.cellCaption}>Time</th>
-                                <th className={tableStyles.cellCaption}>Passengers</th>
-                                <th className={tableStyles.cellCaption}>Luggage </th>
-                                <th className={tableStyles.cellCaption}>Pets</th>
-                                <th className={tableStyles.cellCaption}>Trip type</th>
-                                <th className={tableStyles.cellCaption}></th>
-                                <th className={tableStyles.cellCaption}></th>
+                                <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="clientLabel" /> </th>
+                                <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="pickupLabel" /> </th>
+                                <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="destinationLabel" /> </th>
+                                <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="dateLabel" /> </th>
+                                <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="timeLabel" /> </th>
+                                <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="passengersLabel" /> </th>
+                                <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="luggageLabel" /> </th>
+                                <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="petsLabel" /> </th>
+                                <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="tripTypeLabel" /> </th>
                             </tr>
                         </thead>
 
@@ -384,7 +422,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             <Fragment key={booking.id}>                           
                                 <tr key={booking.id} className="border-b border-white/10">
                                     <td className={tableStyles.cellCaption}>
-                                        <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"} </div>
+                                        <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || <TranslatedText sectionName="chauffeurDashboardPage" textKey="unknownClient" />} </div>
                                         <div className={tableStyles.cellInfo}> {booking.clients?.email} </div>
                                         <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
                                     </td>
@@ -392,19 +430,21 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                     <td className={tableStyles.cell}>{booking.destination}</td>     
                                     <td className={tableStyles.cell}> {formatShortDate(booking.pickup_date)} </td>
                                     <td className={tableStyles.cell}> {formatShortTime(booking.pickup_time)} </td>
-                                    <td className={tableStyles.cell}> Pax: {booking.passengers} </td>
-                                    <td className={tableStyles.cell}> LUGG: {booking.luggage} </td>
+                                    <td className={tableStyles.cell}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="paxLabel" />: {booking.passengers} </td>
+                                    <td className={tableStyles.cell}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="luggageLabel" />: {booking.luggage} </td>
                                     <td className={`${tableStyles.cell} whitespace-nowrap`}>
                                         <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
-                                            {booking.has_pets  ? "Pet ✓" : "No pet"}
+                                            {booking.has_pets ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="petYes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="petNo" />}
                                         </span>
                                     </td>
-                                    <td className={tableStyles.cell}> {formatTripType(booking.trip_type)} </td>
+                                    <td className={tableStyles.cell}>
+                                        {getTripTypeTextKey(booking.trip_type) ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={getTripTypeTextKey(booking.trip_type)} /> : booking.trip_type}
+                                    </td>
                                 </tr>
                                 <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
                                     <td colSpan={8} className="px-4 pb-4 pt-0 text-sm text-slate-300">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
-                                        <span className="font-semibold text-cyan-300">Notes: </span>
+                                        <span className="font-semibold text-cyan-300"><span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span> </span>
                                         <span className="wrap-break-word"> {booking.notes || "-----"} </span>
                                         </div>
                                     </td>
@@ -413,13 +453,20 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                             <input type="hidden" name="bookingId" value={booking.id} />
                                             <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
                                             <label className="grid w-32 shrink-0 gap-1">
-                                                <span className ="font-semibold text-cyan-300 px-2 py-1">Booking status</span>
+                                                <span className ="font-semibold text-cyan-300 px-2 py-1"><span className="font-semibold text-cyan-300 px-2 py-1"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingStatusLabel" /> </span></span>
                                                 <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
-                                                    {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
+                                                    {bookingStatusOptions.map((status) => {
+                                                        const bookingStatusTextKey = getBookingStatusTextKey(status);
+                                                        return (
+                                                            <option key={status} value={status}>
+                                                                {bookingStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={bookingStatusTextKey} /> : status}
+                                                            </option>
+                                                        );
+                                                    })}
                                                 </select>
                                             </label>                                            
                                             <button type="submit" className={formStyles.smallButton}>
-                                                Save
+                                                <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
                                             </button>
                                         </form>
                                     </td>
@@ -427,7 +474,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             </Fragment>
                         ))}
 
-                        {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}> No assigned bookings found yet.</td></tr> )}
+                        {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={8}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="noAssignedBookingsMessage" /></td></tr> )}
                         </tbody>
                     </table>
                 </div>

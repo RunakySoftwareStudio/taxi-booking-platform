@@ -23,6 +23,265 @@ type TranslationSection = Record<string, TranslationEntry>;
 type TranslationDictionary = Record<string, TranslationSection>;
 
 export const translations = {
+  chauffeurDashboardPage: {
+    backToHomepage: {
+      en: "← Back to homepage",
+      nl: "← Terug naar homepage",
+    },
+    backToAdminChauffeurs: {
+      en: "← Back to admin chauffeurs",
+      nl: "← Terug naar admin chauffeurs",
+    },
+    chauffeurLabel: {
+      en: "Chauffeur",
+      nl: "Chauffeur",
+    },
+    welcomePrefix: {
+      en: "Welcome,",
+      nl: "Welkom,",
+    },
+    description: {
+      en: "Here you can see bookings assigned to you.",
+      nl: "Hier ziet u de boekingen die aan u zijn toegewezen.",
+    },
+    couldNotLoadChauffeur: {
+      en: "Could not load chauffeur.",
+      nl: "Chauffeur kon niet worden geladen.",
+    },
+    statusUpdatedSuccess: {
+      en: "Booking status updated successfully.",
+      nl: "Boekingsstatus succesvol bijgewerkt.",
+    },
+    missingFieldsError: {
+      en: "Please select the required booking information.",
+      nl: "Selecteer de vereiste boekingsinformatie.",
+    },
+    statusUpdateFailedError: {
+      en: "Could not update booking status. Please try again.",
+      nl: "Boekingsstatus kon niet worden bijgewerkt. Probeer het opnieuw.",
+    },
+    emailLabel: {
+      en: "Email",
+      nl: "E-mail",
+    },
+    phoneLabel: {
+      en: "Phone",
+      nl: "Telefoon",
+    },
+    statusLabel: {
+      en: "Status",
+      nl: "Status",
+    },
+    manageAvailabilityButton: {
+      en: "Manage availability",
+      nl: "Beschikbaarheid beheren",
+    },
+    editDetailsButton: {
+      en: "Edit details",
+      nl: "Gegevens aanpassen",
+    },
+    myVehiclesTitle: {
+      en: "My vehicles",
+      nl: "Mijn voertuigen",
+    },
+    brandModelLabel: {
+      en: "Brand/model:",
+      nl: "Merk/model:",
+    },
+    brandLabel: {
+      en: "Brand",
+      nl: "Merk",
+    },
+    modelLabel: {
+      en: "Model",
+      nl: "Model",
+    },
+    licenseLabel: {
+      en: "License:",
+      nl: "Kenteken:",
+    },
+    licensePlateLabel: {
+      en: "License plate",
+      nl: "Kenteken",
+    },
+    typeLabel: {
+      en: "Type",
+      nl: "Type",
+    },
+    seatsLabel: {
+      en: "Seats",
+      nl: "Zitplaatsen",
+    },
+    luggageLabel: {
+      en: "Luggage",
+      nl: "Bagage",
+    },
+    yearLabel: {
+      en: "Year",
+      nl: "Jaar",
+    },
+    colorLabel: {
+      en: "Color",
+      nl: "Kleur",
+    },
+    noVehiclesMessage: {
+      en: "No vehicles connected to this chauffeur yet.",
+      nl: "Er zijn nog geen voertuigen gekoppeld aan deze chauffeur.",
+    },
+    statusPendingApproval: {
+      en: "Pending approval",
+      nl: "In afwachting van goedkeuring",
+    },
+    statusApproved: {
+      en: "Approved",
+      nl: "Goedgekeurd",
+    },
+    statusInactive: {
+      en: "Inactive",
+      nl: "Inactief",
+    },
+    statusSuspended: {
+      en: "Suspended",
+      nl: "Geschorst",
+    },
+        assignedBookingsTitle: {
+      en: "Assigned bookings",
+      nl: "Toegewezen boekingen",
+    },
+    clientLabel: {
+      en: "Client",
+      nl: "Klant",
+    },
+    unknownClient: {
+      en: "Unknown client",
+      nl: "Onbekende klant",
+    },
+    mailLabel: {
+      en: "Mail",
+      nl: "E-mail",
+    },
+    pickupLabel: {
+      en: "Pickup",
+      nl: "Ophaallocatie",
+    },
+    destinationLabel: {
+      en: "Destination",
+      nl: "Bestemming",
+    },
+    dateLabel: {
+      en: "Date",
+      nl: "Datum",
+    },
+    timeLabel: {
+      en: "Time",
+      nl: "Tijd",
+    },
+    paxLabel: {
+      en: "Pax",
+      nl: "Pass.",
+    },
+    passengersLabel: {
+      en: "Passengers",
+      nl: "Passagiers",
+    },
+    petsLabel: {
+      en: "Pets",
+      nl: "Huisdieren",
+    },
+    hasPetsLabel: {
+      en: "Has pets",
+      nl: "Heeft huisdieren",
+    },
+    tripLabel: {
+      en: "Trip",
+      nl: "Rit",
+    },
+    tripTypeLabel: {
+      en: "Trip type",
+      nl: "Rittype",
+    },
+    notesLabel: {
+      en: "Notes",
+      nl: "Notities",
+    },
+    bookingStatusLabel: {
+      en: "Booking status",
+      nl: "Boekingsstatus",
+    },
+    saveButton: {
+      en: "Save",
+      nl: "Opslaan",
+    },
+    yes: {
+      en: "Yes",
+      nl: "Ja",
+    },
+    no: {
+      en: "No",
+      nl: "Nee",
+    },
+    petYes: {
+      en: "Pet ✓",
+      nl: "Huisdier ✓",
+    },
+    petNo: {
+      en: "No pet",
+      nl: "Geen huisdier",
+    },
+    noAssignedBookingsMessage: {
+      en: "No assigned bookings found yet.",
+      nl: "Er zijn nog geen toegewezen boekingen gevonden.",
+    },
+    tripTypeOneWay: {
+      en: "One-way trip",
+      nl: "Enkele rit",
+    },
+    tripTypeReturn: {
+      en: "Return trip",
+      nl: "Retourrit",
+    },
+    tripTypeAirport: {
+      en: "Airport transfer",
+      nl: "Luchthaventransfer",
+    },
+    tripTypeBusiness: {
+      en: "Business trip",
+      nl: "Zakelijke rit",
+    },
+      bookingStatusPending: {
+      en: "Pending",
+      nl: "In behandeling",
+    },
+    bookingStatusApproved: {
+      en: "Approved",
+      nl: "Goedgekeurd",
+    },
+    bookingStatusAccepted: {
+      en: "Accepted",
+      nl: "Geaccepteerd",
+    },
+    bookingStatusAssigned: {
+      en: "Assigned",
+      nl: "Chauffeur toegewezen",
+    },
+    bookingStatusCompleted: {
+      en: "Completed",
+      nl: "Voltooid",
+    },
+    bookingStatusCancelled: {
+      en: "Cancelled",
+      nl: "Geannuleerd",
+    },
+    bookingStatusRejected: {
+      en: "Rejected",
+      nl: "Afgewezen",
+    },
+    bookingStatusConfirmed: {
+      en: "Confirmed",
+      nl: "Bevestigd",
+    },
+  },
+
   logoutButton: {
     signingOut: {
       en: "Signing out...",
@@ -33,7 +292,7 @@ export const translations = {
       nl: "Uitloggen",
     },
   },
-  
+
   unauthorizedPage: {
     label: {
       en: "Access denied",
