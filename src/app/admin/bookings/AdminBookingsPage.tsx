@@ -129,6 +129,13 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
         return timeValue.slice(0, 5);
         }
 
+    // formatShortBookingReference shows a shorter booking reference in the admin list.
+    // The full booking ID is still available on the edit booking page.
+    function formatShortBookingReference(bookingId: string) {
+        if (!bookingId) { return "-"; }
+        return bookingId.slice(0, 8);
+    }
+
     /* =====================================================
         <table>
             <thead>
@@ -167,6 +174,11 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 <div className="border-b border-white/10 pb-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
+                                            <p className="mt-1">
+                                                <span className={mobileStyle.inforCaption}>Ref: </span>
+                                                <span className={`${mobileStyle.infoValue} break-all`}>{formatShortBookingReference(booking.id)}</span>
+                                            </p>
+
                                             <p className="mt-1">
                                                 <span className={mobileStyle.inforCaption}>Client name: </span>
                                                 <span className={mobileStyle.infoValue}>{booking.clients?.name}</span>
@@ -277,11 +289,10 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                             <Fragment key={booking.id}>
                                 <tr className={`${tableStyles.rowCyan} align-top border-b-0`}>
                                     <td className={tableStyles.cellCaption}>
-                                        <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"}  </div>
-                                            <div className={tableStyles.cellInfo}> {booking.clients?.email}</div>
-                                            <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
-                                            <div className="mt-3">
-                                        </div>
+                                        <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"} </div>
+                                        <div className={tableStyles.cellInfo}> Ref: {formatShortBookingReference(booking.id)} </div>
+                                        <div className={tableStyles.cellInfo}> {booking.clients?.email}</div>
+                                        <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
                                     </td>
 
                                     <td className={tableStyles.cell}>{booking.pickup_location}</td>

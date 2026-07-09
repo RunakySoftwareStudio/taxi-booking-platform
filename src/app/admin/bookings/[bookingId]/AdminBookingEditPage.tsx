@@ -41,10 +41,15 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
                 <Link href="/admin/bookings" className={formStyles.link}>  ← Back to admin bookings  </Link>
                 <p className={pageStyles.pageLabelUpper}>Admin</p>
                 <h1 className={pageStyles.pageTitle}>Edit booking</h1>
-                <p className={pageStyles.pageDescription}>  Update booking details, status, and assigned chauffeur.  </p>
+                <p className={pageStyles.pageDescription}> Update booking details, status, and assigned chauffeur. </p>
 
-                <AdminBookingEditForm  booking={bookingForEdit} chauffeurs={chauffeurs ?? []} bookingStatusOptions={(bookingStatuses ?? []) as string[]} tripTypeOptions={(tripTypes ?? []) as string[]} />
-            </div>
+                <div className="mt-6 rounded-2xl border border-cyan-400/30 bg-slate-900/70 p-4">
+                    <p className="text-sm font-semibold text-cyan-300"> Booking reference </p>
+                    <p className="mt-2 break-all font-mono text-sm text-slate-200"> {bookingRow.id} </p>
+                    <p className="mt-2 text-xs text-slate-400"> Use this reference together with the client email on the public booking status page. </p>
+                </div>
+
+                <AdminBookingEditForm  booking={bookingForEdit} chauffeurs={chauffeurs ?? []} bookingStatusOptions={(bookingStatuses ?? []) as string[]} tripTypeOptions={(tripTypes ?? []) as string[]} />            </div>
         </main>
     );
 }

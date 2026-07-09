@@ -136,7 +136,6 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                         <input  value={destination} onChange={(event) => setDestination(event.target.value)}  required className={formStyles.inputWFullCyan}/>
                     </div>
 
-
                     <div className="flex flex-wrap items-end gap-2">
                         <label className="block">
                             <span className={formStyles.label}>Date</span>
