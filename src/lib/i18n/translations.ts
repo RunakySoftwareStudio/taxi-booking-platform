@@ -23,8 +23,37 @@ type TranslationSection = Record<string, TranslationEntry>;
 type TranslationDictionary = Record<string, TranslationSection>;
 
 export const translations = {
+  logoutButton: {
+    signingOut: {
+      en: "Signing out...",
+      nl: "Bezig met uitloggen...",
+    },
+    logout: {
+      en: "Logout",
+      nl: "Uitloggen",
+    },
+  },
   
-    loginPage: {
+  unauthorizedPage: {
+    label: {
+      en: "Access denied",
+      nl: "Toegang geweigerd",
+    },
+    title: {
+      en: "You do not have permission",
+      nl: "U heeft geen toestemming",
+    },
+    description: {
+      en: "Your account is logged in, but it does not have permission to open this page.",
+      nl: "Uw account is ingelogd, maar heeft geen toestemming om deze pagina te openen.",
+    },
+    homepageButton: {
+      en: "Go to homepage",
+      nl: "Ga naar homepage",
+    },
+  },
+    
+  loginPage: {
     backToHomepage: {
       en: "← Back to homepage",
       nl: "← Terug naar homepage",
@@ -83,7 +112,7 @@ export const translations = {
     },
   },
 
-    chauffeurRegisterPage: {
+  chauffeurRegisterPage: {
     brand: {
       en: "VOYΛ TAXI",
       nl: "VOYΛ TAXI",
@@ -210,7 +239,7 @@ export const translations = {
     },
   },
 
-    chauffeurStatusPage: {
+  chauffeurStatusPage: {
     backToHomepage: {
       en: "← Back to homepage",
       nl: "← Terug naar homepage",
@@ -327,9 +356,10 @@ export const translations = {
       en: "Suspended",
       nl: "Geschorst",
     },
+    
   },
 
-    bookingStatusPage: {
+  bookingStatusPage: {
     backToHomepage: {
       en: "← Back to homepage",
       nl: "← Terug naar homepage",
