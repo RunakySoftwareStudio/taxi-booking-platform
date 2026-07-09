@@ -55,6 +55,27 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
     // getStatusPageText returns translated text for this status page.
     // This keeps the JSX shorter and easier to read.
     function getStatusPageText(textKey: string) { return getTranslation("bookingStatusPage", textKey, languageCode); }
+    
+    // getBookingStatusLabel converts the database booking status into readable page text.
+    // Example: "assigned" becomes "Assigned" or "Chauffeur toegewezen".
+    function getBookingStatusLabel(statusValue: string) {
+      if (statusValue === "pending") { return getStatusPageText("statusPending"); }
+      if (statusValue === "approved") { return getStatusPageText("statusApproved"); }
+      if (statusValue === "assigned") { return getStatusPageText("statusAssigned"); }
+      if (statusValue === "completed") { return getStatusPageText("statusCompleted"); }
+      if (statusValue === "cancelled") { return getStatusPageText("statusCancelled"); }
+
+      return statusValue;
+    }
+
+    // getTripTypeLabel converts the database trip type into readable page text.
+    // Example: "one_way" becomes "One-way trip" or "Enkele rit".
+    function getTripTypeLabel(tripTypeValue: string) {
+      if (tripTypeValue === "one_way") { return getStatusPageText("tripTypeOneWay"); }
+      if (tripTypeValue === "return") { return getStatusPageText("tripTypeReturn"); }
+
+      return tripTypeValue;
+    }
 
     const [booking, setBooking] = useState<BookingStatusResult | null>(null);
     const safeInitialBookingId = initialBookingId ?? "";
@@ -129,7 +150,7 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
 
           {booking && (
             <section className={formStyles.form}>
-              <h3 className={formStyles.formH5MediumSemiBold}> {getStatusPageText("bookingStatusTitle")} <span className={formStyles.formPCyan}>{booking.status}</span> </h3>  
+              <h3 className={formStyles.formH5MediumSemiBold}> {getStatusPageText("bookingStatusTitle")} <span className={formStyles.formPCyan}>{getBookingStatusLabel(booking.status)}</span> </h3>
 
               <div className="mt-8">  
                   <div>
@@ -178,11 +199,11 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
                     </div>
                     <div>
                         <span className={formStyles.formPCyan}> {getStatusPageText("tripTypeLabel")} </span>
-                        <span className={formStyles.formP}>{booking.trip_type}</span>
+                        <span className={formStyles.formP}>{getTripTypeLabel(booking.trip_type)}</span>
                     </div>
                     <div>
                         <span className={formStyles.formPCyan}> {getStatusPageText("statusLabel")} </span>
-                        <span className={formStyles.formP}>{booking.status}</span>
+                        <span className={formStyles.formP}>{getBookingStatusLabel(booking.status)}</span>
                     </div>
                     <div className="mt-1">                           
                         <span className={formStyles.formPCyan}> {getStatusPageText("hasPetsLabel")} </span>

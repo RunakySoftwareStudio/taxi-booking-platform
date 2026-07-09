@@ -81,7 +81,7 @@ export const translations = {
       nl: "Inloggen mislukt. De rol van uw account is niet correct ingesteld.",
     },
   },
-  
+
     chauffeurRegisterPage: {
     brand: {
       en: "VOYΛ TAXI",
@@ -416,6 +416,34 @@ export const translations = {
     noChauffeurAssigned: {
       en: "No chauffeur has been assigned yet.",
       nl: "Er is nog geen chauffeur toegewezen.",
+    },
+        statusPending: {
+      en: "Pending",
+      nl: "In behandeling",
+    },
+    statusApproved: {
+      en: "Approved",
+      nl: "Goedgekeurd",
+    },
+    statusAssigned: {
+      en: "Assigned",
+      nl: "Chauffeur toegewezen",
+    },
+    statusCompleted: {
+      en: "Completed",
+      nl: "Voltooid",
+    },
+    statusCancelled: {
+      en: "Cancelled",
+      nl: "Geannuleerd",
+    },
+    tripTypeOneWay: {
+      en: "One-way trip",
+      nl: "Enkele rit",
+    },
+    tripTypeReturn: {
+      en: "Return trip",
+      nl: "Retourrit",
     },
   },
 
