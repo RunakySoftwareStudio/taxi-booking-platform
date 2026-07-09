@@ -96,6 +96,17 @@ export default function ChauffeurStatusPage({initialRegistrationId = "",}: Chauf
   // This keeps the JSX shorter and easier to read.
   function getChauffeurStatusText(textKey: string) { return getTranslation("chauffeurStatusPage", textKey, languageCode); }
 
+  // getAccountStatusLabel converts the database account status into readable page text.
+  // Example: "pending_approval" becomes "Pending approval" or "In afwachting van goedkeuring".
+  function getAccountStatusLabel(accountStatus: string) {
+    if (accountStatus === "pending_approval") { return getChauffeurStatusText("statusPendingApproval"); }
+    if (accountStatus === "approved") { return getChauffeurStatusText("statusApproved"); }
+    if (accountStatus === "inactive") { return getChauffeurStatusText("statusInactive"); }
+    if (accountStatus === "suspended") { return getChauffeurStatusText("statusSuspended"); }
+
+    return accountStatus;
+  }
+
   const safeInitialRegistrationId = initialRegistrationId ?? "";
   const [registration, setRegistration] = useState<ChauffeurStatusResult | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -184,7 +195,7 @@ export default function ChauffeurStatusPage({initialRegistrationId = "",}: Chauf
         {registration ? (
           <section className={formStyles.form}>
             <h3 className={formStyles.formH5MediumSemiBold}> {getChauffeurStatusText("registrationStatusTitle")}{" "}
-              <span className={formStyles.formPCyan}>{registration.accountStatus}</span>
+              <span className={formStyles.formPCyan}>{getAccountStatusLabel(registration.accountStatus)}</span>
             </h3>
 
             <div className="mt-8 grid gap-4 text-sm text-slate-300 md:grid-cols-2">

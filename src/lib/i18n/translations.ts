@@ -23,6 +23,7 @@ type TranslationSection = Record<string, TranslationEntry>;
 type TranslationDictionary = Record<string, TranslationSection>;
 
 export const translations = {
+  
     loginPage: {
     backToHomepage: {
       en: "← Back to homepage",
@@ -309,6 +310,22 @@ export const translations = {
     inactiveExplanation: {
       en: "Inactive or suspended means your account is not currently active.",
       nl: "Inactief of geschorst betekent dat uw account momenteel niet actief is.",
+    },
+    statusPendingApproval: {
+      en: "Pending approval",
+      nl: "In afwachting van goedkeuring",
+    },
+    statusApproved: {
+      en: "Approved",
+      nl: "Goedgekeurd",
+    },
+    statusInactive: {
+      en: "Inactive",
+      nl: "Inactief",
+    },
+    statusSuspended: {
+      en: "Suspended",
+      nl: "Geschorst",
     },
   },
 
