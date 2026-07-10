@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formStyles, pageStyles } from "@/styles/classNames";
+import { getTranslation } from "@/lib/i18n/translations";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type AvailabilityForEdit = {
   id: string;
@@ -37,6 +39,20 @@ function getTodayDateInputValue() {
 
 export default function ChauffeurAvailabilityEditForm({ chauffeurId, availability, statusOptions,}: ChauffeurAvailabilityEditFormProps) {
   const router = useRouter();
+  const { languageCode } = useLanguage();
+
+  // getAvailabilityText returns translated text for this edit form.
+  function getAvailabilityText(textKey: string) { return getTranslation("chauffeurAvailabilityPage", textKey, languageCode); }
+
+  // getAvailabilityStatusLabel converts database status values into readable text.
+  function getAvailabilityStatusLabel(statusValue: string) {
+    if (statusValue === "available") { return getAvailabilityText("statusAvailable"); }
+    if (statusValue === "busy") { return getAvailabilityText("statusBusy"); }
+    if (statusValue === "offline") { return getAvailabilityText("statusOffline"); }
+    if (statusValue === "holiday") { return getAvailabilityText("statusHoliday"); }
+
+    return statusValue;
+  }
 
   const [availableDate, setAvailableDate] = useState( availability.available_date );
   const [startTime, setStartTime] = useState( formatTimeForInput(availability.start_time) );
@@ -65,7 +81,7 @@ export default function ChauffeurAvailabilityEditForm({ chauffeurId, availabilit
     setErrorMessage("");
     setIsSaving(true);
     if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
-        setErrorMessage("Start time must be earlier than end time.");
+        setErrorMessage(getAvailabilityText("incorrectTimeError"));
         setIsSaving(false);
         return;
     }
@@ -78,14 +94,14 @@ export default function ChauffeurAvailabilityEditForm({ chauffeurId, availabilit
 
         const result = await response.json();
 
-        if (!response.ok) {setErrorMessage(result.message || "Could not update availability."); return; }
+        if (!response.ok) { setErrorMessage(result.message || getAvailabilityText("updateFailedError")); return; }
 
-        setSuccessMessage("Availability updated successfully.");
+        setSuccessMessage(getAvailabilityText("updateSuccess"));
         router.refresh();
     } 
     catch (error)  {
       console.error("Could not update availability:", error);
-      setErrorMessage("Could not update availability. Please try again.");
+      setErrorMessage(getAvailabilityText("updateFailedError"));
     } 
     finally { setIsSaving(false);}
   }
@@ -101,33 +117,37 @@ export default function ChauffeurAvailabilityEditForm({ chauffeurId, availabilit
 
                 <div className="flex flex-wrap items-end gap-2 grid-cols-2">
                     <div className="block">
-                        <span className={formStyles.label}>Date</span>
+                        <span className={formStyles.label}> {getAvailabilityText("dateLabel")} </span>
                         <input type="date" value={availableDate} onChange={(event) => setAvailableDate(event.target.value)} required  min={minimumAvailableDate} max="2099-12-31"  className={formStyles.inputWFullCyan}/>
                     </div>
                     <div className="block">
-                        <span className={formStyles.label}>Start time</span>
+                        <span className={formStyles.label}> {getAvailabilityText("startTimeLabel")} </span>
                         <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required className={formStyles.inputWFullCyan} />
                     </div>
 
                     <div className="block">
-                        <span className={formStyles.label}>End time</span>
+                        <span className={formStyles.label}> {getAvailabilityText("endTimeLabel")} </span>
                         <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required className={formStyles.inputWFullCyan} />
                     </div>
-                    <div className={formStyles.label}> Status
+                    <div className={formStyles.label}> {getAvailabilityText("statusLabel")}
                         <select  value={status}  onChange={(event) => setStatus(event.target.value)}  required  className={formStyles.selectWFull}>
-                            {statusOptions.map((statusOption) => (  <option key={statusOption} value={statusOption}> {statusOption} </option> ))}
+                            {statusOptions.map((statusOption) => (
+                                <option key={statusOption} value={statusOption}>
+                                    {getAvailabilityStatusLabel(statusOption)}
+                                </option>  ))
+                            }
                         </select>
                     </div>
                 </div>
 
                 <div className="md:col-span-2"> 
-                    <span className={formStyles.span}> Notes </span>
-                    <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder="Optional booking notes" className={formStyles.textarea} />
+                    <span className={formStyles.span}> {getAvailabilityText("notesLabel")} </span>
+                    <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder={getAvailabilityText("notesPlaceholder")} className={formStyles.textarea} />
                 </div>
 
             </div>
         <button  type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`}>
-            {isSaving ? "Saving..." : "Save availability"}
+            {isSaving ? getAvailabilityText("savingButton") : getAvailabilityText("saveAvailabilityButton")}
         </button>
         </form>
     </main>

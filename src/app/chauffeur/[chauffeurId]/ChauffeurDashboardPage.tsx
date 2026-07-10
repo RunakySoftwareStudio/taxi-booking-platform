@@ -270,8 +270,10 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             </div>
                         </div>
                     </article>  ))}
-
-                    {vehicleRows.length === 0 && ( <div className={tableStyles.cellEmpty}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" /> </div>  )}
+                    {vehicleRows.length === 0 && ( 
+                        <div className={tableStyles.cellEmpty}> 
+                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" /> 
+                        </div>  )}
                 </div>
 
                 {/* Desktop vehicle table */}
@@ -293,17 +295,20 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                     <tbody>
                     {vehicleRows.map((vehicle) => (
                         <tr key={vehicle.id} className={tableStyles.rowCyan}>
-                        <td className={tableStyles.cell}>{vehicle.brand}</td>
-                        <td className={tableStyles.cell}>{vehicle.model}</td>
-                        <td className={tableStyles.cell}>{vehicle.license_plate}</td>
-                        <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
-                        <td className={tableStyles.cell}>{vehicle.seats}</td>
-                        <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
-                        <td className={tableStyles.cell}>{vehicle.vehicle_year?vehicle.vehicle_year:"---"}</td>
-                        <td className={tableStyles.cell}>{vehicle.vehicle_color?vehicle.vehicle_color:"---"}</td>
+                            <td className={tableStyles.cell}>{vehicle.brand}</td>
+                            <td className={tableStyles.cell}>{vehicle.model}</td>
+                            <td className={tableStyles.cell}>{vehicle.license_plate}</td>
+                            <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
+                            <td className={tableStyles.cell}>{vehicle.seats}</td>
+                            <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
+                            <td className={tableStyles.cell}>{vehicle.vehicle_year?vehicle.vehicle_year:"---"}</td>
+                            <td className={tableStyles.cell}>{vehicle.vehicle_color?vehicle.vehicle_color:"---"}</td>
                         </tr>))}
 
-                    {vehicleRows.length === 0 && ( <tr><td className={tableStyles.cellEmpty} colSpan={8}> <tr><td className={tableStyles.cellEmpty} colSpan={8}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" /> </td></tr> </td></tr> )}
+                        {vehicleRows.length === 0 && ( 
+                            <tr> 
+                                <td className={tableStyles.cellEmpty} colSpan={8}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" /> </td> 
+                            </tr> )}
                     </tbody>
                 </table>
                 </div>

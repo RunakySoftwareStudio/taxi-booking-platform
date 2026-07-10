@@ -23,6 +23,145 @@ type TranslationSection = Record<string, TranslationEntry>;
 type TranslationDictionary = Record<string, TranslationSection>;
 
 export const translations = {
+    chauffeurAvailabilityPage: {
+    backToDashboard: {
+      en: "← Back to dashboard",
+      nl: "← Terug naar dashboard",
+    },
+    chauffeurLabel: {
+      en: "Chauffeur",
+      nl: "Chauffeur",
+    },
+    titlePrefix: {
+      en: "Availability for",
+      nl: "Beschikbaarheid van",
+    },
+    description: {
+      en: "Add the times when you are available, busy, offline, or on holiday.",
+      nl: "Voeg de tijden toe waarop u beschikbaar, bezet, offline of met vakantie bent.",
+    },
+    couldNotLoadChauffeur: {
+      en: "Could not load chauffeur.",
+      nl: "Chauffeur kon niet worden geladen.",
+    },
+    availabilityTitle: {
+      en: "Availability",
+      nl: "Beschikbaarheid",
+    },
+    addedSuccess: {
+      en: "Availability added successfully.",
+      nl: "Beschikbaarheid succesvol toegevoegd.",
+    },
+    deletedSuccess: {
+      en: "Availability deleted successfully.",
+      nl: "Beschikbaarheid succesvol verwijderd.",
+    },
+    missingFieldsError: {
+      en: "Please fill in all required availability fields.",
+      nl: "Vul alle verplichte beschikbaarheidsvelden in.",
+    },
+    addFailedError: {
+      en: "Could not add availability. Please try again.",
+      nl: "Beschikbaarheid kon niet worden toegevoegd. Probeer het opnieuw.",
+    },
+    incorrectTimeError: {
+      en: "Start time must be earlier than end time.",
+      nl: "Begintijd moet eerder zijn dan eindtijd.",
+    },
+    deleteFailedError: {
+      en: "Could not delete availability. Please try again.",
+      nl: "Beschikbaarheid kon niet worden verwijderd. Probeer het opnieuw.",
+    },
+    dateLabel: {
+      en: "Date",
+      nl: "Datum",
+    },
+    startTimeLabel: {
+      en: "Start time",
+      nl: "Begintijd",
+    },
+    endTimeLabel: {
+      en: "End time",
+      nl: "Eindtijd",
+    },
+    statusLabel: {
+      en: "Status",
+      nl: "Status",
+    },
+    notesLabel: {
+      en: "Notes",
+      nl: "Notities",
+    },
+    addAvailabilityButton: {
+      en: "Add availability",
+      nl: "Beschikbaarheid toevoegen",
+    },
+    recordsTitle: {
+      en: "Availability records",
+      nl: "Beschikbaarheidsrecords",
+    },
+    editButton: {
+      en: "Edit",
+      nl: "Bewerken",
+    },
+    deleteButton: {
+      en: "Delete",
+      nl: "Verwijderen",
+    },
+    noRecordsMessage: {
+      en: "No availability records found yet.",
+      nl: "Er zijn nog geen beschikbaarheidsrecords gevonden.",
+    },
+    statusAvailable: {
+      en: "Available",
+      nl: "Beschikbaar",
+    },
+    statusBusy: {
+      en: "Busy",
+      nl: "Bezet",
+    },
+    statusOffline: {
+      en: "Offline",
+      nl: "Offline",
+    },
+    statusHoliday: {
+      en: "Holiday",
+      nl: "Vakantie",
+    },
+      backToAvailability: {
+      en: "← Back to availability",
+      nl: "← Terug naar beschikbaarheid",
+    },
+    editTitlePrefix: {
+      en: "Edit availability for",
+      nl: "Beschikbaarheid bewerken voor",
+    },
+    editDescription: {
+      en: "Update the availability date, time, status, and notes.",
+      nl: "Werk de beschikbaarheidsdatum, tijd, status en notities bij.",
+    },
+        updateSuccess: {
+      en: "Availability updated successfully.",
+      nl: "Beschikbaarheid succesvol bijgewerkt.",
+    },
+    updateFailedError: {
+      en: "Could not update availability. Please try again.",
+      nl: "Beschikbaarheid kon niet worden bijgewerkt. Probeer het opnieuw.",
+    },
+    notesPlaceholder: {
+      en: "Optional availability notes",
+      nl: "Optionele beschikbaarheidsnotities",
+    },
+    savingButton: {
+      en: "Saving...",
+      nl: "Bezig met opslaan...",
+    },
+    saveAvailabilityButton: {
+      en: "Save availability",
+      nl: "Beschikbaarheid opslaan",
+    },
+  },
+
   chauffeurDashboardPage: {
     backToHomepage: {
       en: "← Back to homepage",

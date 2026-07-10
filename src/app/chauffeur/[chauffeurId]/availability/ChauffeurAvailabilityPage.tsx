@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
+import { TranslatedText } from "@/components/TranslatedText";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/Availability/page.tsx 
 
@@ -24,6 +25,19 @@ function getTodayDateInputValue() {
     const day = String(today.getDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
+}
+
+/*
+  getAvailabilityStatusTextKey converts the database availability status
+  into a translation key for readable page text.
+*/
+function getAvailabilityStatusTextKey(statusValue: string) {
+    if (statusValue === "available") { return "statusAvailable"; }
+    if (statusValue === "busy") { return "statusBusy"; }
+    if (statusValue === "offline") { return "statusOffline"; }
+    if (statusValue === "holiday") { return "statusHoliday"; }
+
+    return "";
 }
 
 async function addAvailability(formData: FormData) {  
@@ -118,8 +132,8 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
       return (
         <main className={pageStyles.main}>
           <div className={pageStyles.containerMedium}>
-            <h1 className={pageStyles.pageTitle}>Availability</h1>
-            <p className={pageStyles.errorMsg}> Could not load chauffeur. </p>
+            <h1 className={pageStyles.pageTitle}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="availabilityTitle" /> </h1>
+            <p className={pageStyles.errorMsg}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="couldNotLoadChauffeur" /> </p>
           </div>
         </main>
       );
@@ -136,101 +150,114 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
     return (
       <main className={pageStyles.main}>
         <div className={pageStyles.container}> 
-          <Link  href={`/chauffeur/${chauffeurId}`} className="text-sm text-cyan-300 hover:text-cyan-200" >  ← Back to dashboard </Link>
-          <p className={pageStyles.pageLabelUpper}> Chauffeur </p>
-          <h1 className={pageStyles.pageTitle}>  Availability for {chauffeurRow.name} </h1>
-          <p className={pageStyles.pageDescription}> Add the times when you are available, busy, offline, or on holiday. </p>
+          <Link href={`/chauffeur/${chauffeurId}`} className="text-sm text-cyan-300 hover:text-cyan-200"> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="backToDashboard" /> </Link>
+          <p className={pageStyles.pageLabelUpper}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="chauffeurLabel" /> </p>
+          <h1 className={pageStyles.pageTitle}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="titlePrefix" /> {chauffeurRow.name} </h1>
+          <p className={pageStyles.pageDescription}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="description" /> </p>
           
-          {pageMessage.success === "availability-added" && (<p className={pageStyles.successMsgPage}> Availability added successfully. </p>)}
-          {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> Please fill in all required availability fields. </p>)}
-          {pageMessage.error === "add-availability-failed" && (<p className={pageStyles.errorMsgPage}> Could not add availability. Please try again.</p>)}
-          {pageMessage.error === "incorrect-time" && (<p className={pageStyles.errorMsgPage}> Start time must be earlier than end time.  </p>)}
-          {pageMessage.success === "availability-deleted" && (<p className={pageStyles.successMsgPage}> Availability deleted successfully.  </p> )}
-          {pageMessage.error === "delete-availability-failed" && (<p className={pageStyles.errorMsgPage}> Could not delete availability. Please try again. </p> )}
+          {pageMessage.success === "availability-added" && (<p className={pageStyles.successMsgPage}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="addedSuccess" /> </p>)}
+          {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="missingFieldsError" /> </p>)}
+          {pageMessage.error === "add-availability-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="addFailedError" /> </p>)}
+          {pageMessage.error === "incorrect-time" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="incorrectTimeError" /> </p>)}
+          {pageMessage.success === "availability-deleted" && (<p className={pageStyles.successMsgPage}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deletedSuccess" /> </p>)}
+          {pageMessage.error === "delete-availability-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deleteFailedError" /> </p>)}
 
           <form action={addAvailability}  className={formStyles.form} >
             <input type="hidden" name="chauffeurId" value={chauffeurId} />
             <div className="grid gap-5 md:grid-cols-2">
                   <div className="flex flex-wrap items-end gap-2 grid-cols-2">
                       <div className="block">
-                          <span className={formStyles.label}>Date</span>
+                           <span className={formStyles.label}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="dateLabel" /> </span>
                           <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min={todayDate} max="2099-12-31" className={formStyles.inputWFullCyan} />
                       </div>
                       <div className="block">
-                          <span className={formStyles.label}>Start time</span>
+                          <span className={formStyles.label}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="startTimeLabel" /> </span>
                           <input  name="startTime"  type="time"  required defaultValue={formValues.startTime} className={formStyles.inputWFullCyan} />
                       </div>
 
                       <div className="block">
-                          <span className={formStyles.label}>End time</span>
+                          <span className={formStyles.label}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="endTimeLabel" /> </span>
                           <input name="endTime"  type="time"  required defaultValue={formValues.endTime}  className={formStyles.inputWFullCyan} />
                       </div>
-                      <div className={formStyles.label}> Status
+                      <div className={formStyles.label}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="statusLabel" />
                         <select name="status" required defaultValue={formValues.status} className={formStyles.selectWFull} >
-                          {availabilityStatusOptions.map((status) => (<option key={status} value={status}> {status} </option> ))}
+                          {availabilityStatusOptions.map((status) => {
+                              const statusTextKey = getAvailabilityStatusTextKey(status);
+                              return (
+                                  <option key={status} value={status}>
+                                      {statusTextKey ? <TranslatedText sectionName="chauffeurAvailabilityPage" textKey={statusTextKey} /> : status}
+                                  </option>
+                              );
+                          })}
                         </select>
                       </div>
                   </div>
 
                   <div className="md:col-span-2"> 
-                        <span className={`mt-6 ${formStyles.span}}`} >Notes</span> 
+                        <span className={`mt-6 ${formStyles.span}`}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="notesLabel" /> </span>
                       <textarea name="notes"  defaultValue={formValues.notes}  className={formStyles.textarea} />
                   </div>
                 </div>
                   <button  type="submit"  className={`mt-8 ${formStyles.primaryButtonDP}`}>  
-                      Add availability 
+                      <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="addAvailabilityButton" />
                   </button>
           </form>
 
-          <h2 className={tableStyles.headerTableSmall}>Availability records</h2>
+          <h2 className={tableStyles.headerTableSmall}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="recordsTitle" /> </h2>
           {/* Mobile availability cards */}
+          
+
+
+
+
           <div className="mt-6 grid gap-4 lg:hidden">
             {availabilityRows.map((availability) => { let statusColorClasses = tableStyles.statusRedClasses;
-
               if (availability.status === "available") { statusColorClasses = tableStyles.statusGreenClasses;}
-
               if (availability.status === "busy") { statusColorClasses = tableStyles.statusYellowClasses;  }
 
               return (
                 <article  key={availability.id} className={mobileStyle.article}>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <span className="text-sm tracking-tight text-white"> Date:  </span>
+                      <span className="text-sm tracking-tight text-white"> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="dateLabel" />: </span>
                       <span className="mt-1  text-cyan-300">{formatShortDate(availability.available_date)}</span>
                     </div>
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm tracking-tight text-white"> Status:  </span>
-                        <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}  > {availability.status} </span>
+                        <span className="text-sm tracking-tight text-white"> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="statusLabel" />: </span>
+                        <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}> 
+                          {getAvailabilityStatusTextKey(availability.status) ? <TranslatedText sectionName="chauffeurAvailabilityPage" 
+                          textKey={getAvailabilityStatusTextKey(availability.status)} /> : availability.status} 
+                        </span>
                          {availability.status === "available" && (<span className={tableStyles.okCheckSign} aria-hidden="true">  ✓  </span> )}
                       </div>
                     </div>
 
                     <div>
-                      <span className="text-sm tracking-tight text-white"> Start time: </span>
+                      <span className="text-sm tracking-tight text-white"> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="startTimeLabel" />: </span>
                       <span className="mt-1 text-cyan-300">{formatShortTime(availability.start_time)}</span>
                     </div>
 
                     <div>
-                      <span className="text-sm tracking-tight text-white"> End time: </span>
+                      <span className="text-sm tracking-tight text-white"> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="endTimeLabel" />: </span>
                       <span className="mt-1 text-cyan-300">{formatShortTime(availability.end_time)}</span>
                     </div>
                   </div>
 
                   <div className="mt-4">
-                    <span className="text-sm tracking-tight text-white"> Notes: </span>
+                    <span className="text-sm tracking-tight text-white"> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="notesLabel" />: </span>
                     <span className="mt-1 text-cyan-300 wrap-break-word">{availability.notes || "----"}</span>
                   </div>
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     <Link  href={`/chauffeur/${chauffeurId}/availability/${availability.id}`} className={formStyles.smallButton} >
-                      Edit
+                      <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="editButton" />
                     </Link>
                     <form action={deleteAvailability}>
                       <input type="hidden" name="chauffeurId" value={chauffeurId} />
                       <input type="hidden" name="availabilityId" value={availability.id} />
-                      <button type="submit" className={formStyles.smallButton}> Delete </button>
+                      <button type="submit" className={formStyles.smallButton}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deleteButton" /> </button>
                     </form>
                   </div>
                 </article>
@@ -244,13 +271,13 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
             <table className={tableStyles.table1000}>
               <thead className={tableStyles.tableHeaderCyan}>
                 <tr>
-                  <th className={tableStyles.cellCaption}>Date</th>
-                  <th className={tableStyles.cellCaption}>Start time</th>
-                  <th className={tableStyles.cellCaption}>End time</th>
-                  <th className={tableStyles.cellCaption}>Status</th>
-                  <th className={tableStyles.cellCaption}>Notes</th>
-                  <th className={tableStyles.cellCaption}>Edit</th>
-                  <th className={tableStyles.cellCaption}>Delete</th>
+                  <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="dateLabel" /> </th>
+                  <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="startTimeLabel" /> </th>
+                  <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="endTimeLabel" /> </th>
+                  <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="statusLabel" /> </th>
+                  <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="notesLabel" /> </th>
+                  <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="editButton" /> </th>
+                  <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deleteButton" /> </th>
                 </tr>
               </thead>
 
@@ -269,14 +296,17 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                                   <td className={tableStyles.cell}> {availability.end_time} </td>
                                   <td className={tableStyles.cellCaption}>
                                       <div className="flex items-center gap-2">
-                                          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} > {availability.status} </span>
+                                          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`} > 
+                                            {getAvailabilityStatusTextKey(availability.status) ? <TranslatedText sectionName="chauffeurAvailabilityPage" 
+                                            textKey={getAvailabilityStatusTextKey(availability.status)} /> : availability.status} 
+                                          </span>
                                           {availability.status === "available" && (<span className={tableStyles.okCheckSign} aria-hidden="true"> ✓ </span>)}
                                       </div>
                                   </td>
                                   <td className={tableStyles.cell}> {availability.notes || "—"} </td>
                                   <td> 
                                     <Link  href={`/chauffeur/${chauffeurId}/availability/${availability.id}`} className={formStyles.smallButton}>
-                                        Edit
+                                        <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="editButton" />
                                     </Link>
                                   </td>
                                   <td className={tableStyles.cell}>
@@ -284,7 +314,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                                     <form action={deleteAvailability}>
                                         <input type="hidden" name="chauffeurId" value={chauffeurId} />
                                         <input type="hidden" name="availabilityId" value={availability.id} />
-                                      <button type="submit" className={formStyles.smallButton}> Delete </button>
+                                      <button type="submit" className={formStyles.smallButton}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deleteButton" /> </button>
                                     </form>
                                 </td>
                               </tr>  
@@ -292,7 +322,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                       })
                   }
 
-                  {availabilityRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={7}> No availability records found yet. </td></tr> )}
+                  {availabilityRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={7}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="noRecordsMessage" /></td></tr> )}
               </tbody>
             </table>
           </div>  
