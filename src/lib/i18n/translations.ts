@@ -12,7 +12,12 @@ import type { LanguageCode } from "./languages";
 
 // TranslationEntry describes one translated text.
 // Every text must have an English and Dutch version.
-type TranslationEntry = Record<LanguageCode, string>;
+
+type TranslationEntry = {
+  en: string;
+  nl: string;
+  ar?: string;
+};
 
 // TranslationSection describes one group of translations,
 // for example: navigation, homepage, or language.
@@ -512,17 +517,19 @@ export const translations = {
     },
   },
 
-  logoutButton: {
-    signingOut: {
-      en: "Signing out...",
-      nl: "Bezig met uitloggen...",
-    },
-    logout: {
-      en: "Logout",
-      nl: "Uitloggen",
+ logoutButton: {
+  signingOut: {
+    en: "Signing out...",
+    nl: "Bezig met uitloggen...",
+    ar: "جارٍ تسجيل الخروج...",
+  },
+  logout: {
+    en: "Logout",
+    nl: "Uitloggen",
+    ar: "تسجيل الخروج",
     },
   },
-
+  
   unauthorizedPage: {
     label: {
       en: "Access denied",
@@ -983,91 +990,121 @@ export const translations = {
     },
   },
 
-  navigation: {
-    home: {
-      en: "Home",
-      nl: "Home",
-    },
-    howItWorks: {
-      en: "How it works",
-      nl: "Hoe het werkt",
-    },
-    chauffeurs: {
-      en: "Chauffeurs",
-      nl: "Chauffeurs",
-    },
-    booking: {
-      en: "Booking",
-      nl: "Boeken",
-    },
-    checkBooking: {
-      en: "Check booking",
-      nl: "Boeking controleren",
-    },
-    bookingStatus: {
-      en: "Booking status",
-      nl: "Boeking status",
-    },
-    chauffeurRegister: {
-      en: "Become a chauffeur",
-      nl: "Chauffeur worden",
-    },
-    chauffeurStatus: {
-      en: "Chauffeur status",
-      nl: "Chauffeur status",
-    },
-    admin: {
-      en: "Admin",
-      nl: "Admin",
-    },
-    login: {
-      en: "Login",
-      nl: "Inloggen",
-    },
-    logout: {
-      en: "Logout",
-      nl: "Uitloggen",
-    },
+navigation: {
+  home: {
+    en: "Home",
+    nl: "Home",
+    ar: "الرئيسية",
   },
+  howItWorks: {
+    en: "How it works",
+    nl: "Hoe het werkt",
+    ar: "كيف يعمل",
+  },
+  chauffeurs: {
+    en: "Chauffeurs",
+    nl: "Chauffeurs",
+    ar: "السائقون",
+  },
+  booking: {
+    en: "Booking",
+    nl: "Boeken",
+    ar: "الحجز",
+  },
+  checkBooking: {
+    en: "Check booking",
+    nl: "Boeking controleren",
+    ar: "التحقق من الحجز",
+  },
+  bookingStatus: {
+    en: "Booking status",
+    nl: "Boeking status",
+    ar: "حالة الحجز",
+  },
+  chauffeurRegister: {
+    en: "Become a chauffeur",
+    nl: "Chauffeur worden",
+    ar: "انضم كسائق",
+  },
+  chauffeurStatus: {
+    en: "Chauffeur status",
+    nl: "Chauffeur status",
+    ar: "حالة تسجيل السائق",
+  },
+  admin: {
+    en: "Admin",
+    nl: "Admin",
+    ar: "الإدارة",
+  },
+  login: {
+    en: "Login",
+    nl: "Inloggen",
+    ar: "تسجيل الدخول",
+  },
+  logout: {
+    en: "Logout",
+    nl: "Uitloggen",
+    ar: "تسجيل الخروج",
+  },
+  user: {
+  en: "User",
+  nl: "Gebruiker",
+  ar: "المستخدم",
+  },
+  dashboard: {
+    en: "Dashboard",
+    nl: "Dashboard",
+    ar: "لوحة التحكم",
+  },
+},
 
-  homepage: {
-    brandName: {
-      en: "VOYΛ TΛXI",
-      nl: "VOYΛ TΛXI",
-    },
-    heroTitle: {
-      en: "Book a professional chauffeur for your next trip",
-      nl: "Boek een professionele chauffeur voor uw volgende rit",
-    },
-    slogan: {
-      en: "Where the journey begins",
-      nl: "Waar de reis begint",
-    },
-    description: {
-      en: "Find available chauffeurs, compare vehicles, request a trip, and stay connected from booking to arrival.",
-      nl: "Vind beschikbare chauffeurs, vergelijk voertuigen, vraag een rit aan en blijf verbonden van boeking tot aankomst.",
-    },
-    bookTrip: {
-      en: "Book a Trip",
-      nl: "Boek een rit",
-    },
-    viewChauffeurs: {
-      en: "View Chauffeurs",
-      nl: "Bekijk chauffeurs",
-    },
-    registerAsChauffeur: {
-      en: "Register as chauffeur",
-      nl: "Registreer als chauffeur",
-    },
-    alreadyRegisteredChauffeur: {
-      en: "Already registered as a chauffeur?",
-      nl: "Al geregistreerd als chauffeur?",
-    },
-    checkRegistrationStatus: {
-      en: "Check your registration status",
-      nl: "Controleer uw registratiestatus",
-    },
+homepage: {
+  brandName: {
+    en: "VOYΛ TΛXI",
+    nl: "VOYΛ TΛXI",
+    ar: "VOYΛ TΛXI",
   },
+  heroTitle: {
+    en: "Book a professional chauffeur for your next trip",
+    nl: "Boek een professionele chauffeur voor uw volgende rit",
+    ar: "احجز سائقاً محترفاً لرحلتك القادمة",
+  },
+  slogan: {
+    en: "Where the journey begins",
+    nl: "Waar de reis begint",
+    ar: "حيث تبدأ الرحلة",
+  },
+  description: {
+    en: "Find available chauffeurs, compare vehicles, request a trip, and stay connected from booking to arrival.",
+    nl: "Vind beschikbare chauffeurs, vergelijk voertuigen, vraag een rit aan en blijf verbonden van boeking tot aankomst.",
+    ar: "اعثر على السائقين المتاحين، وقارن المركبات، واطلب رحلة، وتابع حجزك حتى الوصول.",
+  },
+  bookTrip: {
+    en: "Book a Trip",
+    nl: "Boek een rit",
+    ar: "احجز رحلة",
+  },
+  viewChauffeurs: {
+    en: "View Chauffeurs",
+    nl: "Bekijk chauffeurs",
+    ar: "عرض السائقين",
+  },
+  registerAsChauffeur: {
+    en: "Register as chauffeur",
+    nl: "Registreer als chauffeur",
+    ar: "التسجيل كسائق",
+  },
+  alreadyRegisteredChauffeur: {
+    en: "Already registered as a chauffeur?",
+    nl: "Al geregistreerd als chauffeur?",
+    ar: "هل سجلت بالفعل كسائق؟",
+  },
+  checkRegistrationStatus: {
+    en: "Check your registration status",
+    nl: "Controleer uw registratiestatus",
+    ar: "تحقق من حالة تسجيلك",
+  },
+},
   
   howItWorks: {
     label: {
