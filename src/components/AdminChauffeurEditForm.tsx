@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formStyles, pageStyles } from "@/styles/classNames";
+import { getTranslation } from "@/lib/i18n/translations";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type ChauffeurForEdit = {
   id: string;
@@ -22,6 +24,21 @@ type AdminChauffeurEditFormProps = {
 export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions}: AdminChauffeurEditFormProps) 
 {
   const router = useRouter();
+  const { languageCode } = useLanguage();
+
+  // getAdminChauffeurEditText returns translated text for this edit form.
+  function getAdminChauffeurEditText(textKey: string) { return getTranslation("adminChauffeurEditPage", textKey, languageCode); }
+
+  // getAccountStatusLabel converts database status values into readable text.
+  function getAccountStatusLabel(accountStatusValue: string) {
+    if (accountStatusValue === "pending_approval") { return getAdminChauffeurEditText("statusPendingApproval"); }
+    if (accountStatusValue === "approved") { return getAdminChauffeurEditText("statusApproved"); }
+    if (accountStatusValue === "inactive") { return getAdminChauffeurEditText("statusInactive"); }
+    if (accountStatusValue === "suspended") { return getAdminChauffeurEditText("statusSuspended"); }
+
+    return accountStatusValue;
+  }
+
   const [name, setName] = useState(chauffeur.name);
   const [email, setEmail] = useState(chauffeur.email);
   const [phone, setPhone] = useState(chauffeur.phone);
@@ -35,7 +52,6 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setSuccessMessage("");
     setErrorMessage("");
     setIsSaving(true);
@@ -48,14 +64,14 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
         });
 
         const result = await response.json();
-        if (!response.ok) { setErrorMessage(result.message || "Could not update chauffeur."); return; }
+        if (!response.ok) { setErrorMessage(result.message || getAdminChauffeurEditText("updateFailedError")); return; }
 
-        setSuccessMessage("Chauffeur details updated successfully.");
+        setSuccessMessage(getAdminChauffeurEditText("updateSuccess"));
         router.refresh();
     } 
     catch (error) {
         console.error("Could not update chauffeur:", error);
-        setErrorMessage("Could not update chauffeur. Please try again.");
+        setErrorMessage(getAdminChauffeurEditText("updateFailedError"));
     } 
     finally { setIsSaving(false); }
   }
@@ -68,36 +84,36 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
         </div>
         <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
           <div className="grid gap-5 md:grid-cols-2">
-            <label className={formStyles.label}> Name
+            <label className={formStyles.label}> {getAdminChauffeurEditText("nameLabel")}
               <input value={name} onChange={(event) => setName(event.target.value)} required className={formStyles.inputWFullCyan} />
             </label>
 
-            <label className={formStyles.label}>  Email
+            <label className={formStyles.label}> {getAdminChauffeurEditText("emailLabel")}
               <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required className={formStyles.inputWFullCyan} />
             </label>
 
-            <label className={formStyles.label}> Phone
+            <label className={formStyles.label}> {getAdminChauffeurEditText("phoneLabel")}
               <input value={phone}  onChange={(event) => setPhone(event.target.value)} required  className={formStyles.inputWFullCyan}/>
             </label>
 
-            <label className={formStyles.label}>  Service area
-              <input  value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} placeholder="Example: Amsterdam" className={formStyles.inputWFullCyan} />
+            <label className={formStyles.label}> {getAdminChauffeurEditText("serviceAreaLabel")}
+              <input  value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} placeholder={getAdminChauffeurEditText("serviceAreaPlaceholder")} className={formStyles.inputWFullCyan} />
             </label>
 
-            <label className={formStyles.label}>  Account status
+            <label className={formStyles.label}> {getAdminChauffeurEditText("accountStatusLabel")}
               <select value={accountStatus} onChange={(event) => setAccountStatus(event.target.value)} required className={formStyles.selectWFull} >
-                {accountStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option>  ))}
+                {accountStatusOptions.map((status) => ( <option key={status} value={status}> {getAccountStatusLabel(status)} </option>))}
               </select>
             </label>
             
             <label className="flex items-center gap-3 text-sm text-white">
               <input type="checkbox" checked={acceptsPets} onChange={(event) => setAcceptsPets(event.target.checked)}  className="h-5 w-5"/>             
-                Accepts pets
+                {getAdminChauffeurEditText("acceptsPetsLabel")}
             </label>
           </div>
 
           <button type="submit" disabled={isSaving}  className={`${formStyles.primaryButtonOutside} mt-6`} >
-            {isSaving ? "Saving..." : "Save chauffeur details"}
+            {isSaving ? getAdminChauffeurEditText("savingButton") : getAdminChauffeurEditText("saveButton")}
           </button>
         </form>
     </main>

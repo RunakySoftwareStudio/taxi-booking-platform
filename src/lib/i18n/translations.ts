@@ -23,6 +23,97 @@ type TranslationSection = Record<string, TranslationEntry>;
 type TranslationDictionary = Record<string, TranslationSection>;
 
 export const translations = {
+  adminChauffeurEditPage: {
+    backToAdminChauffeurs: {
+      en: "← Back to admin chauffeurs",
+      nl: "← Terug naar admin chauffeurs",
+    },
+    viewChauffeurDashboard: {
+      en: "View chauffeur dashboard",
+      nl: "Bekijk chauffeursdashboard",
+    },
+    adminLabel: {
+      en: "Admin",
+      nl: "Admin",
+    },
+    title: {
+      en: "Edit chauffeur details",
+      nl: "Chauffeurgegevens bewerken",
+    },
+    description: {
+      en: "Update chauffeur contact details and account status.",
+      nl: "Werk de contactgegevens en accountstatus van de chauffeur bij.",
+    },
+    chauffeurReferenceTitle: {
+      en: "Chauffeur reference",
+      nl: "Chauffeurreferentie",
+    },
+    chauffeurReferenceDescription: {
+      en: "Use this reference when checking or supporting a chauffeur registration.",
+      nl: "Gebruik deze referentie bij het controleren of ondersteunen van een chauffeurregistratie.",
+    },
+        updateSuccess: {
+      en: "Chauffeur details updated successfully.",
+      nl: "Chauffeurgegevens succesvol bijgewerkt.",
+    },
+    updateFailedError: {
+      en: "Could not update chauffeur. Please try again.",
+      nl: "Chauffeur kon niet worden bijgewerkt. Probeer het opnieuw.",
+    },
+    nameLabel: {
+      en: "Name",
+      nl: "Naam",
+    },
+    emailLabel: {
+      en: "Email",
+      nl: "E-mail",
+    },
+    phoneLabel: {
+      en: "Phone",
+      nl: "Telefoon",
+    },
+    serviceAreaLabel: {
+      en: "Service area",
+      nl: "Servicegebied",
+    },
+    serviceAreaPlaceholder: {
+      en: "Example: Amsterdam",
+      nl: "Voorbeeld: Amsterdam",
+    },
+    accountStatusLabel: {
+      en: "Account status",
+      nl: "Accountstatus",
+    },
+    acceptsPetsLabel: {
+      en: "Accepts pets",
+      nl: "Accepteert huisdieren",
+    },
+    savingButton: {
+      en: "Saving...",
+      nl: "Bezig met opslaan...",
+    },
+    saveButton: {
+      en: "Save chauffeur details",
+      nl: "Chauffeurgegevens opslaan",
+    },
+    statusPendingApproval: {
+      en: "Pending approval",
+      nl: "In afwachting van goedkeuring",
+    },
+    statusApproved: {
+      en: "Approved",
+      nl: "Goedgekeurd",
+    },
+    statusInactive: {
+      en: "Inactive",
+      nl: "Inactief",
+    },
+    statusSuspended: {
+      en: "Suspended",
+      nl: "Geschorst",
+    },
+  },
+
     chauffeurAvailabilityPage: {
     backToDashboard: {
       en: "← Back to dashboard",
