@@ -77,14 +77,16 @@ export const pageStyles = {
   authMenuStyles keeps the layout classes for the login/admin/logout menu.
   The button colors stay in pageStyles because they are already used elsewhere.
   This object focuses on mobile dropdown layout and desktop visibility.
+  end-0 adapts automatically: English, Dutch, Turkish: aligns to the right Arabic, Farsi: aligns to the left
+  z-50  the dropdown stays above nearby page content.
 */
 export const authMenuStyles = {
-    mobileDetails:              "relative sm:hidden",
-    mobileSummary:              "cursor-pointer list-none rounded-full border border-white/20 px-3 py-2 text-xs font-semibold text-white sm:text-sm",
-    mobileDropdown:             "absolute right-0 mt-2 flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950 p-3 shadow-xl",
-    adminDropdownWidth:         "min-w-36",
-    chauffeurDropdownWidth:     "min-w-40",
-    desktopGroup:               "hidden sm:flex",
+        mobileDetails: "relative sm:hidden",
+        mobileSummary: "cursor-pointer list-none rounded-full border border-white/20 px-3 py-2 text-xs font-semibold text-white sm:text-sm",
+        mobileDropdown: "absolute end-0 z-50 mt-2 flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950 p-3 shadow-xl",
+        adminDropdownWidth: "min-w-36",
+        chauffeurDropdownWidth: "min-w-40",
+        desktopGroup: "hidden sm:flex",
 };
 /*
   homePageStyles keeps the public homepage layout classes in one place.
@@ -94,7 +96,7 @@ export const authMenuStyles = {
 */
 export const homePageStyles = {
     main:                       "min-h-screen bg-slate-950 text-white",
-    heroSection:                "mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 text-center",
+    heroSection:                "mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-start px-6 pb-16 pt-28 text-center lg:justify-center lg:pb-0 lg:pt-20",
     brandText:                  "text-md font-bold uppercase tracking-[0.2em] text-yellow-400",
     heroTitle:                  "mt-6 text-4xl font-bold text-white md:text-6xl",
     slogan:                     "mt-4 text-lg font-medium text-yellow-300",
@@ -119,7 +121,7 @@ export const homePageStyles = {
 export const howItWorksStyles = {
     section:                    "bg-slate-900 px-6 py-24 text-white",
     container:                  "mx-auto max-w-6xl",
-    intro:                      "max-w-2xl",
+    intro:                      "max-w-4xl",
     label:                      "mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400",
     title:                      "text-3xl font-bold tracking-tight sm:text-4xl",
     description:                "mt-4 text-slate-300",
@@ -142,7 +144,7 @@ export const chauffeurPreviewStyles = {
     container:                  "mx-auto max-w-6xl",
     label:                      "text-sm font-bold uppercase tracking-[0.4em] text-yellow-400",
     title:                      "mt-4 text-3xl font-bold md:text-4xl",
-    description:                "mt-4 max-w-2xl text-slate-300",
+    description:                "mt-4 max-w-4xl text-slate-300",
     emptyMessage:               "mt-12 rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-300",
     grid:                       "mt-12 grid gap-6 md:grid-cols-3",
     card:                       "rounded-2xl border border-white/10 bg-white/5 p-6",

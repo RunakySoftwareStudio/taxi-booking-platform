@@ -24,3 +24,38 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/*
+This means: English, Dutch and Turkish keep the current font.
+    Arabic uses Vazirmatn.
+    Farsi uses Vazirmatn.
+  Arabic and Farsi use Vazirmatn for clearer RTL text.
+  LanguageProvider changes the lang attribute on the html element:
+  <html lang="ar">
+  <html lang="fa">
+  Arabic and Farsi use Vazirmatn for clearer RTL text.
+*/
+html:lang(ar) body,
+html:lang(fa) body {  font-family: var(--font-vazirmatn), Arial, sans-serif;}
+
+/*
+  Slightly stronger navigation text improves readability
+  at the small top-menu font size.
+*/
+html:lang(ar) nav, html:lang(fa) nav { font-weight: 500;}
+
+/*
+  Turkish uses Inter for clear Latin Extended characters.
+*/
+html:lang(tr) body { font-family: var(--font-inter), Arial, sans-serif;}
+html:lang(tr) nav { font-size:  0.75rem;}
+/*
+  Makes the browser's native date and time icons visible
+  on Voya Taxi's dark input backgrounds.
+*/
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(1);
+  opacity: 0.8;
+}

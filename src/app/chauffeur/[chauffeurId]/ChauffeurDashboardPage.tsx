@@ -457,8 +457,8 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                         <form action={updateAssignedBookingStatus} className="flex items-end justify-end gap-3" >
                                             <input type="hidden" name="bookingId" value={booking.id} />
                                             <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
-                                            <label className="grid w-32 shrink-0 gap-1">
-                                                <span className ="font-semibold text-cyan-300 px-2 py-1"><span className="font-semibold text-cyan-300 px-2 py-1"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingStatusLabel" /> </span></span>
+                                            <label className="grid min-w-40 shrink-0 gap-1">
+                                                <span className="font-semibold text-cyan-300 px-2 py-1"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingStatusLabel"/> </span>
                                                 <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
                                                     {bookingStatusOptions.map((status) => {
                                                         const bookingStatusTextKey = getBookingStatusTextKey(status);

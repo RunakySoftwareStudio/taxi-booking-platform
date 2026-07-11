@@ -44,7 +44,42 @@ export default function BookingForm() {
         }
     }, [submittedBooking]);
 
-    function getTripTypeLabel(tripTypeValue: string) { return tripTypes.find((tripType) => tripType.value === tripTypeValue)?.label || tripTypeValue;  }
+    // Converts a stable trip-type database value into translated visible text.
+    function getTripTypeLabel(tripTypeValue: string) {
+    const tripTypeTranslationKeys: Record<string, string> = {
+        "one-way": "tripTypeOneWay",
+        return: "tripTypeReturn",
+        airport: "tripTypeAirport",
+        business: "tripTypeBusiness",
+        hourly: "tripTypeHourly",
+    };
+
+    const translationKey = tripTypeTranslationKeys[tripTypeValue];
+
+    return translationKey
+        ? getTranslation("chauffeurDashboardPage", translationKey, languageCode)
+        : tripTypeValue;
+    }
+
+    // Converts a stable booking-status database value into translated visible text.
+    function getBookingStatusLabel(statusValue: string) {
+        const statusTranslationKeys: Record<string, string> = {
+            pending: "bookingStatusPending",
+            approved: "bookingStatusApproved",
+            accepted: "bookingStatusAccepted",
+            assigned: "bookingStatusAssigned",
+            completed: "bookingStatusCompleted",
+            cancelled: "bookingStatusCancelled",
+            rejected: "bookingStatusRejected",
+            confirmed: "bookingStatusConfirmed",
+        };
+
+        const translationKey = statusTranslationKeys[statusValue];
+
+        return translationKey
+            ? getTranslation("chauffeurDashboardPage", translationKey, languageCode)
+            : statusValue;
+    }
 
     function createBookingRequest(formData: FormData): BookingRequest {
         return {
@@ -256,7 +291,10 @@ export default function BookingForm() {
                             <label htmlFor="tripType" className="mb-2 block text-sm font-medium"> {getBookingFormText("tripTypeLabel")} </label>
                             <select id="tripType" name="tripType" required defaultValue={bookingDraft?.tripType || ""} className={formStyles.inputDateUserPage} >
                                 <option value=""> {getBookingFormText("selectTripType")} </option>
-                                {tripTypes.map((tripType) => ( <option key={tripType.value} value={tripType.value}> {tripType.label} </option>))}
+                                {tripTypes.map((tripType) => (
+                                    <option key={tripType.value} value={tripType.value}>
+                                        {getTripTypeLabel(tripType.value)}
+                                    </option>  ))}
                             </select>
                         </div>
 
@@ -326,11 +364,11 @@ export default function BookingForm() {
                         </div>
                         <div>
                             <span className={formStyles.formPCyan}> {getBookingFormText("summaryTripTypeLabel")} </span>
-                            <span className={formStyles.formP}>{submittedBooking.tripType}</span>
+                            <span className={formStyles.formP}> {getTripTypeLabel(submittedBooking.tripType)} </span>
                         </div>
                         <div>
                             <span className={formStyles.formPCyan}> {getBookingFormText("summaryStatusLabel")} </span>
-                            <span className={formStyles.formP}>{submittedBooking.status}</span>
+                            <span className={formStyles.formP}>  {getBookingStatusLabel(submittedBooking.status)}</span>
                         </div>
                         <div className= "mt-1">
                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryHasPetsLabel")} </span>

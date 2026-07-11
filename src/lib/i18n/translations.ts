@@ -826,6 +826,13 @@ export const translations = {
       tr: "İş yolculuğu",
       fa: "سفر کاری",
     },
+    tripTypeHourly: {
+      en: "Hourly chauffeur",
+      nl: "Chauffeur per uur",
+      ar: "سائق بالساعة",
+      tr: "Saatlik şoför",
+      fa: "راننده ساعتی",
+    },
     bookingStatusPending: {
       en: "Pending",
       nl: "In behandeling",
