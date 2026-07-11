@@ -24,6 +24,15 @@ export const languages = {
     label: "العربية",
     direction: "rtl",
   },
+  tr: {
+    label: "Türkçe",
+    direction: "ltr",
+  },
+  fa: {
+    label: "فارسی",
+    direction: "rtl",
+  },
+
 } as const satisfies Record<
   string,
   {
@@ -35,7 +44,7 @@ export const languages = {
 /*
   LanguageCode is automatically created from the keys above.
   Current allowed values:
-  "en" | "nl" | "ar"
+  "en" | "nl" | "ar"| "tr"| "fa"
 */
 export type LanguageCode = keyof typeof languages;
 export const defaultLanguage: LanguageCode = "en";
