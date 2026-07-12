@@ -58,6 +58,22 @@ CREATE TABLE chauffeurs (
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
+-- Stores chauffeur requests for changes to administrator-controlled information.
+create table if not exists public.chauffeur_change_requests (
+    id uuid primary key default gen_random_uuid(),
+    chauffeur_id uuid not null references public.chauffeurs(id) on delete cascade,
+    field_name text not null check (field_name in ('name', 'email', 'company_name', 'license_number')),
+    current_value text,
+    requested_value text not null check (length(trim(requested_value)) > 0),
+    reason text,
+    status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+    admin_note text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    reviewed_by uuid references auth.users(id) on delete set null,
+    reviewed_at timestamptz
+);
+
 -- Vehicle types available on the platform
 CREATE TYPE vehicle_type AS ENUM (
   'standard',
@@ -150,6 +166,11 @@ CREATE INDEX idx_chauffeur_availability_chauffeur_id ON chauffeur_availability(c
 
 CREATE INDEX idx_chauffeur_availability_date ON chauffeur_availability(available_date); /* Find chauffeurs available on a date */
 
+-- Speeds up requests belonging to one chauffeur.
+create index if not exists chauffeur_change_requests_chauffeur_id_idx on public.chauffeur_change_requests(chauffeur_id);
+
+-- Allows only one pending request per chauffeur and protected field.
+create unique index if not exists chauffeur_change_requests_one_pending_field_idx on public.chauffeur_change_requests(chauffeur_id, field_name) where status = 'pending';
 
 --===================================================================
 -- Data validation rules
@@ -185,6 +206,7 @@ CHECK (end_time > start_time);
 ALTER TABLE vehicles
 ADD CONSTRAINT vehicles_year_valid
 CHECK (vehicle_year IS NULL OR (vehicle_year >= 1980 AND vehicle_year <= 2100));
+
 --===================================================================
 
 
@@ -234,6 +256,11 @@ BEFORE UPDATE ON chauffeur_availability
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
+-- Automatically updates updated_at when a change request is modified.
+CREATE TRIGGER update_chauffeur_change_requests_updated_at
+BEFORE UPDATE ON public.chauffeur_change_requests
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
 --===================================================================
 /* Enable Row Level Security */
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
@@ -241,7 +268,7 @@ ALTER TABLE chauffeurs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chauffeur_availability ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE public.chauffeur_change_requests ENABLE ROW LEVEL SECURITY;
 --===================================================================
 /* create a function to get data from enumrated types */
 -- you can call a function in his way: SELECT get_enum_values('booking_status');

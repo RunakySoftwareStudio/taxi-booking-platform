@@ -433,6 +433,79 @@ export const translations = {
     },
   },
 
+  // Text used by the chauffeur self-management profile page.
+  chauffeurProfilePage: {
+      readOnlyTitle: { en: "Account information", nl: "Accountgegevens", ar: "معلومات الحساب", tr: "Hesap bilgileri", fa: "اطلاعات حساب" },
+      readOnlyDescription: { en: "These details can only be changed by an administrator.", nl: "Deze gegevens kunnen alleen door een beheerder worden gewijzigd.", ar: "لا يمكن تغيير هذه البيانات إلا بواسطة المسؤول.", tr: "Bu bilgiler yalnızca bir yönetici tarafından değiştirilebilir.", fa: "این اطلاعات فقط توسط مدیر قابل تغییر است." },
+      editableTitle: { en: "Editable information", nl: "Bewerkbare gegevens", ar: "المعلومات القابلة للتعديل", tr: "Düzenlenebilir bilgiler", fa: "اطلاعات قابل ویرایش" },
+
+      nameLabel: { en: "Name", nl: "Naam", ar: "الاسم", tr: "Ad", fa: "نام" },
+      emailLabel: { en: "Email", nl: "E-mail", ar: "البريد الإلكتروني", tr: "E-posta", fa: "ایمیل" },
+      companyLabel: { en: "Company", nl: "Bedrijf", ar: "الشركة", tr: "Şirket", fa: "شرکت" },
+      licenseLabel: { en: "Licence number", nl: "Vergunningsnummer", ar: "رقم الترخيص", tr: "Lisans numarası", fa: "شماره مجوز" },
+      statusLabel: { en: "Account status", nl: "Accountstatus", ar: "حالة الحساب", tr: "Hesap durumu", fa: "وضعیت حساب" },
+
+      phoneLabel: { en: "Phone", nl: "Telefoon", ar: "الهاتف", tr: "Telefon", fa: "تلفن" },
+      serviceAreaLabel: { en: "Service area", nl: "Werkgebied", ar: "منطقة الخدمة", tr: "Hizmet bölgesi", fa: "محدوده خدمات" },
+      serviceAreaPlaceholder: { en: "Example: Amsterdam and surroundings", nl: "Bijvoorbeeld: Amsterdam en omgeving", ar: "مثال: أمستردام والمناطق المحيطة", tr: "Örnek: Amsterdam ve çevresi", fa: "مثال: آمستردام و اطراف آن" },
+      acceptsPetsLabel: { en: "I accept passengers travelling with pets", nl: "Ik accepteer passagiers die met huisdieren reizen", ar: "أقبل الركاب المسافرين مع الحيوانات الأليفة", tr: "Evcil hayvanla seyahat eden yolcuları kabul ediyorum", fa: "مسافرانی را که با حیوان خانگی سفر می‌کنند می‌پذیرم" },
+
+      saveButton: { en: "Save information", nl: "Gegevens opslaan", ar: "حفظ المعلومات", tr: "Bilgileri kaydet", fa: "ذخیره اطلاعات" },
+      savingButton: { en: "Saving...", nl: "Opslaan...", ar: "جارٍ الحفظ...", tr: "Kaydediliyor...", fa: "در حال ذخیره..." },
+      updateSuccess: { en: "Your information was updated successfully.", nl: "Uw gegevens zijn succesvol bijgewerkt.", ar: "تم تحديث معلوماتك بنجاح.", tr: "Bilgileriniz başarıyla güncellendi.", fa: "اطلاعات شما با موفقیت به‌روزرسانی شد." },
+      updateFailedError: { en: "Your information could not be updated.", nl: "Uw gegevens konden niet worden bijgewerkt.", ar: "تعذر تحديث معلوماتك.", tr: "Bilgileriniz güncellenemedi.", fa: "اطلاعات شما به‌روزرسانی نشد." },
+      // Button for requesting an administrator-controlled profile change.
+      requestChangeButton: { en: "Request a change", nl: "Wijziging aanvragen", ar: "طلب تعديل", tr: "Değişiklik talep et", fa: "درخواست تغییر" },
+  },
+
+    // Text used by the chauffeur profile change-request page.
+  chauffeurChangeRequestPage: {
+      backToProfile: { en: "← Back to profile", nl: "← Terug naar profiel", ar: "العودة إلى الملف الشخصي →", tr: "← Profile dön", fa: "بازگشت به نمایه →" },
+      title: { en: "Request a profile change", nl: "Profielwijziging aanvragen", ar: "طلب تعديل الملف الشخصي", tr: "Profil değişikliği talep et", fa: "درخواست تغییر نمایه" },
+      // Explains the purpose and which protected fields may be requested.
+      description: { en: "Ask the administrator to change protected information such as your name, email, company name or licence number.", nl: "Vraag de beheerder om beveiligde gegevens te wijzigen, zoals uw naam, e-mail, bedrijfsnaam of vergunningsnummer.", ar: "اطلب من المسؤول تغيير المعلومات المحمية مثل الاسم أو البريد الإلكتروني أو اسم الشركة أو رقم الترخيص.", tr: "Yöneticiden adınız, e-posta adresiniz, şirket adınız veya lisans numaranız gibi korumalı bilgileri değiştirmesini isteyin.", fa: "از مدیر بخواهید اطلاعات محافظت‌شده مانند نام، ایمیل، نام شرکت یا شماره مجوز شما را تغییر دهد." },
+      allowedFields: { en: "You can request changes to your name, email, company name or licence number.", nl: "U kunt wijzigingen aanvragen voor uw naam, e-mail, bedrijfsnaam of vergunningsnummer.", ar: "يمكنك طلب تغيير الاسم أو البريد الإلكتروني أو اسم الشركة أو رقم الترخيص.", tr: "Adınız, e-posta adresiniz, şirket adınız veya lisans numaranız için değişiklik talep edebilirsiniz.", fa: "می‌توانید برای نام، ایمیل، نام شرکت یا شماره مجوز درخواست تغییر ثبت کنید." },
+      // Labels used by the chauffeur change-request form.
+      fieldLabel: { en: "Information to change", nl: "Te wijzigen gegeven", ar: "المعلومة المطلوب تغييرها", tr: "Değiştirilecek bilgi", fa: "اطلاعات مورد تغییر" },
+      selectFieldPlaceholder: { en: "Select information", nl: "Selecteer een gegeven", ar: "اختر المعلومة", tr: "Bilgi seçin", fa: "اطلاعات را انتخاب کنید" },
+      // Prefix shown before the protected field name.
+      changeLabel: { en: "Change", nl: "Wijziging", ar: "التغيير", tr: "Değişiklik", fa: "تغییر" },
+      // Protected field names shown in the dropdown.
+      fieldName: { en: "Name", nl: "Naam", ar: "الاسم", tr: "Ad", fa: "نام" },
+      fieldEmail: { en: "Email", nl: "E-mail", ar: "البريد الإلكتروني", tr: "E-posta", fa: "ایمیل" },
+      fieldCompanyName: { en: "Company name", nl: "Bedrijfsnaam", ar: "اسم الشركة", tr: "Şirket adı", fa: "نام شرکت" },
+      fieldLicenseNumber: { en: "Licence number", nl: "Vergunningsnummer", ar: "رقم الترخيص", tr: "Lisans numarası", fa: "شماره مجوز" },
+
+      // Requested value and reason inputs.
+      requestedValueLabel: { en: "Requested new value", nl: "Gewenste nieuwe waarde", ar: "القيمة الجديدة المطلوبة", tr: "Talep edilen yeni değer", fa: "مقدار جدید درخواستی" },
+      requestedValuePlaceholder: { en: "Enter the new information", nl: "Voer de nieuwe gegevens in", ar: "أدخل المعلومات الجديدة", tr: "Yeni bilgiyi girin", fa: "اطلاعات جدید را وارد کنید" },
+      reasonLabel: { en: "Reason for the change", nl: "Reden voor de wijziging", ar: "سبب التغيير", tr: "Değişiklik nedeni", fa: "دلیل تغییر" },
+      reasonPlaceholder: { en: "Explain why this information should be changed", nl: "Leg uit waarom dit gegeven moet worden gewijzigd", ar: "اشرح سبب ضرورة تغيير هذه المعلومة", tr: "Bu bilginin neden değiştirilmesi gerektiğini açıklayın", fa: "توضیح دهید چرا این اطلاعات باید تغییر کند" },
+
+      // Form buttons and result messages.
+      submitButton: { en: "Send request", nl: "Aanvraag verzenden", ar: "إرسال الطلب", tr: "Talebi gönder", fa: "ارسال درخواست" },
+      submittingButton: { en: "Sending...", nl: "Verzenden...", ar: "جارٍ الإرسال...", tr: "Gönderiliyor...", fa: "در حال ارسال..." },
+      submitSuccess: { en: "Your change request was sent to the administrator.", nl: "Uw wijzigingsverzoek is naar de beheerder verzonden.", ar: "تم إرسال طلب التعديل إلى المسؤول.", tr: "Değişiklik talebiniz yöneticiye gönderildi.", fa: "درخواست تغییر شما برای مدیر ارسال شد." },
+      submitFailedError: { en: "The change request could not be sent.", nl: "Het wijzigingsverzoek kon niet worden verzonden.", ar: "تعذر إرسال طلب التعديل.", tr: "Değişiklik talebi gönderilemedi.", fa: "درخواست تغییر ارسال نشد." },
+      // Text used by the chauffeur request-history section.
+      requestHistoryTitle: { en: "My change requests", nl: "Mijn wijzigingsverzoeken", ar: "طلبات التعديل الخاصة بي", tr: "Değişiklik taleplerim", fa: "درخواست‌های تغییر من" },
+      noRequestsMessage: { en: "You have not submitted any change requests yet.", nl: "U heeft nog geen wijzigingsverzoeken ingediend.", ar: "لم ترسل أي طلبات تعديل حتى الآن.", tr: "Henüz bir değişiklik talebi göndermediniz.", fa: "هنوز هیچ درخواست تغییری ثبت نکرده‌اید." },
+
+      // Request-history column labels.
+      currentValueLabel: { en: "Current value", nl: "Huidige waarde", ar: "القيمة الحالية", tr: "Mevcut değer", fa: "مقدار فعلی" },
+      requestedValueHistoryLabel: { en: "Requested value", nl: "Gewenste waarde", ar: "القيمة المطلوبة", tr: "Talep edilen değer", fa: "مقدار درخواستی" },
+      requestStatusLabel: { en: "Status", nl: "Status", ar: "الحالة", tr: "Durum", fa: "وضعیت" },
+      requestDateLabel: { en: "Submitted", nl: "Ingediend", ar: "تاريخ الإرسال", tr: "Gönderildi", fa: "تاریخ ثبت" },
+      adminNoteLabel: { en: "Administrator explanation", nl: "Toelichting van beheerder", ar: "توضيح المسؤول", tr: "Yönetici açıklaması", fa: "توضیح مدیر" },
+
+      // Translated request-status values.
+      statusPending: { en: "Pending", nl: "In behandeling", ar: "قيد المراجعة", tr: "Beklemede", fa: "در انتظار بررسی" },
+      statusApproved: { en: "Approved", nl: "Goedgekeurd", ar: "تمت الموافقة", tr: "Onaylandı", fa: "تأیید شده" },
+      statusRejected: { en: "Rejected", nl: "Afgewezen", ar: "مرفوض", tr: "Reddedildi", fa: "رد شده" },
+      // Label for the administrator's explanation after reviewing a request.
+      
+    },
+
   chauffeurDashboardPage: {
     backToHomepage: {
       en: "← Back to homepage",
@@ -448,6 +521,13 @@ export const translations = {
       tr: "← Şoför yönetimine dön",
       fa: "بازگشت به مدیریت رانندگان →",
     },
+    // Link used to return from a self-management page to the chauffeur dashboard.
+    backToDashboard: { 
+      en: "← Back to dashboard", 
+      nl: "← Terug naar dashboard", 
+      ar: "العودة إلى لوحة التحكم →", 
+      tr: "← Kontrol paneline dön", fa: "بازگشت به داشبورد →" 
+    },
     chauffeurLabel: {
       en: "Chauffeur",
       nl: "Chauffeur",
@@ -462,13 +542,60 @@ export const translations = {
       tr: "Hoş geldiniz,",
       fa: "خوش آمدید،",
     },
-    description: {
-      en: "Here you can see bookings assigned to you.",
-      nl: "Hier ziet u de boekingen die aan u zijn toegewezen.",
-      ar: "يمكنك هنا مشاهدة الحجوزات المعيّنة لك.",
-      tr: "Burada size atanan rezervasyonları görebilirsiniz.",
-      fa: "در اینجا می‌توانید رزروهای تعیین‌شده برای خود را مشاهده کنید.",
+
+    // Explains the wider purpose of the chauffeur dashboard.
+    description: { 
+      en: "Manage your profile, unavailable times, vehicles and assigned bookings.", 
+      nl: "Beheer uw profiel, niet-beschikbare tijden, voertuigen en toegewezen boekingen.", 
+      ar: "يمكنك إدارة ملفك الشخصي وأوقات عدم التوفر والمركبات والحجوزات المعيّنة لك.", 
+      tr: "Profilinizi, müsait olmadığınız zamanları, araçlarınızı ve size atanan rezervasyonları yönetin.", 
+      fa: "نمایه، زمان‌های عدم دسترسی، خودروها و رزروهای تعیین‌شده خود را مدیریت کنید." 
     },
+    // Text for the editable chauffeur-information card.
+    editMyInformationButton: { 
+      en: "Edit my information", 
+      nl: "Mijn gegevens bewerken", 
+      ar: "تعديل معلوماتي", 
+      tr: "Bilgilerimi düzenle", 
+      fa: "ویرایش اطلاعات من" 
+    },
+    editMyInformationDescription: { 
+      en: "Update your phone, service area and public profile.", 
+      nl: "Werk uw telefoonnummer, werkgebied en openbare profiel bij.", 
+      ar: "حدّث رقم هاتفك ومنطقة خدمتك وملفك العام.", 
+      tr: "Telefonunuzu, hizmet bölgenizi ve herkese açık profilinizi güncelleyin.", 
+      fa: "شماره تلفن، محدوده خدمات و نمایه عمومی خود را به‌روزرسانی کنید." 
+    },
+
+    // Text for the vacation and absence-management card.
+    manageUnavailabilityButton: { 
+      en: "Manage unavailable times", 
+      nl: "Niet-beschikbare tijden beheren", 
+      ar: "إدارة أوقات عدم التوفر", 
+      tr: "Müsait olmadığım zamanları yönet", 
+      fa: "مدیریت زمان‌های عدم دسترسی" 
+    },
+    manageUnavailabilityDescription: { 
+      en: "Add vacations, absence days or hours when you cannot work.", 
+      nl: "Voeg vakanties, afwezigheidsdagen of uren toe waarop u niet kunt werken.", 
+      ar: "أضف الإجازات أو أيام الغياب أو الساعات التي لا يمكنك العمل فيها.", 
+      tr: "Çalışamayacağınız tatil, izin günü veya saatleri ekleyin.", 
+      fa: "تعطیلات، روزهای غیبت یا ساعت‌هایی را که نمی‌توانید کار کنید اضافه کنید." 
+    },
+    // Text for the chauffeur vehicle card.
+    viewMyVehiclesButton: { 
+      en: "View my vehicles", 
+      nl: "Mijn voertuigen bekijken", 
+      ar: "عرض مركباتي", 
+      tr: "Araçlarımı görüntüle", 
+      fa: "مشاهده خودروهای من" },
+    viewMyVehiclesDescription: { 
+      en: "Check the vehicles connected to your chauffeur account.", 
+      nl: "Bekijk de voertuigen die aan uw chauffeuraccount zijn gekoppeld.", 
+      ar: "تحقق من المركبات المرتبطة بحساب السائق الخاص بك.", 
+      tr: "Şoför hesabınıza bağlı araçları kontrol edin.", 
+      fa: "خودروهای متصل به حساب راننده خود را بررسی کنید." },
+
     couldNotLoadChauffeur: {
       en: "Could not load chauffeur.",
       nl: "Chauffeur kon niet worden geladen.",

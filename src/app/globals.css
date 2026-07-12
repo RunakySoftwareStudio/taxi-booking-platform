@@ -59,3 +59,10 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
   opacity: 0.8;
 }
+
+/* Keeps technical values readable while aligning them with the active page language. */
+.technical-value { direction: ltr; unicode-bidi: isolate; text-align: left; }
+.technical-input { direction: ltr; text-align: left; }
+
+html[dir="rtl"] .technical-value,
+html[dir="rtl"] .technical-input { text-align: right; }

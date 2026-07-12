@@ -87,29 +87,44 @@ function getChauffeurAccountStatusTextKey(accountStatus: string) {
     return "";
 }
 
-// Only update this booking if it belongs to this chauffeur.
-async function updateAssignedBookingStatus(formData: FormData) 
-{  "use server";
+// Update a booking only when the logged-in user owns this chauffeur account.
+async function updateAssignedBookingStatus(formData: FormData) {
+    "use server";
+    // Reads the booking information submitted by the form.
     const bookingId = String(formData.get("bookingId") || "");
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const status = String(formData.get("status") || "");
-
+    // Stops the update when required values are missing.
     if (!bookingId || !chauffeurId || !status) { redirect(`/chauffeur/${chauffeurId}?error=missing-fields`); }
 
-    const { error } = await supabaseAdmin
-        .from("bookings")
-        .update({ status })
-        .eq("id", bookingId)
-        .eq("chauffeur_id", chauffeurId);
+    // Reads the currently logged-in Supabase user.
+    const authSupabase = await createAuthClient();
+    const { data: { user } } = await authSupabase.auth.getUser();
+    // Sends unauthenticated visitors to the login page.
+    if (!user) { redirect("/login"); }
 
-    if (error) {
-        console.error("Could not update booking status:", error);
-        redirect(`/chauffeur/${chauffeurId}?error=status-update-failed`);
-    }
-    
+    const { data: profile } = await authSupabase
+            .from("user_profiles")
+            .select("role, chauffeur_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+    if (!profile) { redirect("/unauthorized"); }
+
+    const isAdminUser = profile.role === "admin";
+    if (!isAdminUser && profile.chauffeur_id !== chauffeurId) { redirect("/unauthorized"); }
+
+    const { data: updatedBooking, error } = await supabaseAdmin
+            .from("bookings")
+            .update({ status }).
+            eq("id", bookingId)
+            .eq("chauffeur_id", chauffeurId)
+            .select("id").maybeSingle();
+    if (error || !updatedBooking) { console.error("Could not update booking status:", error);  redirect(`/chauffeur/${chauffeurId}?error=status-update-failed`); }
+
     revalidatePath(`/chauffeur/${chauffeurId}`);
     redirect(`/chauffeur/${chauffeurId}?success=status-updated`);
 }
+
 
 export default async function ChauffeurDashboardPage({params,searchParams}: ChauffeurDashboardPageProps) {
   const pageMessage = await searchParams;
@@ -118,23 +133,29 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
         default             → homepage
         if user is admin    → admin chauffeurs page
         if user is chauffeur → homepage
-    ===========================================*/
+    ===========================================  */
+   // Check who is logged in and which chauffeur record belongs to them.
     const authSupabase = await createAuthClient();
     const { data: { user }, } = await authSupabase.auth.getUser();
-    let backLinkHref = "/";
-    let backLinkTextKey = "backToHomepage";
-    let isAdminUser = false;
 
+    if (!user) { redirect("/login"); }
 
-    if (user) {
-        const { data: profile } = await authSupabase
-        .from("user_profiles")
-        .select("role")
-        .eq("user_id", user.id)
-        .maybeSingle();
+    const { data: profile } = await authSupabase
+    .from("user_profiles")
+    .select("role, chauffeur_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-        if (profile?.role === "admin") { backLinkHref = "/admin/chauffeurs"; backLinkTextKey = "backToAdminChauffeurs"; isAdminUser = true; }
-    }
+    if (!profile) { redirect("/");}
+
+    const isAdminUser = profile.role === "admin";
+
+    // A chauffeur may only open their own dashboard.
+    // An admin may open any chauffeur dashboard.
+    if (!isAdminUser && profile.chauffeur_id !== chauffeurId) { redirect( profile.chauffeur_id ? `/chauffeur/${profile.chauffeur_id}` : "/" ); }
+
+    const backLinkHref = isAdminUser ? "/admin/chauffeurs" : "/";
+    const backLinkTextKey = isAdminUser ? "backToAdminChauffeurs"  : "backToHomepage";
 
     // get chauffeur data of this chauffeur id
     const { data: supabaseAdminChauffeur, error: chauffeurError } = await supabaseAdmin
@@ -201,38 +222,53 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="missingFieldsError" /> </p>)}
                 {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdateFailedError" /> </p>)}
 
-                <div className="mt-8 grid gap-4 md:grid-cols-3">
-                    <div className={formStyles.info}>
-                        <p className={formStyles.formInputInfoCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="emailLabel" /> </p>
-                        <p className={formStyles.formInputInfoValue}>{chauffeurRow.email}</p>
+                {/* Aligns labels with the active language while keeping email and phone characters left-to-right. */}
+                <div className={`${formStyles.info} mt-8 grid gap-4 sm:grid-cols-3`}>
+                    <div className="text-start">
+                        <p className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="emailLabel" /></p>
+                        <p className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.email}</p>
                     </div>
-                    <div className={formStyles.info}>
-                        <p className={formStyles.formInputInfoCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="phoneLabel" /> </p>
-                        <p className={formStyles.formInputInfoValue}>{chauffeurRow.phone}</p>
+
+                    <div className="text-start">
+                        <p className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="phoneLabel" /></p>
+                        <p className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.phone}</p>
                     </div>
-                    <div className={formStyles.info}>
-                        <p className={formStyles.formInputInfoCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusLabel" /> </p>
-                        <p className={formStyles.formInputInfoValue}>
-                            {chauffeurAccountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={chauffeurAccountStatusTextKey} /> : chauffeurRow.account_status}
-                        </p>
+
+                    <div className="text-start">
+                        <p className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="statusLabel" /></p>
+                        <p className={formStyles.formInputInfoValue}>{chauffeurAccountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={chauffeurAccountStatusTextKey} /> : chauffeurRow.account_status}</p>
                     </div>
                 </div>
                 {/*====================================                
                 → shows chauffeur information
                 → has button: Manage availability
-                → if admin is viewing: also show Edit chauffeur details
+                → Shows the three self-management options only to the chauffeur.
                 ==========================================*/}
-                <div className="mt-8 flex flex-wrap items-center gap-4">
-                    <Link  href={`/chauffeur/${chauffeurRow.id}/availability`} className={formStyles.primaryButtonOutside}  >
-                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="manageAvailabilityButton" />
-                    </Link>
+                {!isAdminUser && (
+                    <div className="mt-8 grid gap-4 md:grid-cols-3">
+                        <article className={`${formStyles.info} grid gap-4`}>
+                            <p className="text-sm text-slate-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="editMyInformationDescription" /></p>
+                            <Link href={`/chauffeur/${chauffeurRow.id}/profile`} className={formStyles.primaryButtonOutside}><TranslatedText sectionName="chauffeurDashboardPage" textKey="editMyInformationButton" /></Link>
+                        </article>
 
-                    {isAdminUser && ( 
-                        <Link  href={`/admin/chauffeurs/${chauffeurRow.id}`} className={formStyles.primaryButtonOutside}  >
-                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="editDetailsButton" />
-                        </Link>
-                    )}
-                </div>
+                        <article className={`${formStyles.info} grid gap-4`}>
+                            <p className="text-sm text-slate-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="manageUnavailabilityDescription" /></p>
+                            <Link href={`/chauffeur/${chauffeurRow.id}/unavailability`} className={formStyles.primaryButtonOutside}><TranslatedText sectionName="chauffeurDashboardPage" textKey="manageUnavailabilityButton" /></Link>
+                        </article>
+
+                        <article className={`${formStyles.info} grid gap-4`}>
+                            <p className="text-sm text-slate-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="viewMyVehiclesDescription" /></p>
+                            <Link href={`/chauffeur/${chauffeurRow.id}/vehicles`} className={formStyles.primaryButtonOutside}><TranslatedText sectionName="chauffeurDashboardPage" textKey="viewMyVehiclesButton" /></Link>
+                        </article>
+                    </div>
+                )}
+
+                {/* Keeps the existing administrator edit option separate. */}
+                {isAdminUser && (
+                    <div className="mt-8">
+                        <Link href={`/admin/chauffeurs/${chauffeurRow.id}`} className={formStyles.primaryButtonOutside}><TranslatedText sectionName="chauffeurDashboardPage" textKey="editDetailsButton" /></Link>
+                    </div>
+                )}
 
                 <h3 className={tableStyles.headerTableSmall}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="myVehiclesTitle" /> </h3>
                 {/* Mobile vehicle cards  */}
