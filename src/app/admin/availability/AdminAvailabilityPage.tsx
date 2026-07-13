@@ -110,10 +110,10 @@ export default async function AdminAvailabilityPage()
                         <table className={tableStyles.table1000}>
                         <thead className={tableStyles.tableHeaderCyan}>
                             <tr>
-                            <th className="p-4">Date</th>
-                            <th className="p-4">Start time</th>
-                            <th className="p-4">End time</th>
-                            <th className="p-4">Status</th>
+                            <th className={tableStyles.cellCaption}>Date</th>
+                            <th className={tableStyles.cellCaption}>Start time</th>
+                            <th className={tableStyles.cellCaption}>End time</th>
+                            <th className={tableStyles.cellCaption}>Status</th>
                             </tr>
                         </thead>
 

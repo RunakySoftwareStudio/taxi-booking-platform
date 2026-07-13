@@ -54,23 +54,23 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
             <div className={pageStyles.container}> 
                 
                 <Link href="/admin/clients" className={formStyles.link} > ← Back to clients </Link>
-                <p className={pageStyles.pageLabelUpper}> Admin client detail</p>
+                <p className={pageStyles.pageLabelUpper}> Admin client detail </p>
                 <h1 className={pageStyles.pageTitle}>{clientRow.name}</h1>
 
                 <div className="mt-8 grid gap-4 md:grid-cols-3">
                     <div className={formStyles.info}>
-                        <p className={formStyles.formInputInfoCaption}>Email</p>
-                        <p className={formStyles.formInputInfoValue}>{clientRow.email}</p>
+                        <span className={formStyles.formInputInfoCaption}>Email: </span >
+                        <span  className={formStyles.formInputInfoValue}>{clientRow.email}</span >
                     </div>
 
                     <div className={formStyles.info}>
-                        <p className={formStyles.formInputInfoCaption}>Phone</p>
-                        <p className={formStyles.formInputInfoValue}>{clientRow.phone}</p>
+                        <span className={formStyles.formInputInfoCaption}>Phone: </span>
+                        <span className={formStyles.formInputInfoValue}>{clientRow.phone}</span>
                     </div>
 
                     <div className={formStyles.info}>
-                        <p className={formStyles.formInputInfoCaption}>Created at</p>
-                        <p className={formStyles.formInputInfoValue}> {formatShortDateTime(client.created_at)} </p>
+                        <span className={formStyles.formInputInfoCaption}>Created at: </span>
+                        <span className={formStyles.formInputInfoValue}> {formatShortDateTime(client.created_at)} </span>
                     </div>
                 </div>
                 
@@ -156,8 +156,8 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                                 <tr key={booking.id} className="border-b border-white/10">
                                     <td className={tableStyles.cell}> {booking.pickup_location} </td>
                                     <td className={tableStyles.cell}> {booking.destination} </td>
-                                    <td className={tableStyles.cell}> {booking.pickup_date} </td>
-                                    <td className={tableStyles.cell}> {booking.pickup_time} </td>
+                                    <td className={tableStyles.cell}> {formatShortDate(booking.pickup_date)}</td>
+                                    <td className={tableStyles.cell}> {formatShortTime(booking.pickup_time)} </td>
                                     <td className={tableStyles.cell}> {booking.passengers} </td>
                                     <td className={tableStyles.cell}> {booking.trip_type} </td>
                                     <td className={tableStyles.cell}> {booking.chauffeurs?.name || "Unassigned"} </td>

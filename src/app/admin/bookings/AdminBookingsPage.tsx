@@ -312,8 +312,8 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
                                     <td colSpan={5} className="px-4 pb-4 pt-0 text-sm text-slate-300">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
-                                            <span className="font-semibold text-cyan-300">Notes: </span>
-                                            <span className="wrap-break-word"> {booking.notes || "-----"} </span>
+                                            <span className={tableStyles.cellCaptionSecondRow}>Notes: </span>
+                                            <span className= {tableStyles.cellNote}> {booking.notes || "-----"} </span>
                                         </div>
                                     </td>
 
@@ -321,13 +321,13 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                         <form action={updateBookingAdminFields} className="flex items-end justify-end gap-3" >
                                             <input type="hidden" name="bookingId" value={booking.id} />
                                             <label className="grid w-32 shrink-0 gap-2">
-                                                <span className="font-semibold text-cyan-300"> Booking status</span>
+                                                <span className={tableStyles.cellCaptionSecondRow}> Booking status</span>
                                                 <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
                                                     {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
                                                 </select>
                                             </label>                                            
                                             <label className="grid w-44 shrink-0 gap-2">
-                                                <span className="font-semibold text-cyan-300"> Assigned chauffeur</span>
+                                                <span className={tableStyles.cellCaptionSecondRow}> Assigned chauffeur</span>
                                                 <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={formStyles.selectForm} >
                                                     <option value="">Unassigned</option>
                                                     {chauffeurOptions.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}

@@ -225,18 +225,18 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 {/* Aligns labels with the active language while keeping email and phone characters left-to-right. */}
                 <div className={`${formStyles.info} mt-8 grid gap-4 sm:grid-cols-3`}>
                     <div className="text-start">
-                        <p className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="emailLabel" /></p>
-                        <p className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.email}</p>
+                        <span className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="emailLabel" />: </span>
+                        <span className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.email}</span>
                     </div>
 
                     <div className="text-start">
-                        <p className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="phoneLabel" /></p>
-                        <p className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.phone}</p>
+                        <span className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="phoneLabel" />: </span>
+                        <span className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.phone}</span>
                     </div>
 
                     <div className="text-start">
-                        <p className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="statusLabel" /></p>
-                        <p className={formStyles.formInputInfoValue}>{chauffeurAccountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={chauffeurAccountStatusTextKey} /> : chauffeurRow.account_status}</p>
+                        <span className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="statusLabel" />: </span>
+                        <span className={formStyles.formInputInfoValue}>{chauffeurAccountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={chauffeurAccountStatusTextKey} /> : chauffeurRow.account_status}</span>
                     </div>
                 </div>
                 {/*====================================                
@@ -408,13 +408,11 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="luggageLabel" />: </span> </span>
                             <span className={mobileStyle.infoValue}>{booking.luggage}</span>
                         </div>
-                        
-                        <div>
-                            <span className={mobileStyle.inforCaption}>  <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span>  </span>
-                            <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
-                        </div>
                     </div>
-
+                    <div className="mt-4">
+                        <span className={mobileStyle.inforCaption}>  <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span>  </span>
+                        <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
+                    </div>
                     <form action={updateAssignedBookingStatus} className="mt-5 grid gap-3">
                         <input type="hidden" name="bookingId" value={booking.id} />
                         <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
@@ -422,7 +420,6 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         <select name="status"  defaultValue={booking.status}  className={`${tableStyles.selectTable} w-full`}>
                            {bookingStatusOptions.map((status) => {
                                 const bookingStatusTextKey = getBookingStatusTextKey(status);
-
                                 return (
                                     <option key={status} value={status}>
                                         {bookingStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={bookingStatusTextKey} /> : status}
@@ -483,13 +480,14 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                     </td>
                                 </tr>
                                 <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
-                                    <td colSpan={8} className="px-4 pb-4 pt-0 text-sm text-slate-300">
+                                {/* Keeps notes aligned with the active language, while mixed text remains readable. */}
+                                    <td colSpan={8} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
-                                        <span className="font-semibold text-cyan-300"><span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span> </span>
-                                        <span className="wrap-break-word"> {booking.notes || "-----"} </span>
+                                            <span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span> 
+                                            <span className="wrap-break-word"> {booking.notes || "-----"}</span>
                                         </div>
                                     </td>
-                                    <td colSpan={3} className="px-4 pb-4 pt-0 text-sm text-slate-300">
+                                    <td colSpan={3} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
                                         <form action={updateAssignedBookingStatus} className="flex items-end justify-end gap-3" >
                                             <input type="hidden" name="bookingId" value={booking.id} />
                                             <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />

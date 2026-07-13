@@ -262,7 +262,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                 </div>
 
                 {/* Mobile vehicle cards */}
-                <div className="grid gap-4 lg:hidden">
+                <div className="grid gap-4 lg:hidden text-start">
                   {group.vehicles.map((vehicle) => (
                     <article  key={vehicle.id} className={mobileStyle.article}>
                       <div>
@@ -270,7 +270,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                         <span className={mobileStyle.infoValueBold}> {vehicle.brand} {vehicle.model} </span>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-1">
+                      <div className="mt-4 grid grid-cols-2 gap-1 ">
                         <div>
                           <span className={mobileStyle.inforCaption}> Year: </span>
                           <span className={mobileStyle.infoValue}>{vehicle.vehicle_year || "-"}</span>

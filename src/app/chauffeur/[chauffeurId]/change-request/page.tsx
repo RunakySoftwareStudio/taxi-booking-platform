@@ -63,7 +63,7 @@ export default async function ChauffeurChangeRequestPage({ params }: ChauffeurCh
                 {/* Submits a new administrator-controlled information request. */}
                 <ChauffeurChangeRequestForm chauffeurId={chauffeurId} />
 
-{/* Shows all requests using mobile cards and a consistent desktop table. */}
+            {/* Shows all requests using mobile cards and a consistent desktop table. */}
             <section className="mt-10">
                 <h2 className={tableStyles.headerTableSmall}><TranslatedText sectionName="chauffeurChangeRequestPage" textKey="requestHistoryTitle" /> ({requestRows.length})</h2>
 
@@ -84,16 +84,16 @@ export default async function ChauffeurChangeRequestPage({ params }: ChauffeurCh
                                     <div><p className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurChangeRequestPage" textKey="requestDateLabel" /></p><p className={mobileStyle.infoValue} dir="ltr">{formatShortDate(requestRow.created_at.slice(0, 10))}</p></div>
                                 </div>
 
-                                {/* Shows the chauffeur's reason on its own row. */}
-                                <div className="mt-4 border-t border-white/10 pt-4">
+                                {/* Shows the chauffeur's explanation aligned to the page direction. */}
+                                <div className="mt-4 border-t border-white/10 pt-4 text-start">
                                     <p className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurChangeRequestPage" textKey="reasonLabel" /></p>
-                                    <p className={mobileStyle.infoValue}>{requestRow.reason || "—"}</p>
+                                    <p className={`${mobileStyle.infoValue} text-start`} dir="auto">{requestRow.reason || "—"}</p>
                                 </div>
 
                                 {/* Shows the administrator's explanation separately. */}
-                                <div className="mt-4 border-t border-cyan-400/30 pt-4">
+                                <div className="mt-4 border-t border-cyan-400/30 pt-4 text-start">
                                     <p className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurChangeRequestPage" textKey="adminNoteLabel" /></p>
-                                    <p className={mobileStyle.infoValue}>{requestRow.admin_note || "—"}</p>
+                                    <p className={`${mobileStyle.infoValue} text-start`} dir="auto">{requestRow.admin_note || "—"}</p>
                                 </div>
                             </article>
                         );
@@ -135,17 +135,17 @@ export default async function ChauffeurChangeRequestPage({ params }: ChauffeurCh
                                             <td className={tableStyles.cell} dir="ltr">{formatShortDate(requestRow.created_at.slice(0, 10))}</td>
                                         </tr>
 
-                                        {/* Chauffeur reason row */}
+                                        {/* Shows the chauffeur's explanation aligned to the page direction. */}
                                         <tr className="border-b border-white/10 bg-slate-950/30">
-                                            <td colSpan={5} className="px-4 py-3 text-sm text-slate-300">
+                                            <td colSpan={5} className="px-4 py-3 text-sm text-slate-300 text-start" dir="auto">
                                                 <span className="font-semibold text-cyan-300"><TranslatedText sectionName="chauffeurChangeRequestPage" textKey="reasonLabel" />: </span>
                                                 <span className="wrap-break-word">{requestRow.reason || "—"}</span>
                                             </td>
                                         </tr>
 
-                                        {/* Administrator explanation row */}
+                                        {/* Shows the administrator explanation aligned to the page direction. */}
                                         <tr className="border-b border-cyan-400/30 bg-slate-950/30">
-                                            <td colSpan={5} className="px-4 py-3 text-sm text-slate-300">
+                                            <td colSpan={5} className="px-4 py-3 text-sm text-slate-300 text-start" dir="auto">
                                                 <span className="font-semibold text-cyan-300"><TranslatedText sectionName="chauffeurChangeRequestPage" textKey="adminNoteLabel" />: </span>
                                                 <span className="wrap-break-word">{requestRow.admin_note || "—"}</span>
                                             </td>

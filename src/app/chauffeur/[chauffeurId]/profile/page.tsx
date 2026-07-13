@@ -48,9 +48,18 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
 
                     {/* Shows protected account information and its related change-request action. */}
                     <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <div><p className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurProfilePage" textKey="nameLabel" /></p><p className={formStyles.formInputInfoValue}>{chauffeurRow.name}</p></div>
-                        <div><p className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurProfilePage" textKey="emailLabel" /></p> <p className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.email}</p></div>
-                        <div><p className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurProfilePage" textKey="statusLabel" /></p><p className={formStyles.formInputInfoValue}>{accountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={accountStatusTextKey} /> : chauffeurRow.account_status}</p></div>
+                        <div>
+                            <span className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurProfilePage" textKey="nameLabel" />: </span>
+                            <span className={formStyles.formInputInfoValue}>{chauffeurRow.name}</span>
+                        </div>
+                        <div>
+                            <span className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurProfilePage" textKey="emailLabel" />: </span> 
+                            <span className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.email}</span>
+                        </div>
+                        <div>
+                            <span className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurProfilePage" textKey="statusLabel" />: </span>
+                            <span className={formStyles.formInputInfoValue}>{accountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={accountStatusTextKey} /> : chauffeurRow.account_status}</span>
+                        </div>
 
                         {/* Opens the request page for administrator-controlled information. */}
                         <div className="flex items-end lg:justify-end">

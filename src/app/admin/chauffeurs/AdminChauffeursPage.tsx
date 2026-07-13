@@ -362,7 +362,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                         <tbody>
                             {sortedChauffeurRows.map((chauffeur) => (
                                 <tr key={chauffeur.id}  className={ chauffeur.account_status === "inactive" ? `${tableStyles.rowCyan} opacity-50` : tableStyles.rowCyan } >
-                                    <td className="p-4 align-top">
+                                    <td className="p-4 align-top text-start">
                                         <span className="block font-medium text-white"> {chauffeur.name} </span>
                                         <span className="mt-1 block text-xs text-cyan-300"> Ref: {formatShortChauffeurReference(chauffeur.id)} </span>
                                         <span className="mt-1 block text-sm text-slate-400 break-all"> {chauffeur.email} </span>
