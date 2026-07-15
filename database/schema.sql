@@ -54,6 +54,7 @@ CREATE TABLE chauffeurs (
   account_status chauffeur_account_status NOT NULL DEFAULT 'pending_approval',
   rating NUMERIC(2, 1) DEFAULT 0.0,
   accepts_pets boolean not null default false,
+  bio TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -207,6 +208,9 @@ ALTER TABLE vehicles
 ADD CONSTRAINT vehicles_year_valid
 CHECK (vehicle_year IS NULL OR (vehicle_year >= 1980 AND vehicle_year <= 2100));
 
+-- Limits the public chauffeur biography.
+ALTER TABLE public.chauffeurs ADD CONSTRAINT chauffeurs_bio_length CHECK (bio IS NULL OR length(bio) <= 1000);
+
 --===================================================================
 
 
@@ -304,6 +308,8 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
     role app_role NOT NULL,
     chauffeur_id UUID REFERENCES chauffeurs(id) ON DELETE SET NULL,
+    -- Stores only a supported Voya Taxi interface language.
+    preferred_language TEXT NOT NULL DEFAULT 'en' CHECK (preferred_language IN ('en', 'nl', 'ar', 'tr', 'fa')),
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     updated_at TIMESTAMP NOT NULL DEFAULT now(),
 

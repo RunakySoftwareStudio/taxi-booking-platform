@@ -31,6 +31,7 @@ export const formStyles = {
     linkHref:                   "mt-4 inline-block rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     span:                       "mb-2 block text-sm font-medium text-slate-300",
     formInputInfoCaption:       "text-md text-slate-400 text-start",
+    formInputInfoCaptionCyan:   "text-md text-cyan-300 text-start",
     formInputInfoValue:          "mt-2 font-medium text-start",
     formLabel:                  "text-sm font-semibold text-cyan-200",     
     formH3SemiBold:             "text-xl font-semibold text-white",   

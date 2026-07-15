@@ -5,18 +5,24 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
 import { getTranslation } from "@/lib/i18n/translations";
 import { formStyles, pageStyles } from "@/styles/classNames";
+// Reuses the central Voya Taxi language configuration.
+import { languages, type LanguageCode } from "@/lib/i18n/languages";
 
-// Defines the chauffeur fields that may be edited through this form.
-type ChauffeurProfileData = { id: string; phone: string; service_area: string | null; accepts_pets: boolean };
+// Defines chauffeur-table fields managed by this form.
+type ChauffeurProfileData = { id: string; phone: string; service_area: string | null; accepts_pets: boolean; bio: string | null };
 
-// Defines the chauffeur information received from the profile page.
-type ChauffeurProfileFormProps = { chauffeur: ChauffeurProfileData };
+// Defines both chauffeur data and the account-language preference.
+type ChauffeurProfileFormProps = { chauffeur: ChauffeurProfileData; preferredLanguage: LanguageCode };
 
 // Allows a chauffeur to update only phone, service area and pet acceptance.
-export default function ChauffeurProfileForm({ chauffeur }: ChauffeurProfileFormProps) {
+export default function ChauffeurProfileForm({ chauffeur, preferredLanguage: savedPreferredLanguage }: ChauffeurProfileFormProps) {
     // Provides page refresh and the currently selected interface language.
     const router = useRouter();
     const { languageCode } = useLanguage();
+
+    // Stores the biography and saved interface-language preference.
+    const [bio, setBio] = useState(chauffeur.bio ?? "");
+    const [preferredLanguage, setPreferredLanguage] = useState<LanguageCode>(savedPreferredLanguage);
 
     // Returns translated text for this profile form.
     function getProfileText(textKey: string) { return getTranslation("chauffeurProfilePage", textKey, languageCode); }
@@ -39,7 +45,9 @@ export default function ChauffeurProfileForm({ chauffeur }: ChauffeurProfileForm
         setIsSaving(true);
 
         try {
-            const response = await fetch(`/api/chauffeur/${chauffeur.id}/profile`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone, serviceArea, acceptsPets }) });
+            const response = await fetch(`/api/chauffeur/${chauffeur.id}/profile`, 
+                {   method: "PATCH", headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ phone, serviceArea, acceptsPets, bio, preferredLanguage }) });
             const result = await response.json();
 
             if (!response.ok) { setErrorMessage(result.message || getProfileText("updateFailedError")); return; }
@@ -75,7 +83,29 @@ export default function ChauffeurProfileForm({ chauffeur }: ChauffeurProfileForm
                     <label className={formStyles.label}>{getProfileText("serviceAreaLabel")}
                         <input value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} placeholder={getProfileText("serviceAreaPlaceholder")} className={formStyles.inputWFullCyan} />
                     </label>
+                    {/* Allows the chauffeur to write a public introduction. */}
+                    <label className={`${formStyles.label} md:col-span-2`}>
+                        {getProfileText("bioLabel")}
+                        {/* Aligns the biography with the interface while preserving its own text direction. */}
+                        <textarea value={bio} onChange={(event) => setBio(event.target.value)} 
+                            maxLength={1000} rows={5} dir="auto" 
+                            className={`${formStyles.inputWFullCyan} language-text-input min-h-28 resize-y py-3 leading-5`} 
+                            placeholder={getProfileText("bioPlaceholder")} />
+                        {/*extra explanation below of this textarea */}        
+                        <span className="text-xs text-slate-400">{getProfileText("bioDescription")} {1000 - bio.length} {getProfileText("bioCharactersRemaining")}.</span>
+                    </label>
 
+
+                        
+                    {/* Saves the chauffeur's preferred application-interface language. */}
+                    <label className={formStyles.label}>
+                        {getProfileText("preferredLanguageLabel")}
+                        <select value={preferredLanguage} onChange={(event) => setPreferredLanguage(event.target.value as LanguageCode)} className={formStyles.selectWFull}>
+                            {(Object.keys(languages) as LanguageCode[]).map((languageOption) => <option key={languageOption} value={languageOption}>{languages[languageOption].label}</option>)}
+                        </select>
+                        <span className="text-xs text-slate-400">{getProfileText("preferredLanguageDescription")}</span>
+                    </label>
+                    {/* saves the chauffeur acceping pets or not */}
                     <label className="flex items-center gap-3 text-sm text-white md:col-span-2">
                         <input type="checkbox" checked={acceptsPets} onChange={(event) => setAcceptsPets(event.target.checked)} className="h-5 w-5" />
                         {getProfileText("acceptsPetsLabel")}

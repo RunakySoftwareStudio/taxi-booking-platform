@@ -456,6 +456,15 @@ export const translations = {
       updateFailedError: { en: "Your information could not be updated.", nl: "Uw gegevens konden niet worden bijgewerkt.", ar: "تعذر تحديث معلوماتك.", tr: "Bilgileriniz güncellenemedi.", fa: "اطلاعات شما به‌روزرسانی نشد." },
       // Button for requesting an administrator-controlled profile change.
       requestChangeButton: { en: "Request a change", nl: "Wijziging aanvragen", ar: "طلب تعديل", tr: "Değişiklik talep et", fa: "درخواست تغییر" },
+      // Labels for the chauffeur's public biography.
+      bioLabel: { en: "Biography", nl: "Biografie", ar: "نبذة شخصية", tr: "Biyografi", fa: "زندگی‌نامه کوتاه" },
+      bioPlaceholder: { en: "Write a short introduction for clients", nl: "Schrijf een korte introductie voor klanten", ar: "اكتب نبذة قصيرة للعملاء", tr: "Müşteriler için kısa bir tanıtım yazın", fa: "یک معرفی کوتاه برای مشتریان بنویسید" },
+      bioDescription: { en: "This text may later appear on your public chauffeur profile.", nl: "Deze tekst kan later op uw openbare chauffeursprofiel verschijnen.", ar: "قد يظهر هذا النص لاحقاً في ملفك العام كسائق.", tr: "Bu metin daha sonra herkese açık şoför profilinizde görünebilir.", fa: "این متن ممکن است بعداً در نمایه عمومی راننده شما نمایش داده شود." },
+      bioCharactersRemaining: { en: "characters remaining", nl: "tekens resterend", ar: "حرفاً متبقياً", tr: "karakter kaldı", fa: "نویسه باقی مانده" },
+
+      // Labels for the user's saved interface-language preference.
+      preferredLanguageLabel: { en: "Preferred interface language", nl: "Voorkeurstaal van de interface", ar: "لغة الواجهة المفضلة", tr: "Tercih edilen arayüz dili", fa: "زبان ترجیحی رابط کاربری" },
+      preferredLanguageDescription: { en: "This language will be saved as your account preference.", nl: "Deze taal wordt opgeslagen als uw accountvoorkeur.", ar: "سيتم حفظ هذه اللغة كتفضيل لحسابك.", tr: "Bu dil hesap tercihiniz olarak kaydedilecektir.", fa: "این زبان به‌عنوان ترجیح حساب شما ذخیره می‌شود." },
   },
 
     // Text used by the chauffeur profile change-request page.

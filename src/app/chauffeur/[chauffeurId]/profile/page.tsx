@@ -4,6 +4,8 @@ import { TranslatedText } from "@/components/TranslatedText";
 import ChauffeurProfileForm from "@/components/ChauffeurProfileForm";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles } from "@/styles/classNames";
+// Provides the supported language type and validation.
+import { defaultLanguage, isLanguageCode } from "@/lib/i18n/languages";
 
 // Defines the chauffeur ID received from the dynamic URL.
 type ChauffeurProfilePageProps = { params: Promise<{ chauffeurId: string }> };
@@ -22,11 +24,21 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
     // Reads the chauffeur ID from the URL.
     const { chauffeurId } = await params;
 
-    // Loads only the fields needed by this profile page.
-    const { data: chauffeurRow, error } = await supabaseAdmin.from("chauffeurs").select("id, name, email, phone, service_area, account_status, accepts_pets").eq("id", chauffeurId).single();
+    // Loads editable and administrator-controlled chauffeur information.
+    const { data: chauffeurRow, error } = await supabaseAdmin
+    .from("chauffeurs")
+    .select("id, name, email, phone, company_name, license_number, service_area, account_status, accepts_pets, bio")
+    .eq("id", chauffeurId).single();
 
     // Stops the page when the chauffeur record cannot be found.
     if (error || !chauffeurRow) { console.error("Could not load chauffeur profile:", error); notFound(); }
+
+    // Loads the interface-language preference connected to this chauffeur account.
+    const { data: userProfile, error: profileError } = await supabaseAdmin.from("user_profiles").select("preferred_language").eq("chauffeur_id", chauffeurId).maybeSingle();
+    if (profileError) { console.error("Could not load preferred language:", profileError); }
+
+    // Uses English when the stored value is missing or unsupported.
+    const preferredLanguage = userProfile?.preferred_language && isLanguageCode(userProfile.preferred_language) ? userProfile.preferred_language : defaultLanguage;
 
     // Prepares the translated account-status label.
     const accountStatusTextKey = getAccountStatusTextKey(chauffeurRow.account_status);
@@ -46,18 +58,29 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
                     <h2 className="text-xl font-semibold text-white"><TranslatedText sectionName="chauffeurProfilePage" textKey="readOnlyTitle" /></h2>
                     <p className="mt-1 text-sm text-slate-400"><TranslatedText sectionName="chauffeurProfilePage" textKey="readOnlyDescription" /></p>
 
-                    {/* Shows protected account information and its related change-request action. */}
-                    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* Shows protected account and business information and its related change-request action. . */}
+                    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
-                            <span className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurProfilePage" textKey="nameLabel" />: </span>
+                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="nameLabel" />: </span>
                             <span className={formStyles.formInputInfoValue}>{chauffeurRow.name}</span>
                         </div>
                         <div>
-                            <span className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurProfilePage" textKey="emailLabel" />: </span> 
+                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="emailLabel" />: </span> 
                             <span className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.email}</span>
                         </div>
+                        {/* Shows the registered company name. */}
+                        <div className="text-start">
+                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="companyLabel" />: </span>
+                            <span className={formStyles.formInputInfoValue}>{chauffeurRow.company_name || "---"}</span>
+                        </div>
+
+                        {/* Shows the administrator-controlled licence number. */}
+                        <div className="text-start">
+                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="licenseLabel" />: </span>
+                            <span className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.license_number || "---"}</span>
+                        </div>
                         <div>
-                            <span className={formStyles.formInputInfoCaption}><TranslatedText sectionName="chauffeurProfilePage" textKey="statusLabel" />: </span>
+                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="statusLabel" />: </span>
                             <span className={formStyles.formInputInfoValue}>{accountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={accountStatusTextKey} /> : chauffeurRow.account_status}</span>
                         </div>
 
@@ -68,8 +91,8 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
                     </div>
                 </section>
 
-                {/* Allows updates only to phone, service area and pet acceptance. */}
-                <ChauffeurProfileForm chauffeur={chauffeurRow} />
+                {/* Allows the chauffeur to edit public and account-preference information. */}
+                <ChauffeurProfileForm chauffeur={chauffeurRow} preferredLanguage={preferredLanguage} />
             </div>
         </main>
     );

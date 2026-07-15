@@ -66,3 +66,12 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 html[dir="rtl"] .technical-value,
 html[dir="rtl"] .technical-input { text-align: right; }
+
+/* Keeps descriptive text readable while aligning it with the interface language. 
+  Description
+    English, Dutch and Turkish interfaces align text left.
+    Arabic and Farsi interfaces align text right.
+    unicode-bidi: plaintext helps mixed English, Arabic and Farsi text remain readable.
+*/
+.language-text-input { unicode-bidi: plaintext; text-align: left; }
+html[dir="rtl"] .language-text-input { text-align: right; }
