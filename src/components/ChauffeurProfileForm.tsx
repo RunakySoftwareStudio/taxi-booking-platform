@@ -7,6 +7,7 @@ import { getTranslation } from "@/lib/i18n/translations";
 import { formStyles, pageStyles } from "@/styles/classNames";
 // Reuses the central Voya Taxi language configuration.
 import { languages, type LanguageCode } from "@/lib/i18n/languages";
+import { isLanguageCode } from "@/lib/i18n/languages";
 
 // Defines chauffeur-table fields managed by this form.
 type ChauffeurProfileData = { id: string; phone: string; service_area: string | null; accepts_pets: boolean; bio: string | null };
@@ -18,7 +19,7 @@ type ChauffeurProfileFormProps = { chauffeur: ChauffeurProfileData; preferredLan
 export default function ChauffeurProfileForm({ chauffeur, preferredLanguage: savedPreferredLanguage }: ChauffeurProfileFormProps) {
     // Provides page refresh and the currently selected interface language.
     const router = useRouter();
-    const { languageCode } = useLanguage();
+    const { languageCode, setLanguageCode } = useLanguage();
 
     // Stores the biography and saved interface-language preference.
     const [bio, setBio] = useState(chauffeur.bio ?? "");
@@ -51,6 +52,9 @@ export default function ChauffeurProfileForm({ chauffeur, preferredLanguage: sav
             const result = await response.json();
 
             if (!response.ok) { setErrorMessage(result.message || getProfileText("updateFailedError")); return; }
+            
+            // Applies the saved preferred language immediately to the current page.
+            if (isLanguageCode(preferredLanguage)) { setLanguageCode(preferredLanguage);  }
 
             setSuccessMessage(getProfileText("updateSuccess"));
             router.refresh();

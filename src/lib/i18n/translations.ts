@@ -454,8 +454,10 @@ export const translations = {
       savingButton: { en: "Saving...", nl: "Opslaan...", ar: "جارٍ الحفظ...", tr: "Kaydediliyor...", fa: "در حال ذخیره..." },
       updateSuccess: { en: "Your information was updated successfully.", nl: "Uw gegevens zijn succesvol bijgewerkt.", ar: "تم تحديث معلوماتك بنجاح.", tr: "Bilgileriniz başarıyla güncellendi.", fa: "اطلاعات شما با موفقیت به‌روزرسانی شد." },
       updateFailedError: { en: "Your information could not be updated.", nl: "Uw gegevens konden niet worden bijgewerkt.", ar: "تعذر تحديث معلوماتك.", tr: "Bilgileriniz güncellenemedi.", fa: "اطلاعات شما به‌روزرسانی نشد." },
+      
       // Button for requesting an administrator-controlled profile change.
       requestChangeButton: { en: "Request a change", nl: "Wijziging aanvragen", ar: "طلب تعديل", tr: "Değişiklik talep et", fa: "درخواست تغییر" },
+      
       // Labels for the chauffeur's public biography.
       bioLabel: { en: "Biography", nl: "Biografie", ar: "نبذة شخصية", tr: "Biyografi", fa: "زندگی‌نامه کوتاه" },
       bioPlaceholder: { en: "Write a short introduction for clients", nl: "Schrijf een korte introductie voor klanten", ar: "اكتب نبذة قصيرة للعملاء", tr: "Müşteriler için kısa bir tanıtım yazın", fa: "یک معرفی کوتاه برای مشتریان بنویسید" },
@@ -465,7 +467,83 @@ export const translations = {
       // Labels for the user's saved interface-language preference.
       preferredLanguageLabel: { en: "Preferred interface language", nl: "Voorkeurstaal van de interface", ar: "لغة الواجهة المفضلة", tr: "Tercih edilen arayüz dili", fa: "زبان ترجیحی رابط کاربری" },
       preferredLanguageDescription: { en: "This language will be saved as your account preference.", nl: "Deze taal wordt opgeslagen als uw accountvoorkeur.", ar: "سيتم حفظ هذه اللغة كتفضيل لحسابك.", tr: "Bu dil hesap tercihiniz olarak kaydedilecektir.", fa: "این زبان به‌عنوان ترجیح حساب شما ذخیره می‌شود." },
-  },
+      
+      // Text used by the chauffeur profile-photo section.
+      profilePhotoTitle: { en: "Profile photo", nl: "Profielfoto", ar: "الصورة الشخصية", tr: "Profil fotoğrafı", fa: "عکس نمایه" },
+      profilePhotoDescription: { en: "Upload a photo that may later appear on your public chauffeur profile.", nl: "Upload een foto die later op uw openbare chauffeursprofiel kan verschijnen.", ar: "حمّل صورة قد تظهر لاحقاً في ملفك العام كسائق.", tr: "Daha sonra herkese açık şoför profilinizde görünebilecek bir fotoğraf yükleyin.", fa: "عکسی بارگذاری کنید که ممکن است بعداً در نمایه عمومی راننده شما نمایش داده شود." },
+
+      // File-selection information.
+      selectPhotoLabel: { en: "Choose an image", nl: "Afbeelding kiezen", ar: "اختر صورة", tr: "Fotoğraf seç", fa: "انتخاب تصویر" },
+      photoRequirements: { en: "JPEG, PNG or WebP. Maximum file size: 2 MB.", nl: "JPEG, PNG of WebP. Maximale bestandsgrootte: 2 MB.", ar: "JPEG أو PNG أو WebP. الحد الأقصى لحجم الملف: 2 ميغابايت.", tr: "JPEG, PNG veya WebP. En fazla dosya boyutu: 2 MB.", fa: "JPEG، PNG یا WebP. حداکثر اندازه فایل: ۲ مگابایت." },
+      noPhotoMessage: { en: "No profile photo uploaded yet.", nl: "Nog geen profielfoto geüpload.", ar: "لم يتم تحميل صورة شخصية بعد.", tr: "Henüz profil fotoğrafı yüklenmedi.", fa: "هنوز عکس نمایه‌ای بارگذاری نشده است." },
+
+      // Upload button and status messages.
+      uploadPhotoButton: { en: "Upload photo", nl: "Foto uploaden", ar: "تحميل الصورة", tr: "Fotoğraf yükle", fa: "بارگذاری عکس" },
+      replacePhotoButton: { en: "Replace photo", nl: "Foto vervangen", ar: "استبدال الصورة", tr: "Fotoğrafı değiştir", fa: "جایگزینی عکس" },
+      uploadingPhotoButton: { en: "Uploading...", nl: "Uploaden...", ar: "جارٍ التحميل...", tr: "Yükleniyor...", fa: "در حال بارگذاری..." },
+      photoUploadSuccess: { en: "Your profile photo was uploaded successfully.", nl: "Uw profielfoto is succesvol geüpload.", ar: "تم تحميل صورتك الشخصية بنجاح.", tr: "Profil fotoğrafınız başarıyla yüklendi.", fa: "عکس نمایه شما با موفقیت بارگذاری شد." },
+      photoUploadFailed: { en: "The profile photo could not be uploaded.", nl: "De profielfoto kon niet worden geüpload.", ar: "تعذر تحميل الصورة الشخصية.", tr: "Profil fotoğrafı yüklenemedi.", fa: "عکس نمایه بارگذاری نشد." },
+      
+      // Text used when removing an existing chauffeur profile photo.
+      removePhotoButton: { en: "Remove photo", nl: "Foto verwijderen", ar: "حذف الصورة", tr: "Fotoğrafı kaldır", fa: "حذف عکس" },
+      removingPhotoButton: { en: "Removing...", nl: "Verwijderen...", ar: "جارٍ الحذف...", tr: "Kaldırılıyor...", fa: "در حال حذف..." },
+      removePhotoConfirm: { en: "Are you sure you want to remove your profile photo?", nl: "Weet u zeker dat u uw profielfoto wilt verwijderen?", ar: "هل أنت متأكد من أنك تريد حذف صورتك الشخصية؟", tr: "Profil fotoğrafınızı kaldırmak istediğinizden emin misiniz?", fa: "آیا مطمئن هستید که می‌خواهید عکس نمایه خود را حذف کنید؟" },
+      photoRemoveSuccess: { en: "Your profile photo was removed successfully.", nl: "Uw profielfoto is succesvol verwijderd.", ar: "تم حذف صورتك الشخصية بنجاح.", tr: "Profil fotoğrafınız başarıyla kaldırıldı.", fa: "عکس نمایه شما با موفقیت حذف شد." },
+      photoRemoveFailed: { en: "The profile photo could not be removed.", nl: "De profielfoto kon niet worden verwijderd.", ar: "تعذر حذف الصورة الشخصية.", tr: "Profil fotoğrafı kaldırılamadı.", fa: "عکس نمایه حذف نشد." },
+      
+      // Clear instructions for the two-step photo upload process.
+      choosePhotoFirstButton: {
+          en: "Choose a photo first",
+          nl: "Kies eerst een foto",
+          ar: "اختر صورة أولاً",
+          tr: "Önce bir fotoğraf seçin",
+          fa: "ابتدا یک عکس انتخاب کنید",
+      },
+      uploadSelectedPhotoButton: {
+          en: "Upload selected photo",
+          nl: "Geselecteerde foto uploaden",
+          ar: "رفع الصورة المحددة",
+          tr: "Seçilen fotoğrafı yükle",
+          fa: "بارگذاری عکس انتخاب‌شده",
+      },
+      replaceSelectedPhotoButton: {
+          en: "Replace with selected photo",
+          nl: "Vervangen door geselecteerde foto",
+          ar: "الاستبدال بالصورة المحددة",
+          tr: "Seçilen fotoğrafla değiştir",
+          fa: "جایگزینی با عکس انتخاب‌شده",
+      },
+      choosePhotoFirstMessage: {
+          en: "Please choose a photo before clicking upload.",
+          nl: "Kies eerst een foto voordat u op uploaden klikt.",
+          ar: "يرجى اختيار صورة قبل النقر على زر الرفع.",
+          tr: "Yükle düğmesine basmadan önce bir fotoğraf seçin.",
+          fa: "لطفاً قبل از کلیک روی بارگذاری، یک عکس انتخاب کنید.",
+      },
+      // Reminds the chauffeur that selecting a photo does not upload it automatically.
+      uploadPhotoReminder: {
+          en: "Please upload the selected photo to finish.",
+          nl: "Upload de geselecteerde foto om het proces af te ronden.",
+          ar: "يرجى رفع الصورة المحددة لإكمال العملية.",
+          tr: "İşlemi tamamlamak için seçilen fotoğrafı yükleyin.",
+          fa: "لطفاً برای تکمیل فرایند، عکس انتخاب‌شده را بارگذاری کنید.",
+      },
+      // Text for the custom translated file selector.
+      chooseFileButton: {
+          en: "Choose file",
+          nl: "Bestand kiezen",
+          ar: "اختيار ملف",
+          tr: "Dosya seç",
+          fa: "انتخاب فایل",
+      },
+      noFileChosenText: {
+          en: "No file chosen",
+          nl: "Geen bestand gekozen",
+          ar: "لم يتم اختيار ملف",
+          tr: "Dosya seçilmedi",
+          fa: "فایلی انتخاب نشده است",
+      },
+    },
 
     // Text used by the chauffeur profile change-request page.
   chauffeurChangeRequestPage: {

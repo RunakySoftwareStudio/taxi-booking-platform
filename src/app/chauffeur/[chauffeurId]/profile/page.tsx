@@ -6,6 +6,8 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles } from "@/styles/classNames";
 // Provides the supported language type and validation.
 import { defaultLanguage, isLanguageCode } from "@/lib/i18n/languages";
+// Displays and uploads the chauffeur's public profile photo.
+import ChauffeurProfilePhotoForm from "@/components/ChauffeurProfilePhotoForm";
 
 // Defines the chauffeur ID received from the dynamic URL.
 type ChauffeurProfilePageProps = { params: Promise<{ chauffeurId: string }> };
@@ -26,12 +28,17 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
 
     // Loads editable and administrator-controlled chauffeur information.
     const { data: chauffeurRow, error } = await supabaseAdmin
-    .from("chauffeurs")
-    .select("id, name, email, phone, company_name, license_number, service_area, account_status, accepts_pets, bio")
-    .eq("id", chauffeurId).single();
+        .from("chauffeurs")
+        .select("id, name, email, phone, company_name, license_number, service_area, account_status, accepts_pets, bio, profile_photo_path")
+        .eq("id", chauffeurId).single();
 
     // Stops the page when the chauffeur record cannot be found.
     if (error || !chauffeurRow) { console.error("Could not load chauffeur profile:", error); notFound(); }
+
+    // Converts the stored Storage path into a public image URL.
+    const profilePhotoUrl = chauffeurRow.profile_photo_path ? supabaseAdmin.storage
+        .from("chauffeur-profile-photos")
+        .getPublicUrl(chauffeurRow.profile_photo_path).data.publicUrl : null;
 
     // Loads the interface-language preference connected to this chauffeur account.
     const { data: userProfile, error: profileError } = await supabaseAdmin.from("user_profiles").select("preferred_language").eq("chauffeur_id", chauffeurId).maybeSingle();
@@ -91,8 +98,13 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
                     </div>
                 </section>
 
+
+                {/* Shows the current public photo and allows a secure replacement. */}
+                <ChauffeurProfilePhotoForm chauffeurId={chauffeurId} currentPhotoUrl={profilePhotoUrl} />
+
                 {/* Allows the chauffeur to edit public and account-preference information. */}
                 <ChauffeurProfileForm chauffeur={chauffeurRow} preferredLanguage={preferredLanguage} />
+
             </div>
         </main>
     );

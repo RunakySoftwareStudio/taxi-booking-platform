@@ -55,6 +55,7 @@ CREATE TABLE chauffeurs (
   rating NUMERIC(2, 1) DEFAULT 0.0,
   accepts_pets boolean not null default false,
   bio TEXT,
+  profile_photo_path TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -211,6 +212,8 @@ CHECK (vehicle_year IS NULL OR (vehicle_year >= 1980 AND vehicle_year <= 2100));
 -- Limits the public chauffeur biography.
 ALTER TABLE public.chauffeurs ADD CONSTRAINT chauffeurs_bio_length CHECK (bio IS NULL OR length(bio) <= 1000);
 
+-- Limits the stored Supabase Storage path.
+ALTER TABLE public.chauffeurs ADD CONSTRAINT chauffeurs_profile_photo_path_length CHECK (profile_photo_path IS NULL OR length(profile_photo_path) <= 500);
 --===================================================================
 
 
