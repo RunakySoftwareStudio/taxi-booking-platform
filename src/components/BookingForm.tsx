@@ -8,6 +8,8 @@ import { formStyles, pageStyles, tableStyles } from "@/styles/classNames";
 import { getTranslation } from "@/lib/i18n/translations";
 import { useLanguage } from "@/components/LanguageProvider";
 import Link from "next/link";
+import MapboxLocationSearchInput from "@/components/MapboxLocationSearchInput";
+import type { RetrievedLocation, RouteEstimate, RouteEstimateResponse } from "@/types/mapboxType";
 
 function getTodayDateInputValue() {
   const today = new Date();
@@ -33,6 +35,14 @@ export default function BookingForm() {
     const todayDate = getTodayDateInputValue();
     const bookingResultRef = useRef<HTMLDivElement | null>(null);
     const [hasPets, setHasPets] = useState(false);
+    // Stores the exact Mapbox locations selected by the client.
+    const [pickupLocation, setPickupLocation] = useState<RetrievedLocation | null>(null);
+    const [destinationLocation, setDestinationLocation] = useState<RetrievedLocation | null>(null);
+
+    // Stores the automatically calculated Mapbox route information.
+    const [routeEstimate, setRouteEstimate] = useState<RouteEstimate | null>(null);
+    const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+    const [routeEstimateError, setRouteEstimateError] = useState("");
 
     // When submittedBooking changes from null to a real booking, scroll smoothly to the result area.
     useEffect(() => {
@@ -43,6 +53,61 @@ export default function BookingForm() {
             });
         }
     }, [submittedBooking]);
+
+    // Updates pickup and prepares a new route calculation.
+    function handlePickupLocationChange(locationValue: RetrievedLocation | null) {
+        setPickupLocation(locationValue);
+        setRouteEstimate(null);
+        setRouteEstimateError("");
+        setIsCalculatingRoute(Boolean(locationValue && destinationLocation));
+    }
+
+    // Updates destination and prepares a new route calculation.
+    function handleDestinationLocationChange(locationValue: RetrievedLocation | null) {
+        setDestinationLocation(locationValue);
+        setRouteEstimate(null);
+        setRouteEstimateError("");
+        setIsCalculatingRoute(Boolean(pickupLocation && locationValue));
+    }
+
+    // useeffect runs when something changes(pickupLocation or destinationLocation ). Requests a Mapbox route whenever both selected locations change.
+    // the automatic calculation effect
+    useEffect(() => {
+        if (!pickupLocation || !destinationLocation) { return; }
+
+        const controller = new AbortController();
+        async function loadRouteEstimate() {
+            try {
+                const response = await fetch("/api/mapbox/route-estimate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        pickup: pickupLocation?.coordinate,
+                        destination: destinationLocation?.coordinate,
+                    }),
+                    signal: controller.signal,
+                });
+
+                const result = await response.json() as RouteEstimateResponse & { message?: string };
+                if (!response.ok || !result.route) { throw new Error(result.message || "Route calculation failed."); }
+
+                setRouteEstimate(result.route);
+                setRouteEstimateError("");
+            } catch (error) {
+                if (error instanceof Error && error.name === "AbortError") { return; }
+
+                console.error("Could not calculate the Mapbox route:", error);
+                setRouteEstimate(null);
+                setRouteEstimateError(getTranslation("bookingForm", "routeEstimateFailedText", languageCode));
+            } finally {
+                if (!controller.signal.aborted) { setIsCalculatingRoute(false); }
+            }
+        }
+
+        void loadRouteEstimate();
+
+        return () => controller.abort();
+    }, [pickupLocation, destinationLocation, languageCode]);
 
     // Converts a stable trip-type database value into translated visible text.
     function getTripTypeLabel(tripTypeValue: string) {
@@ -87,6 +152,7 @@ export default function BookingForm() {
             destination: String(formData.get("destination") || ""),
             date: String(formData.get("date") || ""),
             time: String(formData.get("time") || ""),
+            estimatedDurationMinutes: String(formData.get("estimatedDurationMinutes") || "60"),
             passengers: String(formData.get("passengers") || ""),
             luggage: String(formData.get("luggage") || ""),
             name: String(formData.get("name") || ""),
@@ -101,7 +167,20 @@ export default function BookingForm() {
 
     function handleReviewBooking(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-
+        // Prevents manually typed text from being submitted without selecting Mapbox results.
+        if (!pickupLocation || !destinationLocation) {
+            setErrorMessage(getBookingFormText("locationSelectResultText"));
+            return;
+        }
+        // Waits for a valid route calculation before opening the review screen.
+        if (isCalculatingRoute) {
+            setErrorMessage(getBookingFormText("routeCalculationPendingText"));
+            return;
+        }
+        if (!routeEstimate) {
+            setErrorMessage(getBookingFormText("routeEstimateFailedText"));
+            return;
+        }
         const form = event.currentTarget;
         const formData = new FormData(form);
         const bookingRequest = createBookingRequest(formData);
@@ -111,6 +190,8 @@ export default function BookingForm() {
         setSubmittedBooking(null);
         setBookingDraft(bookingRequest);
         setIsReviewing(true);
+        setRouteEstimate(null);
+        setRouteEstimateError("");
     }
 
     function handleBackToEdit() {
@@ -149,6 +230,8 @@ export default function BookingForm() {
             setBookingDraft(null);
             setIsReviewing(false);
             setHasPets(false);
+            setPickupLocation(null);
+            setDestinationLocation(null);
         } catch (error) {
             console.error("Could not submit booking:", error);
             setErrorMessage(getBookingFormText("submitErrorMessage"));
@@ -202,6 +285,10 @@ export default function BookingForm() {
                                 <span className={formStyles.formP}>{bookingDraft.time}</span>
                             </div>
                             <div>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryEstimatedDurationLabel")} </span>
+                                <span className={formStyles.formP}> {bookingDraft.estimatedDurationMinutes} {getBookingFormText("minutesUnit")} </span>
+                            </div>
+                            <div>
                                 <span className={formStyles.formPCyan}> {getBookingFormText("summaryPassengersLabel")} </span>
                                 <span className={formStyles.formP}>{bookingDraft.passengers}</span>
                             </div>
@@ -244,14 +331,45 @@ export default function BookingForm() {
             ) : (
                 <form onSubmit={handleReviewBooking} className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
                     <div className="grid gap-5 sm:gap-6 md:grid-cols-2">
-                        <div>
-                            <label htmlFor="pickup" className="mb-2 block text-sm font-medium"> {getBookingFormText("pickupLabel")} </label>
-                            <input id="pickup" name="pickup" type="text" required placeholder={getBookingFormText("pickupPlaceholder")} defaultValue={bookingDraft?.pickup || ""} className={formStyles.inputUserPage} />                        </div>
-                        <div>
-                            <label htmlFor="destination" className="mb-2 block text-sm font-medium"> {getBookingFormText("destinationLabel")} </label>
-                            <input id="destination" name="destination" type="text" required placeholder={getBookingFormText("destinationPlaceholder")} defaultValue={bookingDraft?.destination || ""} className={formStyles.inputUserPage} />
-                        </div>
+                        <MapboxLocationSearchInput
+                            id="pickup"
+                            name="pickup"
+                            label={getBookingFormText("pickupLabel")}
+                            selectedLocation={pickupLocation}
+                            onSelectedLocationChange={handlePickupLocationChange}
+                        />
 
+                        <MapboxLocationSearchInput
+                            id="destination"
+                            name="destination"
+                            label={getBookingFormText("destinationLabel")}
+                            selectedLocation={destinationLocation}
+                            onSelectedLocationChange={handleDestinationLocationChange}
+                        />
+                        {/* Shows the automatically calculated Mapbox route estimate. */}
+                        {(isCalculatingRoute || routeEstimate || routeEstimateError) && (
+                            <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-4 md:col-span-2">
+                                <h3 className="font-semibold text-yellow-300 text-start">{getBookingFormText("routeEstimateTitle")}</h3>
+                                {isCalculatingRoute && (<p className="mt-2 text-sm text-slate-300 text-start">{getBookingFormText("routeCalculatingText")}</p>  )}
+                                {routeEstimate && !isCalculatingRoute && (
+                                    <>
+                                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                            <p className="text-start">
+                                                <span className="font-semibold text-cyan-300">{getBookingFormText("routeDistanceLabel")} </span>
+                                                <span className="technical-value">{routeEstimate.distanceKilometers} {getBookingFormText("routeKilometersUnit")}</span>
+                                            </p>
+
+                                            <p className="text-start">
+                                                <span className="font-semibold text-cyan-300">{getBookingFormText("routeDurationLabel")} </span>
+                                                <span className="technical-value">{routeEstimate.durationMinutes} {getBookingFormText("routeMinutesUnit")}</span>
+                                            </p>
+                                        </div>
+                                        <p className="mt-3 text-sm text-slate-400 text-start">{getBookingFormText("routeEstimateNotice")}</p>
+                                    </>
+                                )}
+                                {routeEstimateError && <p className="mt-2 text-sm text-red-300 text-start">{routeEstimateError}</p>}
+                            </div>
+                        )}
                         <div>
                             <label htmlFor="date" className="mb-2 block text-sm font-medium"> {getBookingFormText("dateLabel")} </label>
                             <input id="date" name="date" type="date" min={todayDate} max="2099-12-31" required defaultValue={bookingDraft?.date || ""} className={formStyles.inputDateUserPage} />
@@ -261,7 +379,7 @@ export default function BookingForm() {
                             <label htmlFor="time" className="mb-2 block text-sm font-medium"> {getBookingFormText("timeLabel")} </label>
                             <input id="time" name="time" type="time" required defaultValue={bookingDraft?.time || ""} className={formStyles.inputDateUserPage} />
                         </div>
-
+  
                         <div>
                             <label htmlFor="passengers" className="mb-2 block text-sm font-medium"> {getBookingFormText("passengersLabel")} </label>
                             <input id="passengers" name="passengers" type="number" min="1" required placeholder={getBookingFormText("passengersPlaceholder")} defaultValue={bookingDraft?.passengers || ""} className={formStyles.inputUserPage} />

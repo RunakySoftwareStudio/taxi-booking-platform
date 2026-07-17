@@ -2536,13 +2536,7 @@ export const translations = {
       tr: "Durum:",
       fa: "وضعیت:",
     },
-    bookingReferenceTitle: {
-      en: "Your booking reference",
-      nl: "Uw boekingsreferentie",
-      ar: "مرجع الحجز الخاص بك",
-      tr: "Rezervasyon referansınız",
-      fa: "شناسه رزرو شما",
-    },
+    bookingReferenceTitle: { en: "Your booking reference", nl: "Uw boekingsreferentie", ar: "مرجع الحجز الخاص بك", tr: "Rezervasyon referansınız", fa: "شناسه رزرو شما", },
     bookingReferenceDescription: {
       en: "Save this booking reference. You can use it later together with your email address to check your booking status.",
       nl: "Bewaar deze boekingsreferentie. U kunt deze later samen met uw e-mailadres gebruiken om uw boekingsstatus te controleren.",
@@ -2550,13 +2544,32 @@ export const translations = {
       tr: "Bu rezervasyon referansını saklayın. Daha sonra e-posta adresinizle birlikte rezervasyon durumunuzu kontrol etmek için kullanabilirsiniz.",
       fa: "این شناسه رزرو را نگه دارید. بعداً می‌توانید همراه با نشانی ایمیل خود از آن برای بررسی وضعیت رزرو استفاده کنید.",
     },
-    checkBookingStatusButton: {
-      en: "Check booking status",
-      nl: "Boekingsstatus controleren",
-      ar: "التحقق من حالة الحجز",
-      tr: "Rezervasyon durumunu kontrol et",
-      fa: "بررسی وضعیت رزرو",
-    },
+    
+    checkBookingStatusButton: { en: "Check booking status", nl: "Boekingsstatus controleren",  ar: "التحقق من حالة الحجز",  tr: "Rezervasyon durumunu kontrol et",  fa: "بررسی وضعیت رزرو", },
+    
+    // Estimated trip-duration field and review text.
+    summaryEstimatedDurationLabel: { en: "Estimated duration:", nl: "Geschatte duur:", ar: "المدة التقديرية:", tr: "Tahmini süre:", fa: "مدت تخمینی:" },
+    minutesUnit: { en: "minutes", nl: "minuten", ar: "دقيقة", tr: "dakika", fa: "دقیقه" },
+    
+    // Text used by the Mapbox location-search fields.
+    locationSearchPlaceholder: { en: "Start typing an address or place", nl: "Begin met het typen van een adres of plaats", ar: "ابدأ بكتابة عنوان أو مكان", tr: "Bir adres veya yer yazmaya başlayın", fa: "شروع به نوشتن آدرس یا مکان کنید" },
+    locationSearchingText: { en: "Searching locations...", nl: "Locaties zoeken...", ar: "جارٍ البحث عن المواقع...", tr: "Konumlar aranıyor...", fa: "در حال جستجوی مکان‌ها..." },
+    locationNoResultsText: { en: "No matching locations found.", nl: "Geen overeenkomende locaties gevonden.", ar: "لم يتم العثور على مواقع مطابقة.", tr: "Eşleşen konum bulunamadı.", fa: "مکان مطابقی پیدا نشد." },
+    locationSelectResultText: { en: "Select a location from the list.", nl: "Selecteer een locatie uit de lijst.", ar: "اختر موقعًا من القائمة.", tr: "Listeden bir konum seçin.", fa: "یک مکان را از فهرست انتخاب کنید." },
+    locationSearchFailedText: { en: "Locations could not be loaded.", nl: "Locaties konden niet worden geladen.", ar: "تعذر تحميل المواقع.", tr: "Konumlar yüklenemedi.", fa: "مکان‌ها بارگذاری نشدند." },
+    locationSelectedText: { en: "Selected location", nl: "Geselecteerde locatie", ar: "الموقع المحدد", tr: "Seçilen konum", fa: "مکان انتخاب‌شده" },
+    changeLocationButton: { en: "Change location", nl: "Locatie wijzigen", ar: "تغيير الموقع", tr: "Konumu değiştir", fa: "تغییر مکان" },
+
+    // Text shown while calculating and displaying the Mapbox route estimate.
+    routeEstimateTitle: { en: "Estimated journey", nl: "Geschatte rit", ar: "الرحلة المقدرة", tr: "Tahmini yolculuk", fa: "سفر تخمینی" },
+    routeCalculatingText: { en: "Calculating distance and travel time...", nl: "Afstand en reistijd berekenen...", ar: "جارٍ حساب المسافة ووقت السفر...", tr: "Mesafe ve yolculuk süresi hesaplanıyor...", fa: "در حال محاسبه فاصله و زمان سفر..." },
+    routeDistanceLabel: { en: "Distance:", nl: "Afstand:", ar: "المسافة:", tr: "Mesafe:", fa: "فاصله:" },
+    routeDurationLabel: { en: "Estimated time:", nl: "Geschatte tijd:", ar: "الوقت المقدر:", tr: "Tahmini süre:", fa: "زمان تخمینی:" },
+    routeKilometersUnit: { en: "km", nl: "km", ar: "كم", tr: "km", fa: "کیلومتر" },
+    routeMinutesUnit: { en: "minutes", nl: "minuten", ar: "دقيقة", tr: "dakika", fa: "دقیقه" },
+    routeEstimateNotice: { en: "Travel time is an estimate and may change because of traffic.", nl: "De reistijd is een schatting en kan door verkeer veranderen.", ar: "وقت السفر تقديري وقد يتغير بسبب حركة المرور.", tr: "Yolculuk süresi tahminidir ve trafiğe göre değişebilir.", fa: "زمان سفر تخمینی است و ممکن است به دلیل ترافیک تغییر کند." },
+    routeEstimateFailedText: { en: "The route estimate could not be calculated.", nl: "De geschatte route kon niet worden berekend.", ar: "تعذر حساب تقدير الرحلة.", tr: "Rota tahmini hesaplanamadı.", fa: "محاسبه مسیر تخمینی انجام نشد." },
+    routeCalculationPendingText: { en: "Please wait until the route calculation is finished.", nl: "Wacht tot de routeberekening is voltooid.", ar: "يرجى الانتظار حتى يكتمل حساب المسار.", tr: "Lütfen rota hesaplaması tamamlanana kadar bekleyin.", fa: "لطفاً تا پایان محاسبه مسیر صبر کنید." },
   },
 
   language: {

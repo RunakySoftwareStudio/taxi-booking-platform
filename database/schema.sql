@@ -123,6 +123,7 @@ CREATE TYPE availability_status AS ENUM (
 CREATE TABLE IF NOT EXISTS chauffeur_availability (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     chauffeur_id UUID NOT NULL REFERENCES chauffeurs(id) ON DELETE CASCADE,
+    booking_id UUID,
     available_date DATE NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
@@ -144,6 +145,7 @@ CREATE TABLE bookings (
   destination TEXT NOT NULL,
   pickup_date DATE NOT NULL,
   pickup_time TIME NOT NULL,
+  estimated_duration_minutes INTEGER NOT NULL DEFAULT 60,
   passengers INTEGER NOT NULL DEFAULT 1,
   luggage INTEGER DEFAULT 0,
   trip_type trip_type NOT NULL,
@@ -154,7 +156,17 @@ CREATE TABLE bookings (
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
+-- Connects booking-created busy periods to their booking.
+ALTER TABLE chauffeur_availability
+ADD CONSTRAINT chauffeur_availability_booking_id_fkey
+FOREIGN KEY (booking_id)
+REFERENCES bookings(id)
+ON DELETE CASCADE;
 
+-- Booking-linked availability periods must always use the busy status.
+ALTER TABLE chauffeur_availability
+ADD CONSTRAINT chauffeur_availability_booking_status_check
+CHECK (booking_id IS NULL OR status = 'busy');
 --===================================================================
 -- Indexes for faster searching
 CREATE INDEX idx_bookings_client_id ON bookings(client_id); /* Find all bookings from one client */
@@ -174,6 +186,20 @@ create index if not exists chauffeur_change_requests_chauffeur_id_idx on public.
 -- Allows only one pending request per chauffeur and protected field.
 create unique index if not exists chauffeur_change_requests_one_pending_field_idx on public.chauffeur_change_requests(chauffeur_id, field_name) where status = 'pending';
 
+-- Finds booking-created busy periods quickly.
+CREATE INDEX chauffeur_availability_booking_id_idx
+ON chauffeur_availability(booking_id)
+WHERE booking_id IS NOT NULL;
+
+-- Prevents duplicate busy periods for the same booking.
+CREATE UNIQUE INDEX chauffeur_availability_booking_period_unique
+ON chauffeur_availability(
+    booking_id,
+    available_date,
+    start_time,
+    end_time
+)
+WHERE booking_id IS NOT NULL;
 --===================================================================
 -- Data validation rules
 ALTER TABLE bookings
@@ -184,6 +210,11 @@ CHECK (passengers > 0);
 ALTER TABLE bookings
 ADD CONSTRAINT bookings_luggage_not_negative
 CHECK (luggage >= 0);
+
+-- Booking duration must be between 15 minutes and 24 hours.
+ALTER TABLE bookings
+ADD CONSTRAINT bookings_estimated_duration_minutes_check
+CHECK (estimated_duration_minutes BETWEEN 15 AND 1440);
 
 -- Rating must be between 0 and 5
 ALTER TABLE chauffeurs

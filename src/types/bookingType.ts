@@ -6,6 +6,7 @@ export type BookingRequest = {
   destination: string;
   date: string;
   time: string;
+  estimatedDurationMinutes: string;
   passengers: string;
   luggage: string;
   name: string;
