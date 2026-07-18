@@ -7,6 +7,7 @@ export type BookingSummary = {
     destination: string;
     date: string;
     time: string;
+    estimatedDurationMinutes: number;
 
     passengers: number;
     luggage: number | null;

@@ -10,6 +10,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import Link from "next/link";
 import MapboxLocationSearchInput from "@/components/MapboxLocationSearchInput";
 import type { RetrievedLocation, RouteEstimate, RouteEstimateResponse } from "@/types/mapboxType";
+import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 
 function getTodayDateInputValue() {
   const today = new Date();
@@ -152,7 +153,7 @@ export default function BookingForm() {
             destination: String(formData.get("destination") || ""),
             date: String(formData.get("date") || ""),
             time: String(formData.get("time") || ""),
-            estimatedDurationMinutes: String(formData.get("estimatedDurationMinutes") || "60"),
+            estimatedDurationMinutes: String(routeEstimate?.durationMinutes || ""),
             passengers: String(formData.get("passengers") || ""),
             luggage: String(formData.get("luggage") || ""),
             name: String(formData.get("name") || ""),
@@ -278,11 +279,11 @@ export default function BookingForm() {
                         <div className="grid gap-2 grid-cols-2">
                             <div>
                                 <span className={formStyles.formPCyan}> {getBookingFormText("summaryDateLabel")} </span>
-                                <span className={formStyles.formP}>{bookingDraft.date}</span>
+                                <span className={formStyles.formP}>{formatShortDate(bookingDraft.date)}</span>
                             </div>
                             <div>
                                 <span className={formStyles.formPCyan}> {getBookingFormText("summaryTimeLabel")} </span>
-                                <span className={formStyles.formP}>{bookingDraft.time}</span>
+                                <span className={formStyles.formP}>{formatShortTime(bookingDraft.time)}</span>
                             </div>
                             <div>
                                 <span className={formStyles.formPCyan}> {getBookingFormText("summaryEstimatedDurationLabel")} </span>
@@ -466,12 +467,13 @@ export default function BookingForm() {
                     <div className="grid grid-cols-2">
                         <div>
                             <span className={formStyles.formPCyan}> {getBookingFormText("summaryDateLabel")} </span>
-                            <span className={formStyles.formP}>{submittedBooking.date}</span>
+                            <span className={formStyles.formP}>{formatShortDate(submittedBooking.date)}</span>
                         </div>
                         <div>
                             <span className={formStyles.formPCyan}> {getBookingFormText("summaryTimeLabel")} </span>
-                            <span className={formStyles.formP}>{submittedBooking.time}</span>
+                            <span className={formStyles.formP}>{formatShortTime(submittedBooking.time)}</span>
                         </div>
+
                         <div>
                             <span className={formStyles.formPCyan}> {getBookingFormText("summaryPassengersLabel")} </span>
                             <span className={formStyles.formP}>{submittedBooking.passengers}</span>
@@ -484,6 +486,11 @@ export default function BookingForm() {
                             <span className={formStyles.formPCyan}> {getBookingFormText("summaryTripTypeLabel")} </span>
                             <span className={formStyles.formP}> {getTripTypeLabel(submittedBooking.tripType)} </span>
                         </div>
+                        <div>
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryEstimatedDurationLabel")} </span>
+                            <span className={formStyles.formP}> {submittedBooking.estimatedDurationMinutes} {getBookingFormText("minutesUnit")} </span>
+                        </div>
+
                         <div>
                             <span className={formStyles.formPCyan}> {getBookingFormText("summaryStatusLabel")} </span>
                             <span className={formStyles.formP}>  {getBookingStatusLabel(submittedBooking.status)}</span>

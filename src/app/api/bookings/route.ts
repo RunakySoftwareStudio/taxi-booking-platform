@@ -21,6 +21,12 @@ export async function POST(request: Request) {
         const clientName = bookingRequest.name.trim();
         const clientPhone = bookingRequest.phone.trim();
 
+        // Converts and validates the Mapbox-calculated trip duration.
+        const estimatedDurationMinutes = Number(bookingRequest.estimatedDurationMinutes);
+        if (!Number.isInteger(estimatedDurationMinutes) || estimatedDurationMinutes < 15 || estimatedDurationMinutes > 1440) {
+            return NextResponse.json({ message: "The estimated trip duration is invalid." }, { status: 400 });
+        }
+
         const { data: existingClients, error: findClientError } = await supabaseAdmin
             .from("clients")
             .select("id, name, email, phone")
@@ -94,6 +100,7 @@ export async function POST(request: Request) {
                 destination: bookingRequest.destination,
                 pickup_date: bookingRequest.date,
                 pickup_time: bookingRequest.time,
+                estimated_duration_minutes: estimatedDurationMinutes,
                 passengers: Number(bookingRequest.passengers),
                 luggage: Number(bookingRequest.luggage || 0),
                 trip_type: bookingRequest.tripType,
@@ -118,6 +125,7 @@ export async function POST(request: Request) {
             destination: savedBooking.destination,
             date: savedBooking.pickup_date,
             time: savedBooking.pickup_time,
+            estimatedDurationMinutes: Number(savedBooking.estimated_duration_minutes),
 
             passengers: savedBooking.passengers,
             luggage: savedBooking.luggage,

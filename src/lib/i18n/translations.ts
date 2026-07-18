@@ -2548,7 +2548,7 @@ export const translations = {
     checkBookingStatusButton: { en: "Check booking status", nl: "Boekingsstatus controleren",  ar: "التحقق من حالة الحجز",  tr: "Rezervasyon durumunu kontrol et",  fa: "بررسی وضعیت رزرو", },
     
     // Estimated trip-duration field and review text.
-    summaryEstimatedDurationLabel: { en: "Estimated duration:", nl: "Geschatte duur:", ar: "المدة التقديرية:", tr: "Tahmini süre:", fa: "مدت تخمینی:" },
+    summaryEstimatedDurationLabel: { en: "Estimated duration:", nl: "Geschatte tijd:", ar: "المدة التقديرية:", tr: "Tahmini süre:", fa: "مدت تخمینی:" },
     minutesUnit: { en: "minutes", nl: "minuten", ar: "دقيقة", tr: "dakika", fa: "دقیقه" },
     
     // Text used by the Mapbox location-search fields.
