@@ -1,6 +1,9 @@
 -- Enable UUID generation . We want every database row to have a unique ID like this:
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Supports exclusion constraints combining UUID equality with time ranges.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 -- Booking status values used by the platform
 CREATE TYPE booking_status AS ENUM (
   'pending',
@@ -200,50 +203,111 @@ ON chauffeur_availability(
     end_time
 )
 WHERE booking_id IS NOT NULL;
---===================================================================
+--=================================================================================================
 -- Data validation rules
+--=================================================================================================
 ALTER TABLE bookings
 ADD CONSTRAINT bookings_passengers_positive
 CHECK (passengers > 0);
 
+-----------------------------------------------------
 -- Luggage cannot be negative
+-----------------------------------------------------
 ALTER TABLE bookings
 ADD CONSTRAINT bookings_luggage_not_negative
 CHECK (luggage >= 0);
 
+-----------------------------------------------------
 -- Booking duration must be between 15 minutes and 24 hours.
+-----------------------------------------------------
 ALTER TABLE bookings
 ADD CONSTRAINT bookings_estimated_duration_minutes_check
 CHECK (estimated_duration_minutes BETWEEN 15 AND 1440);
 
+-----------------------------------------------------
 -- Rating must be between 0 and 5
+-----------------------------------------------------
 ALTER TABLE chauffeurs
 ADD CONSTRAINT chauffeurs_rating_range
 CHECK (rating >= 0.0 AND rating <= 5.0);
 
+-----------------------------------------------------
 -- Vehicle must have seats
+-----------------------------------------------------
 ALTER TABLE vehicles
 ADD CONSTRAINT vehicles_seats_positive
 CHECK (seats > 0);
 
+-----------------------------------------------------
 -- Vehicle luggage capacity cannot be negative
+-----------------------------------------------------
 ALTER TABLE vehicles
 ADD CONSTRAINT vehicles_luggage_capacity_not_negative
 CHECK (luggage_capacity >= 0);
 
+-----------------------------------------------------
 -- Availability end time must be after start time
+-----------------------------------------------------
 ALTER TABLE chauffeur_availability
 ADD CONSTRAINT chauffeur_availability_time_order
 CHECK (end_time > start_time);
 
+/*-----------------------------------------------------
+  -- Prevents overlapping busy periods for the same chauffeur.
+  -- Two busy rows cannot have the same chauffeur_id when their time ranges overlap.
+  This part:
+    chauffeur_id with =,
+    tsrange(...) with &&
+    means PostgreSQL rejects a row only when both conditions are true:
+
+  The chauffeur IDs are equal AND the time ranges overlap
+
+  For example:
+    Same chauffeur + overlapping time  → rejected
+    Same chauffeur + separate time     → allowed
+    Different chauffeur + same time    → allowed
+*/
+-----------------------------------------------------
+alter table public.chauffeur_availability
+-- Adds a new database rule with this name.
+add constraint chauffeur_availability_no_overlapping_busy
+-- An exclusion constraint compares a new row with existing rows.
+-- GiST allows PostgreSQL to efficiently compare UUID values and time ranges.
+exclude using gist (
+    -- Compare chauffeur IDs using equality =.
+    chauffeur_id with =,
+    -- Create a timestamp range by combining the date with the start and end times.
+    -- Example: 2026-07-20 14:00 until 2026-07-20 15:00.
+    tsrange(
+        available_date + start_time,
+        available_date + end_time,
+        -- [ means the start is included.
+        -- ) means the end is excluded.
+        -- Therefore, 14:00–15:00 and 15:00–16:00 do not overlap.
+        '[)'
+    )
+    -- && means that two timestamp ranges overlap.
+    -- Example: 14:00–15:00 overlaps with 14:30–15:30.
+    with &&
+)
+-- Apply this exclusion rule only to rows with the busy status.
+where (status = 'busy');
+
+-----------------------------------------------------
+-- Vehicle validation year
+-----------------------------------------------------
 ALTER TABLE vehicles
 ADD CONSTRAINT vehicles_year_valid
 CHECK (vehicle_year IS NULL OR (vehicle_year >= 1980 AND vehicle_year <= 2100));
 
+-----------------------------------------------------
 -- Limits the public chauffeur biography.
+-----------------------------------------------------
 ALTER TABLE public.chauffeurs ADD CONSTRAINT chauffeurs_bio_length CHECK (bio IS NULL OR length(bio) <= 1000);
 
+-----------------------------------------------------
 -- Limits the stored Supabase Storage path.
+-----------------------------------------------------
 ALTER TABLE public.chauffeurs ADD CONSTRAINT chauffeurs_profile_photo_path_length CHECK (profile_photo_path IS NULL OR length(profile_photo_path) <= 500);
 --===================================================================
 
