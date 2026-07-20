@@ -232,6 +232,10 @@ export default function BookingForm() {
             setHasPets(false);
             setPickupLocation(null);
             setDestinationLocation(null);
+            // Clears the previous Mapbox journey result after successful booking.
+            setRouteEstimate(null);
+            setRouteEstimateError("");
+            setIsCalculatingRoute(false);
         } catch (error) {
             console.error("Could not submit booking:", error);
             setErrorMessage(getBookingFormText("submitErrorMessage"));
