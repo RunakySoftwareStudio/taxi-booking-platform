@@ -134,8 +134,10 @@ async function updateAssignedBookingStatus(formData: FormData) {
         p_status: status,
     });
 
+    // 23P01 is the PostgreSQL error code for the overlapping-time exclusion constraint.
     if (error) {
         console.error("Could not update chauffeur booking status:", error);
+        if (error.code === "23P01") { redirect(`/chauffeur/${authorizedChauffeurId}?error=booking-time-conflict`);  }
         redirect(`/chauffeur/${authorizedChauffeurId}?error=status-update-failed`);
     }
 
@@ -241,7 +243,8 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 {pageMessage.success === "status-updated" && (<p className={pageStyles.successMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdatedSuccess" /> </p>)}
                 {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="missingFieldsError" /> </p>)}
                 {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdateFailedError" /> </p>)}
-
+                {pageMessage.error === "booking-time-conflict" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingTimeConflictError" /> </p> )}
+                
                 {/* Aligns labels with the active language while keeping email and phone characters left-to-right. */}
                 <div className={`${formStyles.info} mt-8 grid gap-4 sm:grid-cols-3`}>
                     <div className="text-start">

@@ -1103,6 +1103,13 @@ export const translations = {
       tr: "Onaylandı",
       fa: "تأییدشده",
     },
+    bookingTimeConflictError: {
+      en: "This booking overlaps with another assigned booking.",
+      nl: "Deze boeking overlapt met een andere toegewezen boeking.",
+      ar: "يتداخل هذا الحجز مع حجز آخر مخصص لك.",
+      tr: "Bu rezervasyon başka bir atanmış rezervasyonla çakışıyor.",
+      fa: "این رزرو با رزرو دیگری که به شما اختصاص داده شده تداخل دارد.",
+    },
   },
 
   logoutButton: {
