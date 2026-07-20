@@ -47,7 +47,7 @@ type ChauffeurOption = { id: string;  name: string;  email: string;  account_sta
     let   = creates a real variable/value that can change
     var   = old way to create variables, usually avoid it
     type  = creates a TypeScript rule/shape for data
-    supabaseAdmin.rpc() = says it is an enum type, not a table. 
+    supabaseAdmin.rpc() = calls a PostgreSQL function stored in Supabase.
     rpc("get_enum_values") = Run a custom function inside Supabase/PostgreSQL and give me the result.
     supabaseAdmin.from() = says it is a table.
     ?   = optional / safe access
@@ -62,15 +62,39 @@ async function updateBookingAdminFields(formData: FormData) {
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const status = String(formData.get("status") || "");
 
-    if (!bookingId || !status) {   redirect("/admin/bookings?error=missing-fields");  }
+    if (!bookingId || !status) {
+        redirect("/admin/bookings?error=missing-fields");
+    }
 
-    const { error } = await supabaseAdmin
-        .from("bookings")
-        .update({ chauffeur_id: chauffeurId || null,status, })
-        .eq("id", bookingId);
+    /* ============================================================
+       Calls the PostgreSQL transaction function.
 
-    if (error) {
-        console.error("Could not update booking admin fields:", error);
+       The database function updates both:
+       - the booking assignment and status
+       - the linked chauffeur busy period
+
+       rpc(firstArgument, secondArgument). 
+        1. The first argument is the Supabase function name. 
+        2. The second argument contains the function parameters
+    ============================================================ */
+    const { error } = await supabaseAdmin.rpc("update_booking_admin_assignment",
+        {
+            p_booking_id: bookingId,
+            p_chauffeur_id: chauffeurId || null,
+            p_status: status
+        }
+    );
+
+    if (error) { console.error("Could not update booking assignment:", error);
+
+        // The selected chauffeur already has an overlapping busy period.
+        if (error.code === "23P01") { redirect("/admin/bookings?error=chauffeur-time-conflict");  }
+
+        // The function rejected invalid booking-assignment information.
+        if (error.code === "22023") {
+            if (error.message.includes("crosses midnight")) { redirect("/admin/bookings?error=journey-crosses-midnight"); }
+            redirect("/admin/bookings?error=chauffeur-required");
+        }
         redirect("/admin/bookings?error=booking-update-failed");
     }
 
@@ -166,7 +190,10 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                 {pageMessage.error === "status-update-failed" && (  <p className={pageStyles.errorMsgPage}>    Could not update booking status. Please try again. </p>)}
                 {pageMessage.success === "booking-updated" && ( <p className={pageStyles.successMsgPage}> Booking updated successfully. </p>)}
                 {pageMessage.error === "booking-update-failed" && (  <p className={pageStyles.errorMsgPage}> Could not update booking. Please try again.  </p>)}
-
+                {pageMessage.error === "chauffeur-time-conflict" && ( <p className={pageStyles.errorMsgPage}> This chauffeur already has another booking during this time. </p>)}
+                {pageMessage.error === "chauffeur-required" && ( <p className={pageStyles.errorMsgPage}> Please assign a chauffeur before using an active booking status. </p> )}
+                {pageMessage.error === "journey-crosses-midnight" && (<p className={pageStyles.errorMsgPage}>This journey crosses midnight and cannot yet create a busy period. </p> )}
+               
                 {/* Mobile booking cards */}
                 <div className="mt-10 grid gap-4 lg:hidden">
                     {bookingRows.map((booking) => (
@@ -273,15 +300,15 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                     <thead className={tableStyles.tableHeaderCyan}>
                         <tr>
                             <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Client </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Pickup  </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Destination </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Date  </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Time  </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Pax   </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Trip  </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Luggage  </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>  Has pet  </th>
-                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}>    </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Pickup </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Destination </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Date </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Time </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Pax  </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Trip </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Luggage </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> Has pet </th>
+                            <th className={`${tableStyles.cellCaption} sticky top-0 z-20 bg-slate-950`}> </th>
                         </tr>
                     </thead>
                         <tbody>

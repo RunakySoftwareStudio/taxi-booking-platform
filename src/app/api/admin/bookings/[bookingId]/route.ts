@@ -64,47 +64,103 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     if (!tripTypeOptions.includes(tripType)) { return NextResponse.json( { message: "Invalid trip type." }, { status: 400 } );}
 
-    const { data: existingBooking, error: existingBookingError } =
-        await supabaseAdmin
-            .from("bookings")
-            .select("client_id")
-            .eq("id", bookingId)
-            .single();
+    /* ============================================================
+    UPDATE CLIENT, BOOKING AND BUSY PERIOD
+    rpc() calls the PostgreSQL function:  update_booking_admin_details
+    The database function updates all related information inside one transaction:
 
-    if (existingBookingError || !existingBooking) { 
-        console.error("Could not load booking before update:", existingBookingError);       
-        return NextResponse.json( { message: "Booking was not found." }, { status: 404 });
+    - client information;
+    - booking trip information;
+    - chauffeur assignment;
+    - booking status;
+    - linked chauffeur busy period.
+
+    When one operation fails, PostgreSQL reverses all changes.
+    ============================================================ */
+    const { error } = await supabaseAdmin.rpc(
+        "update_booking_admin_details",
+        {
+            p_booking_id: bookingId,
+
+            p_client_name: clientName,
+            p_client_email: clientEmail,
+            p_client_phone: clientPhone,
+
+            p_pickup_location: pickupLocation,
+            p_destination: destination,
+            p_pickup_date: pickupDate,
+            p_pickup_time: pickupTime,
+
+            p_passengers: passengerCount,
+            p_luggage: luggageCount,
+            p_trip_type: tripType,
+            p_notes: notes || null,
+            p_has_pets: hasPets,
+
+            p_chauffeur_id: chauffeurId || null,
+            p_status: status,
+        }
+    );
+
+    if (error) {
+        console.error("Could not update booking details:", error);
+
+        /* ========================================================
+        P0002 means that the supplied booking ID was not found.
+        ======================================================== */
+        if (error.code === "P0002") {return NextResponse.json(
+                { message: "Booking was not found." },
+                { status: 404 }
+            );
+        }
+
+        /* ========================================================
+        23505 means that a unique database value already exists.
+
+        In this workflow, this normally means another client is
+        already using the submitted email address.
+        ======================================================== */
+        if (error.code === "23505") { return NextResponse.json(
+                { message: "A client with this email already exists." },
+                { status: 409 }
+            );
+        }
+
+        /* ========================================================
+        23P01 means that an exclusion constraint was violated.
+
+        Here, the selected chauffeur already has an overlapping
+        busy period.
+        ======================================================== */
+        if (error.code === "23P01") { return NextResponse.json(
+                { message: "This chauffeur already has another booking during this time." },
+                { status: 409 }
+            );
+        }
+
+        /* ========================================================
+        22023 means that our database function rejected invalid
+        assignment information.
+        ======================================================== */
+        if (error.code === "22023") {
+            if (error.message.includes("crosses midnight")) {
+                return NextResponse.json(
+                    { message: "This journey crosses midnight and cannot yet create a busy period." },
+                    { status: 400 }
+                );
+            }
+
+            return NextResponse.json(
+                { message: "Please assign a chauffeur for this booking status." },
+                { status: 400 }
+            );
+        }
+
+        return NextResponse.json(
+            { message: "Could not update booking." },
+            { status: 500 }
+        );
     }
-
-    const { error: clientUpdateError } = await supabaseAdmin
-        .from("clients")
-        .update({name: clientName, email: clientEmail, phone: clientPhone,})
-        .eq("id", existingBooking.client_id);
-
-    if (clientUpdateError) { 
-        console.error("Could not update client:", clientUpdateError);
-        if (clientUpdateError.code === "23505") {return NextResponse.json({ message: "A client with this email already exists." }, { status: 409 } ); }
-        return NextResponse.json( { message: "Could not update client information." }, { status: 500 });
-    }
-
-    const { error } = await supabaseAdmin
-        .from("bookings")
-        .update({
-                pickup_location: pickupLocation,
-                destination,
-                pickup_date: pickupDate,
-                pickup_time: pickupTime,
-                passengers: passengerCount,
-                luggage: luggageCount,
-                trip_type: tripType,
-                notes: notes || null,
-                status,
-                has_pets:hasPets,
-                chauffeur_id: chauffeurId || null})
-        .eq("id", bookingId);
-
-    if (error) {console.error("Could not update booking:", error);
-    return NextResponse.json( { message: "Could not update booking." }, { status: 500 } );  }
 
     revalidatePath("/admin/bookings");
     revalidatePath(`/admin/bookings/${bookingId}`);

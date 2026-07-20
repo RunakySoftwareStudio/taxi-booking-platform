@@ -87,42 +87,62 @@ function getChauffeurAccountStatusTextKey(accountStatus: string) {
     return "";
 }
 
-// Update a booking only when the logged-in user owns this chauffeur account.
+// Updates an assigned booking and keeps the chauffeur busy period synchronized.
 async function updateAssignedBookingStatus(formData: FormData) {
     "use server";
-    // Reads the booking information submitted by the form.
-    const bookingId = String(formData.get("bookingId") || "");
-    const chauffeurId = String(formData.get("chauffeurId") || "");
-    const status = String(formData.get("status") || "");
-    // Stops the update when required values are missing.
-    if (!bookingId || !chauffeurId || !status) { redirect(`/chauffeur/${chauffeurId}?error=missing-fields`); }
 
-    // Reads the currently logged-in Supabase user.
+    const bookingId = String(formData.get("bookingId") || "");
+    const submittedChauffeurId = String(formData.get("chauffeurId") || "");
+    const status = String(formData.get("status") || "");
+    if (!bookingId || !submittedChauffeurId || !status) { redirect(`/chauffeur/${submittedChauffeurId}?error=missing-fields`);  }
+
     const authSupabase = await createAuthClient();
     const { data: { user } } = await authSupabase.auth.getUser();
-    // Sends unauthenticated visitors to the login page.
     if (!user) { redirect("/login"); }
 
     const { data: profile } = await authSupabase
-            .from("user_profiles")
-            .select("role, chauffeur_id")
-            .eq("user_id", user.id)
-            .maybeSingle();
+        .from("user_profiles")
+        .select("role, chauffeur_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
     if (!profile) { redirect("/unauthorized"); }
 
     const isAdminUser = profile.role === "admin";
-    if (!isAdminUser && profile.chauffeur_id !== chauffeurId) { redirect("/unauthorized"); }
+    if (!isAdminUser && profile.chauffeur_id !== submittedChauffeurId) { redirect("/unauthorized"); }
 
-    const { data: updatedBooking, error } = await supabaseAdmin
-            .from("bookings")
-            .update({ status }).
-            eq("id", bookingId)
-            .eq("chauffeur_id", chauffeurId)
-            .select("id").maybeSingle();
-    if (error || !updatedBooking) { console.error("Could not update booking status:", error);  redirect(`/chauffeur/${chauffeurId}?error=status-update-failed`); }
+    const authorizedChauffeurId = isAdminUser ? submittedChauffeurId : profile.chauffeur_id;
+    if (!authorizedChauffeurId) { redirect("/unauthorized"); }
 
-    revalidatePath(`/chauffeur/${chauffeurId}`);
-    redirect(`/chauffeur/${chauffeurId}?success=status-updated`);
+    // Confirms that the booking belongs to the authorized chauffeur.
+    const { data: assignedBooking, error: bookingCheckError } = await supabaseAdmin
+        .from("bookings")
+        .select("id")
+        .eq("id", bookingId)
+        .eq("chauffeur_id", authorizedChauffeurId)
+        .maybeSingle();
+
+    if (bookingCheckError || !assignedBooking) {
+        console.error("Could not verify chauffeur booking:", bookingCheckError);
+        redirect(`/chauffeur/${authorizedChauffeurId}?error=status-update-failed`);
+    }
+
+    // Updates the booking status and its linked busy period in one transaction.
+    const { error } = await supabaseAdmin.rpc("update_booking_admin_assignment", {
+        p_booking_id: bookingId,
+        p_chauffeur_id: authorizedChauffeurId,
+        p_status: status,
+    });
+
+    if (error) {
+        console.error("Could not update chauffeur booking status:", error);
+        redirect(`/chauffeur/${authorizedChauffeurId}?error=status-update-failed`);
+    }
+
+    revalidatePath(`/chauffeur/${authorizedChauffeurId}`);
+    revalidatePath("/admin/bookings");
+
+    redirect(`/chauffeur/${authorizedChauffeurId}?success=status-updated`);
 }
 
 

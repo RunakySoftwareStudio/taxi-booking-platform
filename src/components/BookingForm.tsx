@@ -191,7 +191,6 @@ export default function BookingForm() {
         setSubmittedBooking(null);
         setBookingDraft(bookingRequest);
         setIsReviewing(true);
-        setRouteEstimate(null);
         setRouteEstimateError("");
     }
 
