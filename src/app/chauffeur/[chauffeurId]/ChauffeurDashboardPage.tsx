@@ -276,7 +276,8 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
 
                         <article className={`${formStyles.info} grid gap-4`}>
                             <p className="text-sm text-slate-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="manageUnavailabilityDescription" /></p>
-                            <Link href={`/chauffeur/${chauffeurRow.id}/unavailability`} className={formStyles.primaryButtonOutside}><TranslatedText sectionName="chauffeurDashboardPage" textKey="manageUnavailabilityButton" /></Link>
+                            <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className={formStyles.primaryButtonOutside}>
+                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="manageUnavailabilityButton" /></Link>
                         </article>
 
                         <article className={`${formStyles.info} grid gap-4`}>

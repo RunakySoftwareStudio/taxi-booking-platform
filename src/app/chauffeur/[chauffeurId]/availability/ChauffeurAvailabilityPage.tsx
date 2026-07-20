@@ -7,8 +7,10 @@ import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import { TranslatedText } from "@/components/TranslatedText";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/Availability/page.tsx 
-
-type AvailabilityRow = {id: string;  available_date: string;  start_time: string;  end_time: string;  status: string;  created_at: string; notes: string;};
+type AvailabilityRow = {
+    id: string; available_date: string; start_time: string; end_time: string;
+    status: string; created_at: string; notes: string; booking_id: string | null;
+};
 type ChauffeurRow = {id: string;  name: string;};
 type ChauffeurAvailabilityPageProps = {
     params: Promise<{chauffeurId: string;}>; 
@@ -51,9 +53,9 @@ async function addAvailability(formData: FormData) {
     const notes = String(formData.get("notes") || "");
     
     // missing-fields check
-    const previousFormValues = new URLSearchParams({availableDate, startTime, endTime, status, notes});
+    const previousFormValues = new URLSearchParams({availableDate, startTime, endTime, notes});
     const previousFormQuery = previousFormValues.toString();
-    if (!chauffeurId || !availableDate || !startTime || !endTime || !status) { redirect(`/chauffeur/${chauffeurId}/availability?error=missing-fields&${previousFormQuery}`); }
+    if (!chauffeurId || !availableDate || !startTime || !endTime) { redirect(`/chauffeur/${chauffeurId}/availability?error=missing-fields&${previousFormQuery}`); }
 
   //Time check
   const [startHour, startMinute] = startTime.split(":").map(Number);
@@ -85,6 +87,23 @@ async function deleteAvailability(formData: FormData) {
     const availabilityId = String(formData.get("availabilityId") || "");
 
     if (!availabilityId) {redirect(`/chauffeur/${chauffeurId}/availability?error=missing-fields`); }
+    
+    // Checks whether the availability record was created from a booking.
+    const { data: availabilityRecord, error: availabilityCheckError } = await supabaseAdmin
+        .from("chauffeur_availability")
+        .select("id, booking_id")
+        .eq("id", availabilityId)
+        .eq("chauffeur_id", chauffeurId)
+        .maybeSingle();
+
+    if (availabilityCheckError || !availabilityRecord) {
+        console.error("Could not verify availability record:", availabilityCheckError);
+        redirect(`/chauffeur/${chauffeurId}/availability?error=delete-availability-failed`);
+    }
+
+    if (availabilityRecord.booking_id) {
+        redirect(`/chauffeur/${chauffeurId}/availability?error=booking-period-protected`);
+    }
 
     const { error } = await supabaseAdmin
       .from("chauffeur_availability")
@@ -92,10 +111,26 @@ async function deleteAvailability(formData: FormData) {
       .eq("id", availabilityId)
       .eq("chauffeur_id", chauffeurId);
 
+    /*
+    redirect(`/chauffeur/${chauffeurId}/availability?error=booking-period-protected`);
+    means:reload the same ChauffeurAvailabilityPage, now with an error parameter so it can show the message.
+    This stops the delete action and sends the user back to the availability page with this error in the URL:
+      pageMessage.error === "booking-period-protected"
+
+        booking_id is NULL
+        → manual availability
+        → deletion allowed
+
+        booking_id contains a booking UUID
+        → automatically created busy period
+        → redirect with error
+        → deletion prevented
+    */
     if (error) {
       console.error("Could not delete availability:", error);
       redirect(`/chauffeur/${chauffeurId}/availability?error=delete-availability-failed` );
     }
+
 
     revalidatePath(`/chauffeur/${chauffeurId}/availability`);
     redirect(`/chauffeur/${chauffeurId}/availability?success=availability-deleted`);
@@ -108,7 +143,6 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
         availableDate: pageMessage.availableDate ?? "",
         startTime: pageMessage.startTime ?? "",
         endTime: pageMessage.endTime ?? "",
-        status: pageMessage.status ?? "",
         notes: pageMessage.notes ?? "",
       };
     const { data: chauffeur, error: chauffeurError } = await supabaseAdmin
@@ -119,13 +153,11 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
 
     const { data: availabilityRecords, error: availabilityError } = await supabaseAdmin
         .from("chauffeur_availability")
-        .select("id, available_date, start_time,  end_time, status, notes, created_at, notes")
+        .select("id, available_date, start_time, end_time, status, notes, created_at, booking_id")
         .eq("chauffeur_id", chauffeurId)
         .order("available_date", { ascending: true })
         .order("start_time", { ascending: true });
 
-    const { data: availabilityStatuses, error: availabilityStatusError } = await supabaseAdmin
-        .rpc("get_enum_values", { p_enum_type_name: "availability_status"});
 
     if (chauffeurError || !chauffeur) 
     { console.error("Could not load chauffeur:", chauffeurError);
@@ -140,11 +172,9 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
     }
 
     if (availabilityError) {console.error("Could not load availability:", availabilityError);}
-    if (availabilityStatusError) {console.error("Could not load availability statuses:", availabilityStatusError); }
 
     const chauffeurRow = chauffeur as ChauffeurRow;
     const availabilityRows = (availabilityRecords ?? []) as AvailabilityRow[];
-    const availabilityStatusOptions = (availabilityStatuses ?? []) as string[];
     const todayDate = getTodayDateInputValue();
    
     return (
@@ -161,7 +191,8 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
           {pageMessage.error === "incorrect-time" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="incorrectTimeError" /> </p>)}
           {pageMessage.success === "availability-deleted" && (<p className={pageStyles.successMsgPage}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deletedSuccess" /> </p>)}
           {pageMessage.error === "delete-availability-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deleteFailedError" /> </p>)}
-
+          {pageMessage.error === "booking-period-protected" && ( <p className={pageStyles.errorMsgPage}>  <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="bookingPeriodProtectedError" /> </p> )}
+         
           <form action={addAvailability}  className={formStyles.form} >
             <input type="hidden" name="chauffeurId" value={chauffeurId} />
             <div className="grid gap-5 md:grid-cols-2">
@@ -179,18 +210,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                           <span className={formStyles.label}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="endTimeLabel" /> </span>
                           <input name="endTime"  type="time"  required defaultValue={formValues.endTime}  className={formStyles.inputWFullCyan} />
                       </div>
-                      <div className={formStyles.label}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="statusLabel" />
-                        <select name="status" required defaultValue={formValues.status} className={formStyles.selectWFull} >
-                          {availabilityStatusOptions.map((status) => {
-                              const statusTextKey = getAvailabilityStatusTextKey(status);
-                              return (
-                                  <option key={status} value={status}>
-                                      {statusTextKey ? <TranslatedText sectionName="chauffeurAvailabilityPage" textKey={statusTextKey} /> : status}
-                                  </option>
-                              );
-                          })}
-                        </select>
-                      </div>
+                      <input type="hidden" name="status" value="offline" />
                   </div>
 
                   <div className="md:col-span-2"> 
@@ -205,13 +225,9 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
 
           <h2 className={tableStyles.headerTableSmall}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="recordsTitle" /> </h2>
           {/* Mobile availability cards */}
-          
-
-
-
-
           <div className="mt-6 grid gap-4 lg:hidden">
             {availabilityRows.map((availability) => { let statusColorClasses = tableStyles.statusRedClasses;
+              const isBookingBusyPeriod = Boolean(availability.booking_id);
               if (availability.status === "available") { statusColorClasses = tableStyles.statusGreenClasses;}
               if (availability.status === "busy") { statusColorClasses = tableStyles.statusYellowClasses;  }
 
@@ -251,15 +267,27 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                   </div>
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <Link  href={`/chauffeur/${chauffeurId}/availability/${availability.id}`} className={formStyles.smallButton} >
-                      <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="editButton" />
-                    </Link>
-                    <form action={deleteAvailability}>
-                      <input type="hidden" name="chauffeurId" value={chauffeurId} />
-                      <input type="hidden" name="availabilityId" value={availability.id} />
-                      <button type="submit" className={formStyles.smallButton}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deleteButton" /> </button>
-                    </form>
+                      {isBookingBusyPeriod ? (
+                          <p className="text-sm text-yellow-200">
+                              <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="bookingBusyPeriodReadOnly" />
+                          </p>
+                      ) : (
+                          <>
+                              <Link href={`/chauffeur/${chauffeurId}/availability/${availability.id}`} className={formStyles.smallButton}>
+                                  <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="editButton" />
+                              </Link>
+
+                              <form action={deleteAvailability}>
+                                  <input type="hidden" name="chauffeurId" value={chauffeurId} />
+                                  <input type="hidden" name="availabilityId" value={availability.id} />
+                                  <button type="submit" className={formStyles.smallButton}>
+                                      <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deleteButton" />
+                                  </button>
+                              </form>
+                          </>
+                      )}
                   </div>
+
                 </article>
               );
             })}
@@ -284,6 +312,7 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
               <tbody>
                   {
                       availabilityRows.map((availability) =>  {
+                          const isBookingBusyPeriod = Boolean(availability.booking_id);
                           //available → green, busy→ red,  offline → yellow, holiday → yellow
                           let statusColorClasses = tableStyles.statusRedClasses // "bg-yellow-600/25 text-yellow-50 ring-1 ring-yellow-500/40";
                           if (availability.status === "available") {statusColorClasses = tableStyles.statusGreenClasses; }
@@ -304,19 +333,31 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
                                       </div>
                                   </td>
                                   <td className={tableStyles.cell}> {availability.notes || "—"} </td>
-                                  <td> 
-                                    <Link  href={`/chauffeur/${chauffeurId}/availability/${availability.id}`} className={formStyles.smallButton}>
-                                        <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="editButton" />
-                                    </Link>
-                                  </td>
                                   <td className={tableStyles.cell}>
+                                      {isBookingBusyPeriod ? (
+                                          <span className="text-sm text-yellow-200">
+                                              <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="bookingBusyPeriodReadOnly" />
+                                          </span>
+                                      ) : (
+                                          <Link href={`/chauffeur/${chauffeurId}/availability/${availability.id}`} className={formStyles.smallButton}>
+                                              <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="editButton" />
+                                          </Link>
+                                      )}
+                                  </td>
 
-                                    <form action={deleteAvailability}>
-                                        <input type="hidden" name="chauffeurId" value={chauffeurId} />
-                                        <input type="hidden" name="availabilityId" value={availability.id} />
-                                      <button type="submit" className={formStyles.smallButton}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deleteButton" /> </button>
-                                    </form>
-                                </td>
+                                  <td className={tableStyles.cell}>
+                                      {isBookingBusyPeriod ? (
+                                          <span>—</span>
+                                      ) : (
+                                          <form action={deleteAvailability}>
+                                              <input type="hidden" name="chauffeurId" value={chauffeurId} />
+                                              <input type="hidden" name="availabilityId" value={availability.id} />
+                                              <button type="submit" className={formStyles.smallButton}>
+                                                  <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="deleteButton" />
+                                              </button>
+                                          </form>
+                                      )}
+                                  </td>
                               </tr>  
                           );
                       })
