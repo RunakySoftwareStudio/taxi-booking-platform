@@ -12,7 +12,9 @@ export default async function AdminVehicleEditPage({params}: AdminVehicleEditPag
     const { vehicleId } = await params;
     const { data: vehicleRow, error } = await supabaseAdmin
         .from("vehicles")
-        .select("id, chauffeur_id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, vehicle_year, vehicle_color" )
+        .select(`id, chauffeur_id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, vehicle_year, vehicle_color,
+                    infant_seat_count, child_seat_count, booster_seat_count, isofix_available,  wheelchair_access,  
+                    wheelchair_capacity,  mobility_aid_storage, extra_large_luggage`)
         .eq("id", vehicleId)
         .single();
 
@@ -27,6 +29,9 @@ export default async function AdminVehicleEditPage({params}: AdminVehicleEditPag
     const { data: vehicleTypes, error: vehicleTypesError } = await supabaseAdmin.rpc("get_enum_values", {p_enum_type_name: "vehicle_type"});
     if (vehicleTypesError) { console.error("Could not load vehicle types:", vehicleTypesError); }
 
+    const { data: wheelchairAccessTypes, error: wheelchairAccessTypesError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "wheelchair_access_type", });
+    if (wheelchairAccessTypesError) {console.error("Could not load wheelchair access types:", wheelchairAccessTypesError); }
+
   return (
     <main className={pageStyles.main}>
         <div className={pageStyles.containerMedium}>
@@ -36,7 +41,10 @@ export default async function AdminVehicleEditPage({params}: AdminVehicleEditPag
             <p className={pageStyles.pageLabelUpper}>Admin</p>
             <h1 className={pageStyles.pageTitle}>Edit vehicle details</h1>
             <p className={pageStyles.pageDescription}> Update vehicle information and assigned chauffeur. </p>
-            <AdminVehicleEditForm vehicle={vehicleRow}  chauffeurs={chauffeurs ?? []}  vehicleTypeOptions={(vehicleTypes ?? []) as string[]}  />
+            <AdminVehicleEditForm 
+                vehicle={vehicleRow}  chauffeurs={chauffeurs ?? []}  
+                vehicleTypeOptions = {(vehicleTypes ?? []) as string[]} 
+                wheelchairAccessOptions={(wheelchairAccessTypes ?? []) as string[]} />
         </div>
     </main>
   );

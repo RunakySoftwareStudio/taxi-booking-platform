@@ -30,8 +30,7 @@ type TypeAssignedBookingRow = {
 
 //type TypePromiseChauffeurId = { params: Promise<{ chauffeurId: string; }>;};
 type ChauffeurDashboardPageProps = { params: Promise<{chauffeurId: string; }>;searchParams: Promise<{ success?: string; error?: string; }>;};
-type TypeVehicleRow = 
-{
+type TypeVehicleRow = {
     id: string;
     chauffeur_id: string;
     brand: string;
@@ -42,6 +41,14 @@ type TypeVehicleRow =
     vehicle_type: string;
     seats: number;
     luggage_capacity: number;
+    infant_seat_count: number;
+    child_seat_count: number;
+    booster_seat_count: number;
+    isofix_available: boolean;
+    wheelchair_access: string;
+    wheelchair_capacity: number;
+    mobility_aid_storage: boolean;
+    extra_large_luggage: boolean;
     created_at: string;
 };
 
@@ -87,6 +94,13 @@ function getChauffeurAccountStatusTextKey(accountStatus: string) {
     return "";
 }
 
+function getWheelchairAccessTextKey(accessValue: string) {
+    if (accessValue === "none") { return "wheelchairNone"; }
+    if (accessValue === "foldable_only") { return "wheelchairFoldableOnly"; }
+    if (accessValue === "ramp") { return "wheelchairRamp"; }
+    if (accessValue === "lift") { return "wheelchairLift"; }
+    return "";
+}
 // Updates an assigned booking and keeps the chauffeur busy period synchronized.
 async function updateAssignedBookingStatus(formData: FormData) {
     "use server";
@@ -211,7 +225,9 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
 
     const { data: supabaseAdminVehicles, error: vehiclesError } = await supabaseAdmin
         .from("vehicles")
-        .select(` id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, vehicle_year, vehicle_color, created_at `)
+        .select(` id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, vehicle_year, vehicle_color, 
+            infant_seat_count, child_seat_count, booster_seat_count, isofix_available, wheelchair_access,
+            wheelchair_capacity, mobility_aid_storage, extra_large_luggage, created_at`)
         .eq("chauffeur_id", chauffeurId)
         .order("created_at", { ascending: false });
     
@@ -323,6 +339,27 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                 <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="colorLabel" />: </span>
                                 <span className={mobileStyle.infoValue} >{vehicle.vehicle_color?vehicle.vehicle_color: "---" }</span>
                             </div>
+                            <div className="mt-4 border-t border-white/10 pt-4">
+                                <p className="font-semibold text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="passengerSupportTitle" /></p>
+
+                                <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="infantSeatsLabel" />: </span><span className={mobileStyle.infoValue}>{vehicle.infant_seat_count}</span></div>
+                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="childSeatsLabel" />: </span><span className={mobileStyle.infoValue}>{vehicle.child_seat_count}</span></div>
+                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="boosterSeatsLabel" />: </span><span className={mobileStyle.infoValue}>{vehicle.booster_seat_count}</span></div>
+                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="isofixLabel" />: </span><span className={vehicle.isofix_available ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>{vehicle.isofix_available ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}</span></div>
+
+                                    <div className="col-span-2">
+                                        <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="wheelchairAccessLabel" />: </span>
+                                        <span className={mobileStyle.infoValue}>
+                                            {getWheelchairAccessTextKey(vehicle.wheelchair_access) ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={getWheelchairAccessTextKey(vehicle.wheelchair_access)} /> : vehicle.wheelchair_access}
+                                        </span>
+                                    </div>
+
+                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="wheelchairCapacityLabel" />: </span><span className={mobileStyle.infoValue}>{vehicle.wheelchair_capacity}</span></div>
+                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="mobilityAidStorageLabel" />: </span><span className={vehicle.mobility_aid_storage ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>{vehicle.mobility_aid_storage ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}</span></div>
+                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="extraLargeLuggageLabel" />: </span><span className={vehicle.extra_large_luggage ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>{vehicle.extra_large_luggage ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}</span></div>
+                                </div>
+                            </div>
                         </div>
                     </article>  ))}
                     {vehicleRows.length === 0 && ( 
@@ -348,17 +385,40 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                     </thead>
 
                     <tbody>
-                    {vehicleRows.map((vehicle) => (
-                        <tr key={vehicle.id} className={tableStyles.rowCyan}>
-                            <td className={tableStyles.cell}>{vehicle.brand}</td>
-                            <td className={tableStyles.cell}>{vehicle.model}</td>
-                            <td className={tableStyles.cell}>{vehicle.license_plate}</td>
-                            <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
-                            <td className={tableStyles.cell}>{vehicle.seats}</td>
-                            <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
-                            <td className={tableStyles.cell}>{vehicle.vehicle_year?vehicle.vehicle_year:"---"}</td>
-                            <td className={tableStyles.cell}>{vehicle.vehicle_color?vehicle.vehicle_color:"---"}</td>
-                        </tr>))}
+                        {vehicleRows.map((vehicle) => (
+                            <Fragment key={vehicle.id}>
+                                <tr  className="border-b border-white/10">
+                                    <td className={tableStyles.cell}>{vehicle.brand}</td>
+                                    <td className={tableStyles.cell}>{vehicle.model}</td>
+                                    <td className={tableStyles.cell}>{vehicle.license_plate}</td>
+                                    <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
+                                    <td className={tableStyles.cell}>{vehicle.seats}</td>
+                                    <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
+                                    <td className={tableStyles.cell}>{vehicle.vehicle_year || "---"}</td>
+                                    <td className={tableStyles.cell}>{vehicle.vehicle_color || "---"}</td>
+                                </tr>
+
+                                <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
+                                    <td colSpan={8} className="px-4 py-3 text-sm text-slate-300">
+                                        <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                            <span><strong className="text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="infantSeatsLabel" />:</strong> {vehicle.infant_seat_count}</span>
+                                            <span><strong className="text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="childSeatsLabel" />:</strong> {vehicle.child_seat_count}</span>
+                                            <span><strong className="text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="boosterSeatsLabel" />:</strong> {vehicle.booster_seat_count}</span>
+                                            <span><strong className="text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="isofixLabel" />:</strong> {vehicle.isofix_available ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}</span>
+
+                                            <span>
+                                                <strong className="text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="wheelchairAccessLabel" />:</strong>{" "}
+                                                {getWheelchairAccessTextKey(vehicle.wheelchair_access) ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={getWheelchairAccessTextKey(vehicle.wheelchair_access)} /> : vehicle.wheelchair_access}
+                                            </span>
+
+                                            <span><strong className="text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="wheelchairCapacityLabel" />:</strong> {vehicle.wheelchair_capacity}</span>
+                                            <span><strong className="text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="mobilityAidStorageLabel" />:</strong> {vehicle.mobility_aid_storage ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}</span>
+                                            <span><strong className="text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="extraLargeLuggageLabel" />:</strong> {vehicle.extra_large_luggage ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </Fragment>
+                        ))}
 
                         {vehicleRows.length === 0 && ( 
                             <tr> 

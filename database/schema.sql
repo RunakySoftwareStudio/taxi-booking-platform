@@ -79,6 +79,7 @@ create table if not exists public.chauffeur_change_requests (
     reviewed_at timestamptz
 );
 
+
 -- Vehicle types available on the platform
 CREATE TYPE vehicle_type AS ENUM (
   'standard',
@@ -89,7 +90,44 @@ CREATE TYPE vehicle_type AS ENUM (
   'wheelchair'
 );
 
--- Vehicles used by chauffeurs
+/*
+    -- Describes how a vehicle can transport a wheelchair.
+    Meaning of wheelchair support
+    none→ vehicle has no wheelchair support
+    foldable_only
+        → wheelchair can be folded and stored
+        → passenger sits in a normal vehicle seat
+    ramp
+        → passenger may remain in the wheelchair
+        → vehicle has a wheelchair ramp
+    lift
+        → passenger may remain in the wheelchair
+        → vehicle has a mechanical wheelchair lift
+*/
+
+CREATE TYPE wheelchair_access_type AS ENUM (
+  'none',
+  'foldable_only',
+  'ramp',
+  'lift'
+);
+
+/* -- Vehicles used by chauffeurs
+    infant_seat_count→ rear-facing baby seat
+    child_seat_count→ normal child safety seat
+    booster_seat_count→ booster seat for an older child
+    isofix_available→ vehicle has ISOFIX attachment points
+    Infant seat
+        → for babies
+        → usually rear-facing
+    Child seat
+            → has its own harness
+            → for younger children
+    Booster seat
+            → no built-in harness in most cases
+            → uses the vehicle’s normal seat belt
+            → raises an older child to the correct height
+*/
 CREATE TABLE vehicles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   chauffeur_id UUID NOT NULL REFERENCES chauffeurs(id) ON DELETE CASCADE,
@@ -101,10 +139,57 @@ CREATE TABLE vehicles (
   vehicle_type vehicle_type NOT NULL DEFAULT 'standard',
   seats INTEGER NOT NULL DEFAULT 4,
   luggage_capacity INTEGER NOT NULL DEFAULT 2,
-  created_at TIMESTAMP NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP NOT NULL DEFAULT now()
-);
 
+  -- Number of child-safety seats supplied by the vehicle.
+  infant_seat_count INTEGER NOT NULL DEFAULT 0,
+  child_seat_count INTEGER NOT NULL DEFAULT 0,
+  booster_seat_count INTEGER NOT NULL DEFAULT 0,
+  isofix_available BOOLEAN NOT NULL DEFAULT FALSE,
+
+  -- Wheelchair and mobility-aid support.
+  wheelchair_access wheelchair_access_type NOT NULL DEFAULT 'none',
+  wheelchair_capacity INTEGER NOT NULL DEFAULT 0,
+  mobility_aid_storage BOOLEAN NOT NULL DEFAULT FALSE,
+
+  -- Indicates whether the vehicle can carry unusually large luggage.
+  extra_large_luggage BOOLEAN NOT NULL DEFAULT FALSE,
+
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+
+  -- Prevents negative capability values.
+  CONSTRAINT vehicles_infant_seat_count_valid
+    CHECK (infant_seat_count >= 0),
+
+  CONSTRAINT vehicles_child_seat_count_valid
+    CHECK (child_seat_count >= 0),
+
+  CONSTRAINT vehicles_booster_seat_count_valid
+    CHECK (booster_seat_count >= 0),
+
+  CONSTRAINT vehicles_wheelchair_capacity_valid
+    CHECK (wheelchair_capacity >= 0),
+
+  /*
+    none or foldable_only means the passenger cannot remain seated
+    in the wheelchair, so wheelchair_capacity must be zero.
+
+    ramp or lift means the vehicle can transport at least one
+    passenger who remains seated in a wheelchair.
+  */
+  CONSTRAINT vehicles_wheelchair_access_consistent
+    CHECK (
+      (
+        wheelchair_access IN ('none', 'foldable_only')
+        AND wheelchair_capacity = 0
+      )
+      OR
+      (
+        wheelchair_access IN ('ramp', 'lift')
+        AND wheelchair_capacity >= 1
+      )
+    )
+);
 -- Trip types available in the booking form
 CREATE TYPE trip_type AS ENUM (
   'one-way',

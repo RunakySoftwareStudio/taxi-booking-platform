@@ -15,6 +15,14 @@ type VehicleForEdit = {
     luggage_capacity: number;
     vehicle_year: number | null;
     vehicle_color: string | null;
+    infant_seat_count: number;
+    child_seat_count: number;
+    booster_seat_count: number;
+    isofix_available: boolean;
+    wheelchair_access: string;
+    wheelchair_capacity: number;
+    mobility_aid_storage: boolean;
+    extra_large_luggage: boolean;
 };
 
 type ChauffeurOption = {
@@ -28,9 +36,10 @@ type AdminVehicleEditFormProps = {
     vehicle: VehicleForEdit;
     chauffeurs: ChauffeurOption[];
     vehicleTypeOptions: string[];
+    wheelchairAccessOptions: string[];
 };
 
-export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOptions,}: AdminVehicleEditFormProps) {
+export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOptions, wheelchairAccessOptions,}: AdminVehicleEditFormProps) {
     const router = useRouter();
     const [chauffeurId, setChauffeurId] = useState(vehicle.chauffeur_id);
     const [vehicleType, setVehicleType] = useState(vehicle.vehicle_type);
@@ -41,6 +50,14 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
     const [luggageCapacity, setLuggageCapacity] = useState( String(vehicle.luggage_capacity) );
     const [vehicleYear, setVehicleYear] = useState( vehicle.vehicle_year ? String(vehicle.vehicle_year) : ""  );
     const [vehicleColor, setVehicleColor] = useState(vehicle.vehicle_color ?? "");
+    const [infantSeatCount, setInfantSeatCount] = useState(String(vehicle.infant_seat_count));
+    const [childSeatCount, setChildSeatCount] = useState(String(vehicle.child_seat_count));
+    const [boosterSeatCount, setBoosterSeatCount] = useState(String(vehicle.booster_seat_count));
+    const [isofixAvailable, setIsofixAvailable] = useState(vehicle.isofix_available);
+    const [wheelchairAccess, setWheelchairAccess] = useState(vehicle.wheelchair_access);
+    const [wheelchairCapacity, setWheelchairCapacity] = useState(String(vehicle.wheelchair_capacity));
+    const [mobilityAidStorage, setMobilityAidStorage] = useState(vehicle.mobility_aid_storage);
+    const [extraLargeLuggage, setExtraLargeLuggage] = useState(vehicle.extra_large_luggage);
     const [successMessage, setSuccessMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
     const [isSaving, setIsSaving] = useState(false);
@@ -55,7 +72,11 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
         const response = await fetch(`/api/admin/vehicles/${vehicle.id}`, {
             method: "PATCH",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ chauffeurId, vehicleType, brand, model, licensePlate, seats, luggageCapacity, vehicleYear, vehicleColor})});
+            body: JSON.stringify({
+                chauffeurId, vehicleType, brand, model, licensePlate, seats, luggageCapacity, vehicleYear, vehicleColor,
+                infantSeatCount, childSeatCount, boosterSeatCount, isofixAvailable, wheelchairAccess,
+                wheelchairCapacity, mobilityAidStorage, extraLargeLuggage}),
+        });
             
         const result = await response.json();
         if (!response.ok) { setErrorMessage(result.message || "Could not update vehicle.");  return; }
@@ -80,7 +101,7 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
             <div className="grid gap-5 md:grid-cols-2">
                     <label  className={formStyles.formInfoCellCaption}>  Chauffeur
                         <select value={chauffeurId}  onChange={(event) => setChauffeurId(event.target.value)} required  className={formStyles.selectWFull} >
-                            {chauffeurs.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} — {chauffeur.email} ({chauffeur.account_status}) </option>  ))}
+                            {chauffeurs.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} ({chauffeur.account_status}) </option>  ))}
                         </select>
                     </label >
                     <label  className={formStyles.formInfoCellCaption}> Vehicle type
@@ -122,6 +143,58 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
                       <span className={formStyles.span}>Color</span>
                       <input value={vehicleColor} onChange={(event) => setVehicleColor(event.target.value)} className={formStyles.input} />
                     </label>
+
+                    <div className="md:col-span-2 rounded-xl border border-cyan-400/20 p-4">
+                        <h3 className="font-semibold text-cyan-300">Passenger support</h3>
+
+                        <div className="mt-4 grid gap-4 md:grid-cols-3">
+                            <div className="flex flex-wrap items-end gap-3 md:col-span-2">
+                                <label className="block">
+                                    <span className={formStyles.span}>Infant seats</span>
+                                    <input value={infantSeatCount} onChange={(event) => setInfantSeatCount(event.target.value)} type="number" min="0" className={`${formStyles.inputNumber} w-24!`} />
+                                </label>
+
+                                <label className="block">
+                                    <span className={formStyles.span}>Child seats</span>
+                                    <input value={childSeatCount} onChange={(event) => setChildSeatCount(event.target.value)} type="number" min="0" className={`${formStyles.inputNumber} w-24!`} />
+                                </label>
+
+                                <label className="block">
+                                    <span className={formStyles.span}>Booster seats</span>
+                                    <input value={boosterSeatCount} onChange={(event) => setBoosterSeatCount(event.target.value)} type="number" min="0" className={`${formStyles.inputNumber} w-24!`} />
+                                </label>
+
+                                <label className="block">
+                                    <span className={formStyles.span}>Wheelchair capacity</span>
+                                    <input value={wheelchairCapacity} onChange={(event) => setWheelchairCapacity(event.target.value)} type="number" min="0" className={`${formStyles.inputNumber} w-24!`} />
+                                </label>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-4 self-center">
+                                <label className="flex items-center gap-2">
+                                    <input type="checkbox" checked={isofixAvailable} onChange={(event) => setIsofixAvailable(event.target.checked)} />
+                                    ISOFIX available
+                                </label>
+
+                                <label className="flex items-center gap-2">
+                                    <input type="checkbox" checked={mobilityAidStorage} onChange={(event) => setMobilityAidStorage(event.target.checked)} />
+                                    Mobility-aid storage
+                                </label>
+
+                                <label className="flex items-center gap-2">
+                                    <input type="checkbox" checked={extraLargeLuggage} onChange={(event) => setExtraLargeLuggage(event.target.checked)} />
+                                    Extra-large luggage
+                                </label>
+                            </div>
+
+                            <label className="block md:col-span-2">
+                                <span className={formStyles.span}>Wheelchair access</span>
+                                <select value={wheelchairAccess} onChange={(event) => setWheelchairAccess(event.target.value)} className={`${formStyles.selectWFull} w-72! max-w-full`}>
+                                    {wheelchairAccessOptions.map((accessType) => (<option key={accessType} value={accessType}>{accessType}</option>))}
+                                </select>
+                            </label>
+                        </div>
+                    </div>
             </div>
             <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`} >
                 {isSaving ? "Saving..." : "Save vehicle details"}

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
+import { Fragment } from "react";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/vehicles/page.tsx 
 
@@ -19,6 +20,14 @@ type AdminVehiclesPageProps = {
     luggageCapacity?: string;
     vehicleYear?: string;
     vehicleColor?: string;
+    infantSeatCount?: string;
+    childSeatCount?: string;
+    boosterSeatCount?: string;
+    isofixAvailable?: string;
+    wheelchairAccess?: string;
+    wheelchairCapacity?: string;
+    mobilityAidStorage?: string;
+    extraLargeLuggage?: string;
   }>;
 };
 type ChauffeurOption = { id: string; name: string;  email: string; };
@@ -34,13 +43,31 @@ type VehicleRow = {
     vehicle_type: string;
     seats: number;
     luggage_capacity: number;
+
+    infant_seat_count: number;
+    child_seat_count: number;
+    booster_seat_count: number;
+    isofix_available: boolean;
+    wheelchair_access: string;
+    wheelchair_capacity: number;
+    mobility_aid_storage: boolean;
+    extra_large_luggage: boolean;
+
     created_at: string;
     chauffeurs: {
-                name: string;
-                email: string;
-                phone: string;
-            } | null;
+        name: string;
+        email: string;
+        phone: string;
+    } | null;
 };
+
+function getWheelchairAccessLabel(accessValue: string) {
+    if (accessValue === "none") { return "None"; }
+    if (accessValue === "foldable_only") { return "Foldable wheelchair only"; }
+    if (accessValue === "ramp") { return "Ramp"; }
+    if (accessValue === "lift") { return "Lift"; }
+    return accessValue;
+}
 
 async function addVehicle(formData: FormData) {
     "use server";
@@ -55,6 +82,15 @@ async function addVehicle(formData: FormData) {
     const vehicleType = String(formData.get("vehicleType") || "");
     const seats = Number(formData.get("seats") || 4);
     const luggageCapacity = Number(formData.get("luggageCapacity") || 2);
+    const infantSeatCount = Number(formData.get("infantSeatCount") || 0);
+    const childSeatCount = Number(formData.get("childSeatCount") || 0);
+    const boosterSeatCount = Number(formData.get("boosterSeatCount") || 0);
+    const isofixAvailable = formData.get("isofixAvailable") === "on";
+    const wheelchairAccess = String(formData.get("wheelchairAccess") || "none");
+    const wheelchairCapacity = Number(formData.get("wheelchairCapacity") || 0);
+    const mobilityAidStorage = formData.get("mobilityAidStorage") === "on";
+    const extraLargeLuggage = formData.get("extraLargeLuggage") === "on";
+
     const previousFormValues = new URLSearchParams({
       chauffeurId,
       vehicleType,
@@ -65,12 +101,40 @@ async function addVehicle(formData: FormData) {
       luggageCapacity: String(luggageCapacity),
       vehicleYear: vehicleYearValue,
       vehicleColor,
+      infantSeatCount: String(infantSeatCount),
+      childSeatCount: String(childSeatCount),
+      boosterSeatCount: String(boosterSeatCount),
+      isofixAvailable: String(isofixAvailable),
+      wheelchairAccess,
+      wheelchairCapacity: String(wheelchairCapacity),
+      mobilityAidStorage: String(mobilityAidStorage),
+      extraLargeLuggage: String(extraLargeLuggage),
     });
 
     const previousFormQuery = previousFormValues.toString();
 
     if (!chauffeurId || !brand || !model || !licensePlate || !vehicleType) {
       redirect(`/admin/vehicles?error=missing-fields&${previousFormQuery}`);
+    }
+
+    // Validates child-seat and wheelchair capacity values.
+    const capabilityCounts = [infantSeatCount, childSeatCount, boosterSeatCount, wheelchairCapacity];
+    if (capabilityCounts.some((countValue) => !Number.isInteger(countValue) || countValue < 0)) {
+        redirect(`/admin/vehicles?error=invalid-capabilities&${previousFormQuery}`);
+    }
+
+    // Validates the wheelchair access option.
+    const allowedWheelchairAccessTypes = ["none", "foldable_only", "ramp", "lift"];
+    if (!allowedWheelchairAccessTypes.includes(wheelchairAccess)) {
+        redirect(`/admin/vehicles?error=invalid-wheelchair-settings&${previousFormQuery}`);
+    }
+
+    // none/foldable_only require capacity 0; ramp/lift require capacity 1 or more.
+    const wheelchairSettingsInvalid =
+        ((wheelchairAccess === "none" || wheelchairAccess === "foldable_only") && wheelchairCapacity !== 0) ||
+        ((wheelchairAccess === "ramp" || wheelchairAccess === "lift") && wheelchairCapacity < 1);
+    if (wheelchairSettingsInvalid) {
+        redirect(`/admin/vehicles?error=invalid-wheelchair-settings&${previousFormQuery}`);
     }
 
     // .select() we can read data inserted
@@ -86,6 +150,14 @@ async function addVehicle(formData: FormData) {
         vehicle_type: vehicleType,
         seats,
         luggage_capacity: luggageCapacity,
+        infant_seat_count: infantSeatCount,
+        child_seat_count: childSeatCount,
+        booster_seat_count: boosterSeatCount,
+        isofix_available: isofixAvailable,
+        wheelchair_access: wheelchairAccess,
+        wheelchair_capacity: wheelchairCapacity,
+        mobility_aid_storage: mobilityAidStorage,
+        extra_large_luggage: extraLargeLuggage,
       })
     .select()
     .single();
@@ -141,10 +213,21 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
         luggageCapacity: pageMessage.luggageCapacity ?? "4",
         vehicleYear: pageMessage.vehicleYear ?? "",
         vehicleColor: pageMessage.vehicleColor ?? "",
+        infantSeatCount: pageMessage.infantSeatCount ?? "0",
+        childSeatCount: pageMessage.childSeatCount ?? "0",
+        boosterSeatCount: pageMessage.boosterSeatCount ?? "0",
+        isofixAvailable: pageMessage.isofixAvailable ?? "false",
+        wheelchairAccess: pageMessage.wheelchairAccess ?? "none",
+        wheelchairCapacity: pageMessage.wheelchairCapacity ?? "0",
+        mobilityAidStorage: pageMessage.mobilityAidStorage ?? "false",
+        extraLargeLuggage: pageMessage.extraLargeLuggage ?? "false",
     };
     const { data: vehicles, error: vehiclesError } = await supabaseAdmin
       .from("vehicles")
-      .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity, created_at, chauffeurs (name, email, phone )` )
+      .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity, 
+        infant_seat_count, child_seat_count, booster_seat_count, isofix_available, wheelchair_access, 
+        wheelchair_capacity, mobility_aid_storage, extra_large_luggage,
+        created_at, chauffeurs (name, email, phone )` )
       .order("chauffeur_id,created_at", { ascending: false });
 
     const { data: approvedChauffeurs, error: chauffeursError } = await supabaseAdmin
@@ -172,6 +255,10 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
 
     const chauffeurOptions = (approvedChauffeurs ?? []) as unknown as ChauffeurOption[];
     const vehicleTypeOptions = (vehicleTypes ?? []) as string[];
+    const { data: wheelchairAccessTypes, error: wheelchairAccessTypesError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "wheelchair_access_type", });
+    if (wheelchairAccessTypesError) {console.error("Could not load wheelchair access types:", wheelchairAccessTypesError); }
+
+    const wheelchairAccessOptions = (wheelchairAccessTypes ?? []) as string[];
 
     return (
       <main className={pageStyles.main}>
@@ -187,6 +274,8 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
           {pageMessage.error === "add-vehicle-failed" && ( <p className={pageStyles.errorMsgPage}> Could not add vehicle. Please try again. </p> )}
           {pageMessage.success === "vehicle-deleted" && ( <p className={pageStyles.successMsgPage}> Vehicle deleted successfully.  </p>)}
           {pageMessage.error === "delete-vehicle-failed" && (<p className={pageStyles.errorMsgPage}> Could not delete vehicle. Please try again. </p>)}
+          {pageMessage.error === "invalid-capabilities" && ( <p className={pageStyles.errorMsgPage}>Child-seat and wheelchair capacity values must be zero or higher.</p>)}
+          {pageMessage.error === "invalid-wheelchair-settings" && (<p className={pageStyles.errorMsgPage}>Ramp or lift access requires a wheelchair capacity of at least 1. Other access types require capacity 0.</p>)}
 
           <form  action={addVehicle}  className={formStyles.form}>
                 <div className={formStyles.formDivGridCol3}>
@@ -244,7 +333,54 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                           <input  name="vehicleColor"  defaultValue={formValues.vehicleColor} placeholder="Example: black"  className={formStyles.inputWFullCyan} />
                       </label>
                 </div>
+                <div className="md:col-span-3 rounded-xl border border-cyan-400/20 p-4 mt-4">
+                    <h3 className="font-semibold text-cyan-300">Passenger support</h3>
+                    <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        {/* Small numeric fields occupy two grid columns. */}
+                        <div className="flex flex-wrap items-end gap-3 md:col-span-2">
+                            <label className="block">
+                                <span className={formStyles.span}>Infant seats</span>
+                                <input name="infantSeatCount" type="number" min="0" defaultValue={formValues.infantSeatCount} className={`${formStyles.inputNumber} w-24!`} />
+                            </label>
 
+                            <label className="block">
+                                <span className={formStyles.span}>Child seats</span>
+                                <input name="childSeatCount" type="number" min="0" defaultValue={formValues.childSeatCount} className={`${formStyles.inputNumber} w-24!`} />
+                            </label>
+
+                            <label className="block">
+                                <span className={formStyles.span}>Booster seats</span>
+                                <input name="boosterSeatCount" type="number" min="0" defaultValue={formValues.boosterSeatCount} className={`${formStyles.inputNumber} w-24!`} />
+                            </label>
+
+                            <label className="block">
+                                <span className={formStyles.span}>Wheelchair capacity</span>
+                                <input name="wheelchairCapacity" type="number" min="0" defaultValue={formValues.wheelchairCapacity} className={`${formStyles.inputNumber} w-24!`} />
+                            </label>
+                        </div>
+
+                        {/* Vertically centers the checkboxes beside the numeric fields. */}
+                        <div className="flex flex-wrap items-center gap-4 self-center md:col-span-1">
+                            <label className="flex items-center gap-2">
+                                <input name="isofixAvailable" type="checkbox" defaultChecked={formValues.isofixAvailable === "true"} /> ISOFIX available
+                            </label>
+                            <label className="flex items-center gap-2">
+                                <input name="mobilityAidStorage" type="checkbox" defaultChecked={formValues.mobilityAidStorage === "true"} /> Mobility-aid storage
+                            </label>
+                            <label className="flex items-center gap-2">
+                                <input name="extraLargeLuggage" type="checkbox" defaultChecked={formValues.extraLargeLuggage === "true"} /> Extra-large luggage
+                            </label>
+                        </div>
+
+                        {/* Occupies two of the three grid columns. */}
+                        <label className="block md:col-span-2">
+                            <span className={formStyles.span}>Wheelchair access</span>
+                            <select name="wheelchairAccess" defaultValue={formValues.wheelchairAccess} className={`${formStyles.selectWFull} w-72! max-w-full`}>
+                                {wheelchairAccessOptions.map((accessType) => (<option key={accessType} value={accessType}>{accessType}</option>))}
+                            </select>
+                        </label>
+                    </div>
+                </div>
                 <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}> 
                     Add vehicle
                 </button>
@@ -266,8 +402,8 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                   {group.vehicles.map((vehicle) => (
                     <article  key={vehicle.id} className={mobileStyle.article}>
                       <div>
-                        <span className={mobileStyle.inforCaptionBold}> Car: </span>
-                        <span className={mobileStyle.infoValueBold}> {vehicle.brand} {vehicle.model} </span>
+                        <span className={mobileStyle.inforCaptionBold}> Car brand(model): </span>
+                        <span className={mobileStyle.infoValueBold}> {vehicle.brand}  ({vehicle.model}) </span>
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 gap-1 ">
@@ -300,8 +436,21 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                           <span className={mobileStyle.inforCaption}> Luggage: </span>
                           <span className={mobileStyle.infoValue}>{vehicle.luggage_capacity}</span>
                         </div>
-                      </div>
 
+                      </div>
+                          <div className="mt-4 border-t border-white/10 pt-4">
+                              <p className="font-semibold text-white">Passenger support</p>
+                              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                                  <div><span className={mobileStyle.inforCaption}>Infant seats: </span><span className={mobileStyle.infoValue}>{vehicle.infant_seat_count}</span></div>
+                                  <div><span className={mobileStyle.inforCaption}>Child seats: </span><span className={mobileStyle.infoValue}>{vehicle.child_seat_count}</span></div>
+                                  <div><span className={mobileStyle.inforCaption}>Booster seats: </span><span className={mobileStyle.infoValue}>{vehicle.booster_seat_count}</span></div>
+                                  <div><span className={mobileStyle.inforCaption}>ISOFIX: </span><span className={vehicle.isofix_available ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>{vehicle.isofix_available ? "Yes" : "No"}</span></div>
+                                  <div><span className={mobileStyle.inforCaption}>Wheelchair: </span><span className={mobileStyle.infoValue}>{getWheelchairAccessLabel(vehicle.wheelchair_access)}</span></div>
+                                  <div><span className={mobileStyle.inforCaption}>Wheelchair capacity: </span><span className={mobileStyle.infoValue}>{vehicle.wheelchair_capacity}</span></div>
+                                  <div><span className={mobileStyle.inforCaption}>Mobility-aid storage: </span><span className={vehicle.mobility_aid_storage ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>{vehicle.mobility_aid_storage ? "Yes" : "No"}</span></div>
+                                  <div><span className={mobileStyle.inforCaption}>Large luggage: </span><span className={vehicle.extra_large_luggage ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>{vehicle.extra_large_luggage ? "Yes" : "No"}</span></div>
+                              </div>
+                          </div>
                       <div className="mt-5 flex flex-wrap items-center gap-3">
                         <Link  href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton} >
                           Details
@@ -335,26 +484,42 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
 
                     <tbody>
                       {group.vehicles.map((vehicle) => (
-                        <tr key={vehicle.id} className={tableStyles.rowCyan}>
-                          <td className={tableStyles.cell}>{vehicle.brand}</td>
-                          <td className={tableStyles.cell}>{vehicle.model}</td>
-                          <td className={tableStyles.cell}>{vehicle.vehicle_year || "-"}</td>
-                          <td className={tableStyles.cell}>{vehicle.vehicle_color || "-"}</td>
-                          <td className={tableStyles.cell}>{vehicle.license_plate}</td>
-                          <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
-                          <td className={tableStyles.cell}>{vehicle.seats}</td>
-                          <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
+                          <Fragment key={vehicle.id}>
+                              <tr className={tableStyles.rowCyan}>
+                                  <td className={tableStyles.cell}>{vehicle.brand}</td>
+                                  <td className={tableStyles.cell}>{vehicle.model}</td>
+                                  <td className={tableStyles.cell}>{vehicle.vehicle_year || "-"}</td>
+                                  <td className={tableStyles.cell}>{vehicle.vehicle_color || "-"}</td>
+                                  <td className={tableStyles.cell}>{vehicle.license_plate}</td>
+                                  <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
+                                  <td className={tableStyles.cell}>{vehicle.seats}</td>
+                                  <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
+                                  <td className={tableStyles.cell}>
+                                      <div className="flex flex-wrap items-center gap-3">
+                                          <Link href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton}>Details</Link>
+                                          <form action={deleteVehicle}>
+                                              <input type="hidden" name="vehicleId" value={vehicle.id} />
+                                              <button type="submit" className={formStyles.deActiveDeleteButton}>Delete</button>
+                                          </form>
+                                      </div>
+                                  </td>
+                              </tr>
 
-                          <td className={tableStyles.cell}>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <Link href={`/admin/vehicles/${vehicle.id}`}  className={formStyles.smallButton} > Details </Link>
-                              <form action={deleteVehicle}>
-                                <input type="hidden" name="vehicleId" value={vehicle.id} />
-                                <button type="submit" className={formStyles.deActiveDeleteButton} >  Delete </button>
-                              </form>
-                            </div>
-                          </td>
-                        </tr>
+                              <tr className="border-b border-cyan-400/70 bg-cyan-950/10">
+                                  <td colSpan={9} className="px-4 py-3 text-sm text-slate-300">
+                                      <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                          <span><strong className="text-cyan-300">Infant seats:</strong> {vehicle.infant_seat_count}</span>
+                                          <span><strong className="text-cyan-300">Child seats:</strong> {vehicle.child_seat_count}</span>
+                                          <span><strong className="text-cyan-300">Booster seats:</strong> {vehicle.booster_seat_count}</span>
+                                          <span><strong className="text-cyan-300">ISOFIX:</strong> {vehicle.isofix_available ? "Yes" : "No"}</span>
+                                          <span><strong className="text-cyan-300">Wheelchair:</strong> {getWheelchairAccessLabel(vehicle.wheelchair_access)}</span>
+                                          <span><strong className="text-cyan-300">Capacity:</strong> {vehicle.wheelchair_capacity}</span>
+                                          <span><strong className="text-cyan-300">Mobility-aid storage:</strong> {vehicle.mobility_aid_storage ? "Yes" : "No"}</span>
+                                          <span><strong className="text-cyan-300">Large luggage:</strong> {vehicle.extra_large_luggage ? "Yes" : "No"}</span>
+                                      </div>
+                                  </td>
+                              </tr>
+                          </Fragment>
                       ))}
                     </tbody>
                   </table>
