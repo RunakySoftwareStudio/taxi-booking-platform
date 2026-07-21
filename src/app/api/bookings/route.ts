@@ -4,6 +4,26 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { validateBookingRequest } from "@/lib/bookings/validateBooking";
 import type { BookingSummary } from "@/types/bookingSummaryType";
 import { sendBookingCreatedEmails } from "@/lib/email/bookingEmailNotifications";
+import { calculateRouteEstimate } from "@/lib/mapbox/mapboxRouteService";
+import type { MapboxCoordinate } from "@/types/mapboxType";
+
+// Validates coordinates received from the browser before sending them to Mapbox.
+function isValidMapboxCoordinate(value: unknown): value is MapboxCoordinate {
+    if (!value || typeof value !== "object") { return false; }
+
+    const coordinate = value as Partial<MapboxCoordinate>;
+
+    return (
+        typeof coordinate.longitude === "number" &&
+        typeof coordinate.latitude === "number" &&
+        Number.isFinite(coordinate.longitude) &&
+        Number.isFinite(coordinate.latitude) &&
+        coordinate.longitude >= -180 &&
+        coordinate.longitude <= 180 &&
+        coordinate.latitude >= -90 &&
+        coordinate.latitude <= 90
+    );
+}
 
 export async function POST(request: Request) {
   try 
@@ -16,16 +36,32 @@ export async function POST(request: Request) {
             If invalid → return 400 error
             If valid → continue saving to Supabase
         */
-        if (!validationResult.isValid) { return NextResponse.json( { message: validationResult.message}, { status: 400 } ); }
+        if (!validationResult.isValid) 
+            { return NextResponse.json( { message: validationResult.message}, { status: 400 } ); }
+
         const clientEmail = bookingRequest.email.trim().toLowerCase();
         const clientName = bookingRequest.name.trim();
         const clientPhone = bookingRequest.phone.trim();
 
-        // Converts and validates the Mapbox-calculated trip duration.
-        const estimatedDurationMinutes = Number(bookingRequest.estimatedDurationMinutes);
-        if (!Number.isInteger(estimatedDurationMinutes) || estimatedDurationMinutes < 15 || estimatedDurationMinutes > 1440) {
-            return NextResponse.json({ message: "The estimated trip duration is invalid." }, { status: 400 });
+        // Validates the selected Mapbox coordinates received from the booking form.
+        if ( !isValidMapboxCoordinate(bookingRequest.pickupCoordinate) || !isValidMapboxCoordinate(bookingRequest.destinationCoordinate)) 
+            {return NextResponse.json({ message: "The selected route coordinates are invalid." }, { status: 400 } );}
+
+        // Recalculates the route on the server instead of trusting the browser duration.
+        let verifiedRouteEstimate;
+        try 
+        {
+            verifiedRouteEstimate = await calculateRouteEstimate( bookingRequest.pickupCoordinate, bookingRequest.destinationCoordinate );
+        } 
+        catch (routeError) 
+        {
+            console.error("Server route calculation error:", routeError);
+            return NextResponse.json( { message: "Could not verify the selected route." }, { status: 502 } );
         }
+
+        const estimatedDurationMinutes = verifiedRouteEstimate.durationMinutes;
+        if (!Number.isInteger(estimatedDurationMinutes) || estimatedDurationMinutes < 15 || estimatedDurationMinutes > 1440 ) {
+            return NextResponse.json( { message: "The calculated trip duration is invalid." }, { status: 400 } ); }
 
         const { data: existingClients, error: findClientError } = await supabaseAdmin
             .from("clients")
@@ -191,7 +227,5 @@ export async function POST(request: Request) {
     { 
         console.error("Invalid booking request:", error);
         return NextResponse.json( { message: "Invalid booking request", }, { status: 400 } );
-    }
-
-    
+    }   
 }

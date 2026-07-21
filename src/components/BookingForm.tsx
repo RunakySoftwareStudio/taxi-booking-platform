@@ -147,10 +147,12 @@ export default function BookingForm() {
             : statusValue;
     }
 
-    function createBookingRequest(formData: FormData): BookingRequest {
+    function createBookingRequest(formData: FormData, selectedPickup: RetrievedLocation,  selectedDestination: RetrievedLocation ): BookingRequest {
         return {
             pickup: String(formData.get("pickup") || ""),
             destination: String(formData.get("destination") || ""),
+            pickupCoordinate: selectedPickup.coordinate,
+            destinationCoordinate: selectedDestination.coordinate,
             date: String(formData.get("date") || ""),
             time: String(formData.get("time") || ""),
             estimatedDurationMinutes: String(routeEstimate?.durationMinutes || ""),
@@ -184,7 +186,7 @@ export default function BookingForm() {
         }
         const form = event.currentTarget;
         const formData = new FormData(form);
-        const bookingRequest = createBookingRequest(formData);
+        const bookingRequest = createBookingRequest(formData, pickupLocation, destinationLocation);
 
         setErrorMessage("");
         setSubmitted(false);
