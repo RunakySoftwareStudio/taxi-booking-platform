@@ -211,7 +211,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
 
     const { data: supabaseAdminVehicles, error: vehiclesError } = await supabaseAdmin
         .from("vehicles")
-        .select(` id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, created_at `)
+        .select(` id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, vehicle_year, vehicle_color, created_at `)
         .eq("chauffeur_id", chauffeurId)
         .order("created_at", { ascending: false });
     
@@ -268,7 +268,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 → Shows the three self-management options only to the chauffeur.
                 ==========================================*/}
                 {!isAdminUser && (
-                    <div className="mt-8 grid gap-4 md:grid-cols-3">
+                    <div className="mt-8 grid gap-4 md:grid-cols-2">
                         <article className={`${formStyles.info} grid gap-4`}>
                             <p className="text-sm text-slate-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="editMyInformationDescription" /></p>
                             <Link href={`/chauffeur/${chauffeurRow.id}/profile`} className={formStyles.primaryButtonOutside}><TranslatedText sectionName="chauffeurDashboardPage" textKey="editMyInformationButton" /></Link>
@@ -278,11 +278,6 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             <p className="text-sm text-slate-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="manageUnavailabilityDescription" /></p>
                             <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className={formStyles.primaryButtonOutside}>
                             <TranslatedText sectionName="chauffeurDashboardPage" textKey="manageUnavailabilityButton" /></Link>
-                        </article>
-
-                        <article className={`${formStyles.info} grid gap-4`}>
-                            <p className="text-sm text-slate-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="viewMyVehiclesDescription" /></p>
-                            <Link href={`/chauffeur/${chauffeurRow.id}/vehicles`} className={formStyles.primaryButtonOutside}><TranslatedText sectionName="chauffeurDashboardPage" textKey="viewMyVehiclesButton" /></Link>
                         </article>
                     </div>
                 )}

@@ -24,7 +24,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const vehicleType = String(body.vehicleType || "").trim();
   const brand = String(body.brand || "").trim();
   const model = String(body.model || "").trim();
-  const licensePlate = String(body.licensePlate || "").trim();
+  const licensePlate = String(body.licensePlate || "").trim().toUpperCase();
   const seats = Number(body.seats);
   const luggageCapacity = Number(body.luggageCapacity);
   const vehicleYearValue = String(body.vehicleYear || "").trim();
