@@ -1258,6 +1258,27 @@ export const translations = {
         tr: "Asansör",
         fa: "بالابر",
     },
+    wheelchairRequirementLabel: {
+        en: "Wheelchair requirement",
+        nl: "Rolstoelbehoefte",
+        ar: "متطلبات الكرسي المتحرك",
+        tr: "Tekerlekli sandalye gereksinimi",
+        fa: "نیاز ویلچر",
+    },
+    wheelchairPassengerCountLabel: {
+        en: "Wheelchair passengers",
+        nl: "Rolstoelpassagiers",
+        ar: "ركاب الكراسي المتحركة",
+        tr: "Tekerlekli sandalye yolcuları",
+        fa: "مسافران ویلچری",
+    },
+    wheelchairRemainSeated: {
+        en: "Remain seated in wheelchair",
+        nl: "In rolstoel blijven zitten",
+        ar: "البقاء جالسًا على الكرسي المتحرك",
+        tr: "Tekerlekli sandalyede oturmaya devam et",
+        fa: "باقی ماندن روی ویلچر",
+    },
   },
 
   logoutButton: {

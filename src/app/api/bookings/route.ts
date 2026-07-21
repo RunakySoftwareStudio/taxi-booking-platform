@@ -63,6 +63,42 @@ export async function POST(request: Request) {
         if (!Number.isInteger(estimatedDurationMinutes) || estimatedDurationMinutes < 15 || estimatedDurationMinutes > 1440 ) {
             return NextResponse.json( { message: "The calculated trip duration is invalid." }, { status: 400 } ); }
 
+        // Converts passenger-support requirements from form text to numbers.
+        const infantSeatCountRequired = Number(bookingRequest.infantSeatCountRequired || 0);
+        const childSeatCountRequired = Number(bookingRequest.childSeatCountRequired || 0);
+        const boosterSeatCountRequired = Number(bookingRequest.boosterSeatCountRequired || 0);
+        const wheelchairPassengerCount = Number(bookingRequest.wheelchairPassengerCount || 0);
+        const wheelchairRequirement = bookingRequest.wheelchairRequirement;
+        const requirementCounts = [
+            infantSeatCountRequired,
+            childSeatCountRequired,
+            boosterSeatCountRequired,
+            wheelchairPassengerCount,
+        ];
+
+        if (requirementCounts.some((countValue) => !Number.isInteger(countValue) || countValue < 0)) {
+            return NextResponse.json(
+                { message: "Passenger-support quantities must be whole numbers of zero or higher." },
+                { status: 400 }
+            );
+        }
+
+        const allowedWheelchairRequirements = ["none", "foldable", "remain_in_wheelchair"];
+        if (!allowedWheelchairRequirements.includes(wheelchairRequirement)) {
+            return NextResponse.json({ message: "Invalid wheelchair requirement." }, { status: 400 });
+        }
+
+        const wheelchairRequirementInvalid =
+            ((wheelchairRequirement === "none" || wheelchairRequirement === "foldable") && wheelchairPassengerCount !== 0) ||
+            (wheelchairRequirement === "remain_in_wheelchair" && wheelchairPassengerCount < 1);
+
+        if (wheelchairRequirementInvalid) {
+            return NextResponse.json(
+                { message: "Remaining in a wheelchair requires at least one wheelchair passenger." },
+                { status: 400 }
+            );
+        }
+
         const { data: existingClients, error: findClientError } = await supabaseAdmin
             .from("clients")
             .select("id, name, email, phone")
@@ -143,6 +179,14 @@ export async function POST(request: Request) {
                 notes: bookingRequest.notes,
                 status: "pending",
                 has_pets: bookingRequest.hasPets,
+                infant_seat_count_required: infantSeatCountRequired,
+                child_seat_count_required: childSeatCountRequired,
+                booster_seat_count_required: boosterSeatCountRequired,
+                isofix_required: bookingRequest.isofixRequired === true,
+                wheelchair_requirement: wheelchairRequirement,
+                wheelchair_passenger_count: wheelchairPassengerCount,
+                mobility_aid_storage_required: bookingRequest.mobilityAidStorageRequired === true,
+                extra_large_luggage_required: bookingRequest.extraLargeLuggageRequired === true,
             })
             .select()
             .single();
@@ -166,7 +210,16 @@ export async function POST(request: Request) {
             passengers: savedBooking.passengers,
             luggage: savedBooking.luggage,
             hasPets: savedBooking.has_pets,
-                
+            
+            infantSeatCountRequired: savedBooking.infant_seat_count_required,
+            childSeatCountRequired: savedBooking.child_seat_count_required,
+            boosterSeatCountRequired: savedBooking.booster_seat_count_required,
+            isofixRequired: savedBooking.isofix_required,
+            wheelchairRequirement: savedBooking.wheelchair_requirement,
+            wheelchairPassengerCount: savedBooking.wheelchair_passenger_count,
+            mobilityAidStorageRequired: savedBooking.mobility_aid_storage_required,
+            extraLargeLuggageRequired: savedBooking.extra_large_luggage_required,   
+
             name: client.name,
             phone: client.phone,
             email: client.email,

@@ -221,27 +221,82 @@ CREATE TABLE IF NOT EXISTS chauffeur_availability (
     updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
+/*
+  Defines how a passenger's wheelchair must be transported.
+  none:  
+    No wheelchair transport is required.
+  foldable:  
+    The passenger transfers to a normal seat and the folded wheelchair  is stored inside the vehicle.
+  remain_in_wheelchair:
+    One or more passengers remain seated in their wheelchairs.
+    The assigned vehicle must provide ramp or lift access.
+*/
+CREATE TYPE public.wheelchair_requirement_type AS ENUM (
+    'none',
+    'foldable',
+    'remain_in_wheelchair'
+);
 
 -- Taxi trip booking requests
-CREATE TABLE bookings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE public.bookings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-  chauffeur_id UUID REFERENCES chauffeurs(id) ON DELETE SET NULL, /*A booking can exist without a chauffeur at first.*/
+    client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    chauffeur_id UUID REFERENCES chauffeurs(id) ON DELETE SET NULL, /*A booking can exist without a chauffeur at first.*/
 
-  pickup_location TEXT NOT NULL,
-  destination TEXT NOT NULL,
-  pickup_date DATE NOT NULL,
-  pickup_time TIME NOT NULL,
-  estimated_duration_minutes INTEGER NOT NULL DEFAULT 60,
-  passengers INTEGER NOT NULL DEFAULT 1,
-  luggage INTEGER DEFAULT 0,
-  trip_type trip_type NOT NULL,
-  notes TEXT,
-  status booking_status NOT NULL DEFAULT 'pending',
-  has_pets boolean not null default false,
-  created_at TIMESTAMP NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP NOT NULL DEFAULT now()
+    pickup_location TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    pickup_date DATE NOT NULL,
+    pickup_time TIME NOT NULL,
+    estimated_duration_minutes INTEGER NOT NULL DEFAULT 60,
+    passengers INTEGER NOT NULL DEFAULT 1,
+    luggage INTEGER DEFAULT 0,
+
+    infant_seat_count_required INTEGER NOT NULL DEFAULT 0,
+    child_seat_count_required INTEGER NOT NULL DEFAULT 0,
+    booster_seat_count_required INTEGER NOT NULL DEFAULT 0,
+    isofix_required BOOLEAN NOT NULL DEFAULT FALSE,
+    wheelchair_requirement public.wheelchair_requirement_type NOT NULL DEFAULT 'none',
+    wheelchair_passenger_count INTEGER NOT NULL DEFAULT 0,
+    mobility_aid_storage_required BOOLEAN NOT NULL DEFAULT FALSE,
+    extra_large_luggage_required BOOLEAN NOT NULL DEFAULT FALSE,
+
+    trip_type trip_type NOT NULL,
+    notes TEXT,
+    status booking_status NOT NULL DEFAULT 'pending',
+    has_pets BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT bookings_infant_seat_count_required_valid
+        CHECK (infant_seat_count_required >= 0),
+
+    CONSTRAINT bookings_child_seat_count_required_valid
+        CHECK (child_seat_count_required >= 0),
+
+    CONSTRAINT bookings_booster_seat_count_required_valid
+        CHECK (booster_seat_count_required >= 0),
+
+    CONSTRAINT bookings_wheelchair_passenger_count_valid
+        CHECK (wheelchair_passenger_count >= 0),
+
+    /*
+      none and foldable require zero passengers remaining in a wheelchair.
+
+      remain_in_wheelchair requires at least one wheelchair passenger.
+    */
+    CONSTRAINT bookings_wheelchair_requirement_consistent
+        CHECK (
+            (
+                wheelchair_requirement IN ('none', 'foldable')
+                AND wheelchair_passenger_count = 0
+            )
+            OR
+            (
+                wheelchair_requirement = 'remain_in_wheelchair'
+                AND wheelchair_passenger_count >= 1
+            )
+        )
 );
 
 -- Connects booking-created busy periods to their booking.

@@ -1,6 +1,7 @@
 
 import { type BookingStatus } from "@/types/bookingStatusType";
 import type { MapboxCoordinate } from "@/types/mapboxType";
+import { type WheelchairRequirement } from "@/types/wheelchairRequirementType";
 
 export type BookingRequest = {
     pickup: string;
@@ -19,4 +20,12 @@ export type BookingRequest = {
     notes: string;
     status: BookingStatus;
     hasPets: boolean;
+    infantSeatCountRequired: string;
+    childSeatCountRequired: string;
+    boosterSeatCountRequired: string;
+    isofixRequired: boolean;
+    wheelchairRequirement: WheelchairRequirement;
+    wheelchairPassengerCount: string;
+    mobilityAidStorageRequired: boolean;
+    extraLargeLuggageRequired: boolean;
 };

@@ -27,6 +27,10 @@ type BookingRow =
     id: string;  pickup_location: string;  destination: string;  pickup_date: string;
     pickup_time: string;  passengers: number;  luggage: number;  trip_type: string;
     status: string;  created_at: string; notes: string; has_pets: boolean;
+    infant_seat_count_required: number;  child_seat_count_required: number;
+    booster_seat_count_required: number; isofix_required: boolean;
+    wheelchair_requirement: string;  wheelchair_passenger_count: number;
+    mobility_aid_storage_required: boolean;  extra_large_luggage_required: boolean;
     clients: {name: string;  email: string;  phone: string; } | null;
     chauffeur_id: string | null;
     chauffeurs: {  name: string; email: string; phone: string; } | null;
@@ -110,6 +114,10 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     ( `
         id, pickup_location, destination, pickup_date, pickup_time, 
         passengers, luggage, trip_type, status, notes, created_at, has_pets,
+        infant_seat_count_required, child_seat_count_required,
+        booster_seat_count_required,  isofix_required,
+        wheelchair_requirement, wheelchair_passenger_count,
+        mobility_aid_storage_required, extra_large_luggage_required,
         clients (name, email, phone ),
         chauffeur_id,
         chauffeurs (name, email, phone ) `
@@ -158,6 +166,13 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     function formatShortBookingReference(bookingId: string) {
         if (!bookingId) { return "-"; }
         return bookingId.slice(0, 8);
+    }
+
+    function getWheelchairRequirementLabel(requirementValue: string) {
+        if (requirementValue === "none") { return "None"; }
+        if (requirementValue === "foldable") { return "Foldable wheelchair"; }
+        if (requirementValue === "remain_in_wheelchair") { return "Remain seated in wheelchair"; }
+        return requirementValue;
     }
 
     /* =====================================================
@@ -262,6 +277,52 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                                 {booking.has_pets  ? "yes ✓" : "No"}
                                             </span>
                                         </div>
+                                        <div className="mt-3 border-t border-white/10 pt-3">
+                                            <p className="font-semibold text-white">Passenger support</p>
+                                            <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <span className={mobileStyle.inforCaption}>Infant seats: </span>
+                                                    <span className={mobileStyle.infoValue}>{booking.infant_seat_count_required}</span>
+                                                </div>
+                                                <div>
+                                                    <span className={mobileStyle.inforCaption}>Child seats: </span>
+                                                    <span className={mobileStyle.infoValue}>{booking.child_seat_count_required}</span>
+                                                </div>
+                                                <div>
+                                                    <span className={mobileStyle.inforCaption}>Booster seats: </span>
+                                                    <span className={mobileStyle.infoValue}>{booking.booster_seat_count_required}</span>
+                                                </div>
+                                                {booking.wheelchair_requirement === "remain_in_wheelchair" && (
+                                                    <div>
+                                                        <span className={mobileStyle.inforCaption}>Wheelchair pas.: </span>
+                                                        <span className={mobileStyle.infoValue}>{booking.wheelchair_passenger_count}</span>
+                                                    </div>
+                                                )}
+                                                <div className="col-span-2">
+                                                    <span className={mobileStyle.inforCaption}>Wheelchair: </span>
+                                                    <span className={mobileStyle.infoValue}>{getWheelchairRequirementLabel(booking.wheelchair_requirement)}</span>
+                                                </div>
+                                                <div>
+                                                    <span className={mobileStyle.inforCaption}>ISOFIX: </span>
+                                                    <span className={booking.isofix_required ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>
+                                                        {booking.isofix_required ? "Yes" : "No"}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className={mobileStyle.inforCaption}>Large luggage: </span>
+                                                    <span className={booking.extra_large_luggage_required ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>
+                                                        {booking.extra_large_luggage_required ? "Yes" : "No"}
+                                                    </span>
+                                                </div>
+                                                <div className="col-span-2 flex items-center gap-1">
+                                                    <span className={mobileStyle.inforCaption}>Mobility-aid storage:</span>
+                                                    <span className={booking.mobility_aid_storage_required ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>
+                                                        {booking.mobility_aid_storage_required ? "Yes" : "No"}
+                                                    </span>
+                                                </div>
+                                                
+                                            </div>
+                                        </div>
                                         <div>
                                             <span className={mobileStyle.inforCaption}>  Notes:  </span>
                                             <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
@@ -336,7 +397,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                     </td>
                                     <td className={tableStyles.cell}></td>
                                 </tr>
-                                <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
+                                <tr className="border-b border-cyan-400/10 bg-cyan-950/10">
                                     <td colSpan={5} className="px-4 pb-4 pt-0 text-sm text-slate-300">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
                                             <span className={tableStyles.cellCaptionSecondRow}>Notes: </span>
@@ -370,7 +431,26 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                         </form>
                                     </td>
                                 </tr>
+                                <tr className="border-b border-cyan-400/70 bg-cyan-950/10">
+                                    <td colSpan={10} className="px-4 py-3 text-sm text-slate-300">
+                                        <p className="mb-2 font-semibold text-white">Passenger support</p>
 
+                                        <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                            <span><strong className="text-cyan-300">Infant seats:</strong> {booking.infant_seat_count_required}</span>
+                                            <span><strong className="text-cyan-300">Child seats:</strong> {booking.child_seat_count_required}</span>
+                                            <span><strong className="text-cyan-300">Booster seats:</strong> {booking.booster_seat_count_required}</span>
+                                            <span><strong className="text-cyan-300">ISOFIX:</strong> {booking.isofix_required ? "Yes" : "No"}</span>
+                                            <span><strong className="text-cyan-300">Wheelchair:</strong> {getWheelchairRequirementLabel(booking.wheelchair_requirement)}</span>
+
+                                            {booking.wheelchair_requirement === "remain_in_wheelchair" && (
+                                                <span><strong className="text-cyan-300">Wheelchair passengers:</strong> {booking.wheelchair_passenger_count}</span>
+                                            )}
+
+                                            <span><strong className="text-cyan-300">Mobility-aid storage:</strong> {booking.mobility_aid_storage_required ? "Yes" : "No"}</span>
+                                            <span><strong className="text-cyan-300">Large luggage:</strong> {booking.extra_large_luggage_required ? "Yes" : "No"}</span>
+                                        </div>
+                                    </td>
+                                </tr>
                             </Fragment>))}
 
                             {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={11}> No bookings found yet. </td></tr>)}

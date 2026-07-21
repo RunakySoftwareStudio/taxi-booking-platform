@@ -11,6 +11,7 @@ import Link from "next/link";
 import MapboxLocationSearchInput from "@/components/MapboxLocationSearchInput";
 import type { RetrievedLocation, RouteEstimate, RouteEstimateResponse } from "@/types/mapboxType";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
+import { type WheelchairRequirement } from "@/types/wheelchairRequirementType";
 
 function getTodayDateInputValue() {
   const today = new Date();
@@ -27,6 +28,8 @@ export default function BookingForm() {
     // getBookingFormText returns translated text for this booking form.
     // This keeps the JSX shorter than repeating getTranslation everywhere.
     function getBookingFormText(textKey: string) { return getTranslation("bookingForm", textKey, languageCode); }
+    function getPassengerSupportText(textKey: string) { return getTranslation("chauffeurDashboardPage", textKey, languageCode);}
+
     const [submitted, setSubmitted] = useState(false);
     const [submittedBooking, setSubmittedBooking] = useState<BookingSummary | null>(null);
     const [bookingDraft, setBookingDraft] = useState<BookingRequest | null>(null);
@@ -36,6 +39,11 @@ export default function BookingForm() {
     const todayDate = getTodayDateInputValue();
     const bookingResultRef = useRef<HTMLDivElement | null>(null);
     const [hasPets, setHasPets] = useState(false);
+    const [isofixRequired, setIsofixRequired] = useState(false);
+    const [wheelchairRequirement, setWheelchairRequirement] = useState<WheelchairRequirement>("none");
+    const [mobilityAidStorageRequired, setMobilityAidStorageRequired] = useState(false);
+    const [extraLargeLuggageRequired, setExtraLargeLuggageRequired] = useState(false);
+
     // Stores the exact Mapbox locations selected by the client.
     const [pickupLocation, setPickupLocation] = useState<RetrievedLocation | null>(null);
     const [destinationLocation, setDestinationLocation] = useState<RetrievedLocation | null>(null);
@@ -147,6 +155,19 @@ export default function BookingForm() {
             : statusValue;
     }
 
+    // Converts the stored wheelchair requirement into translated visible text.
+    function getWheelchairRequirementLabel(requirementValue: string) {
+        const translationKeys: Record<string, string> = {
+            none: "wheelchairNone",
+            foldable: "wheelchairFoldableOnly",
+            remain_in_wheelchair: "wheelchairRemainSeated",
+        };
+        const translationKey = translationKeys[requirementValue];
+        return translationKey
+            ? getPassengerSupportText(translationKey)
+            : requirementValue;
+    }
+
     function createBookingRequest(formData: FormData, selectedPickup: RetrievedLocation,  selectedDestination: RetrievedLocation ): BookingRequest {
         return {
             pickup: String(formData.get("pickup") || ""),
@@ -165,6 +186,14 @@ export default function BookingForm() {
             notes: String(formData.get("notes") || ""),
             status: "pending",
             hasPets,
+            infantSeatCountRequired: String(formData.get("infantSeatCountRequired") || "0"),
+            childSeatCountRequired: String(formData.get("childSeatCountRequired") || "0"),
+            boosterSeatCountRequired: String(formData.get("boosterSeatCountRequired") || "0"),
+            isofixRequired,
+            wheelchairRequirement,
+            wheelchairPassengerCount: String(formData.get("wheelchairPassengerCount") || "0"),
+            mobilityAidStorageRequired,
+            extraLargeLuggageRequired,
         };
     }
 
@@ -232,6 +261,11 @@ export default function BookingForm() {
             setBookingDraft(null);
             setIsReviewing(false);
             setHasPets(false);
+            setIsofixRequired(false);
+            setWheelchairRequirement("none");
+            setMobilityAidStorageRequired(false);
+            setExtraLargeLuggageRequired(false);
+
             setPickupLocation(null);
             setDestinationLocation(null);
             // Clears the previous Mapbox journey result after successful booking.
@@ -312,8 +346,27 @@ export default function BookingForm() {
                                     {bookingDraft.hasPets ? "✓" : "X"}
                                 </span>
                             </div>
-                        </div>
 
+                        </div>
+                        <div className="mt-5 rounded-xl border border-cyan-400/20 p-4">
+                            <p className="font-semibold text-white">
+                                {getPassengerSupportText("passengerSupportTitle")}
+                            </p>
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("infantSeatsLabel")} </span><span className={formStyles.formP}>{bookingDraft.infantSeatCountRequired}</span></div>
+                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("childSeatsLabel")} </span><span className={formStyles.formP}>{bookingDraft.childSeatCountRequired}</span></div>
+                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("boosterSeatsLabel")} </span><span className={formStyles.formP}>{bookingDraft.boosterSeatCountRequired}</span></div>
+                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("isofixLabel")} </span><span className={formStyles.formP}>{bookingDraft.isofixRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairRequirementLabel")} </span><span className={formStyles.formP}>{getWheelchairRequirementLabel(bookingDraft.wheelchairRequirement)}</span></div>
+
+                                {bookingDraft.wheelchairRequirement === "remain_in_wheelchair" && (
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairPassengerCountLabel")} </span><span className={formStyles.formP}>{bookingDraft.wheelchairPassengerCount}</span></div>
+                                )}
+
+                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("mobilityAidStorageLabel")} </span><span className={formStyles.formP}>{bookingDraft.mobilityAidStorageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("extraLargeLuggageLabel")} </span><span className={formStyles.formP}>{bookingDraft.extraLargeLuggageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                            </div>
+                        </div>
                         {bookingDraft.notes && (
                             <div className="md:col-span-2">
                                 <span className={formStyles.formPCyan}> {getBookingFormText("summaryExtraNotesLabel")} </span>
@@ -427,7 +480,67 @@ export default function BookingForm() {
                             {getBookingFormText("hasPetsLabel")}
                         </label>
                     </div>
+                    <div className="mt-6 rounded-xl border border-cyan-400/20 bg-slate-950/30 p-4">
+                        <h3 className="font-semibold text-white">
+                            {getPassengerSupportText("passengerSupportTitle")}
+                        </h3>
 
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <label>
+                                <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("infantSeatsLabel")}</span>
+                                <input name="infantSeatCountRequired" type="number" min="0" defaultValue={bookingDraft?.infantSeatCountRequired || "0"} className={`${formStyles.inputUserPage} w-24!`} />
+                            </label>
+
+                            <label>
+                                <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("childSeatsLabel")}</span>
+                                <input name="childSeatCountRequired" type="number" min="0" defaultValue={bookingDraft?.childSeatCountRequired || "0"} className={`${formStyles.inputUserPage} w-24!`} />
+                            </label>
+
+                            <label>
+                                <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("boosterSeatsLabel")}</span>
+                                <input name="boosterSeatCountRequired" type="number" min="0" defaultValue={bookingDraft?.boosterSeatCountRequired || "0"} className={`${formStyles.inputUserPage} w-24!`} />
+                            </label>
+                        </div>
+
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <label>
+                                <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("wheelchairRequirementLabel")}</span>
+                                <select
+                                    value={wheelchairRequirement}
+                                    onChange={(event) => setWheelchairRequirement(event.target.value as WheelchairRequirement)}
+                                    className={`${formStyles.inputDateUserPage} w-72! max-w-full`}
+                                >
+                                    <option value="none">{getPassengerSupportText("wheelchairNone")}</option>
+                                    <option value="foldable">{getPassengerSupportText("wheelchairFoldableOnly")}</option>
+                                    <option value="remain_in_wheelchair">{getPassengerSupportText("wheelchairRemainSeated")}</option>
+                                </select>
+                            </label>
+
+                            {wheelchairRequirement === "remain_in_wheelchair" && (
+                                <label>
+                                    <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("wheelchairPassengerCountLabel")}</span>
+                                    <input name="wheelchairPassengerCount" type="number" min="1" required defaultValue={bookingDraft?.wheelchairPassengerCount || "1"} className={`${formStyles.inputUserPage} w-24!`} />
+                                </label>
+                            )}
+                        </div>
+
+                        <div className="mt-5 flex flex-wrap gap-4">
+                            <label className="flex items-center gap-2 text-sm">
+                                <input type="checkbox" checked={isofixRequired} onChange={(event) => setIsofixRequired(event.target.checked)} className="h-5 w-5" />
+                                {getPassengerSupportText("isofixLabel")}
+                            </label>
+
+                            <label className="flex items-center gap-2 text-sm">
+                                <input type="checkbox" checked={mobilityAidStorageRequired} onChange={(event) => setMobilityAidStorageRequired(event.target.checked)} className="h-5 w-5" />
+                                {getPassengerSupportText("mobilityAidStorageLabel")}
+                            </label>
+
+                            <label className="flex items-center gap-2 text-sm">
+                                <input type="checkbox" checked={extraLargeLuggageRequired} onChange={(event) => setExtraLargeLuggageRequired(event.target.checked)} className="h-5 w-5" />
+                                {getPassengerSupportText("extraLargeLuggageLabel")}
+                            </label>
+                        </div>
+                    </div>
                     <div className="mt-5 sm:mt-6">
                         <label htmlFor="notes" className="mb-2 block text-sm font-medium"> {getBookingFormText("notesLabel")} </label>
                         <textarea id="notes" name="notes" rows={4} placeholder={getBookingFormText("notesPlaceholder")} defaultValue={bookingDraft?.notes || ""} className={formStyles.textareaMainPg}/>
@@ -508,6 +621,25 @@ export default function BookingForm() {
                         </div>
 
                     </div>
+                    <div className="mt-5 rounded-xl border border-cyan-400/20 p-4">
+                        <p className="font-semibold text-white">
+                            {getPassengerSupportText("passengerSupportTitle")}
+                        </p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("infantSeatsLabel")} </span><span className={formStyles.formP}>{submittedBooking.infantSeatCountRequired}</span></div>
+                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("childSeatsLabel")} </span><span className={formStyles.formP}>{submittedBooking.childSeatCountRequired}</span></div>
+                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("boosterSeatsLabel")} </span><span className={formStyles.formP}>{submittedBooking.boosterSeatCountRequired}</span></div>
+                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("isofixLabel")} </span><span className={formStyles.formP}>{submittedBooking.isofixRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairRequirementLabel")} </span><span className={formStyles.formP}>{getWheelchairRequirementLabel(submittedBooking.wheelchairRequirement)}</span></div>
+
+                            {submittedBooking.wheelchairRequirement === "remain_in_wheelchair" && (
+                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairPassengerCountLabel")} </span><span className={formStyles.formP}>{submittedBooking.wheelchairPassengerCount}</span></div>
+                            )}
+
+                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("mobilityAidStorageLabel")} </span><span className={formStyles.formP}>{submittedBooking.mobilityAidStorageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("extraLargeLuggageLabel")} </span><span className={formStyles.formP}>{submittedBooking.extraLargeLuggageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                        </div>
+                    </div>
                     <div className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
                         <p className={formStyles.formH5MediumSemiBold}> {getBookingFormText("bookingReferenceTitle")} </p>
                         {/* explanation: This is important because booking IDs are long. On mobile, break-all allows the ID to wrap safely instead of pushing the layout wider. */}
@@ -523,5 +655,6 @@ export default function BookingForm() {
                 </div>
             </div>) }
         </div>
+
     </section> );
 }
