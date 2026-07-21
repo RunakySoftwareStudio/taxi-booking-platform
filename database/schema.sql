@@ -830,6 +830,14 @@ CREATE OR REPLACE FUNCTION public.update_booking_admin_details(
     p_trip_type public.trip_type,
     p_notes TEXT,
     p_has_pets BOOLEAN,
+    p_infant_seat_count_required INTEGER,
+    p_child_seat_count_required INTEGER,
+    p_booster_seat_count_required INTEGER,
+    p_isofix_required BOOLEAN,
+    p_wheelchair_requirement public.wheelchair_requirement_type,
+    p_wheelchair_passenger_count INTEGER,
+    p_mobility_aid_storage_required BOOLEAN,
+    p_extra_large_luggage_required BOOLEAN,
     p_chauffeur_id UUID,
     p_status public.booking_status
 )
@@ -927,7 +935,15 @@ BEGIN
         luggage = p_luggage,
         trip_type = p_trip_type,
         notes = p_notes,
-        has_pets = p_has_pets
+        has_pets = p_has_pets,
+        infant_seat_count_required = p_infant_seat_count_required,
+        child_seat_count_required = p_child_seat_count_required,
+        booster_seat_count_required = p_booster_seat_count_required,
+        isofix_required = p_isofix_required,
+        wheelchair_requirement = p_wheelchair_requirement,
+        wheelchair_passenger_count = p_wheelchair_passenger_count,
+        mobility_aid_storage_required = p_mobility_aid_storage_required,
+        extra_large_luggage_required = p_extra_large_luggage_required
     WHERE id = p_booking_id;
 
 

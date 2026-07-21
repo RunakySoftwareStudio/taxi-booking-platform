@@ -12,7 +12,15 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
     const { bookingId } = await params;
     const { data: bookingRow, error } = await supabaseAdmin
         .from("bookings")
-        .select( ` id, pickup_date,pickup_location, destination,  pickup_time, passengers, luggage, trip_type, notes, status,  chauffeur_id, has_pets, clients  ( name, email,phone) `    )
+        .select(`
+                id, pickup_date, pickup_location, destination, pickup_time,
+                passengers, luggage, trip_type, notes, status, chauffeur_id, has_pets,
+                infant_seat_count_required, child_seat_count_required,
+                booster_seat_count_required, isofix_required,
+                wheelchair_requirement, wheelchair_passenger_count,
+                mobility_aid_storage_required, extra_large_luggage_required,
+                clients(name, email, phone)
+            `)
         .eq("id", bookingId)
         .single();
 
@@ -24,9 +32,9 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
     const bookingForEdit = {  ...bookingRow,  clients: clientRow,  };
     const { data: chauffeurs, error: chauffeursError } = await supabaseAdmin
         .from("chauffeurs")
-        .select("id, name, email, account_status,accepts_pets")
+        .select("id, name, email, account_status, accepts_pets")
+        .eq("account_status", "approved")
         .order("name", { ascending: true });
-
     if (chauffeursError) { console.error("Could not load chauffeurs:", chauffeursError); }
 
     const { data: bookingStatuses, error: bookingStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "booking_status", });
