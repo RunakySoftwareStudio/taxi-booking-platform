@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formStyles, pageStyles } from "@/styles/classNames";
 import type { WheelchairRequirement } from "@/types/wheelchairRequirementType";
+import { getVehicleMatchResult, type VehicleWheelchairAccess} from "@/lib/vehicleMatching";
 
 type BookingForEdit = {
     id: string;
@@ -26,6 +27,7 @@ type BookingForEdit = {
     mobility_aid_storage_required: boolean;
     extra_large_luggage_required: boolean;
     chauffeur_id: string | null;
+    vehicle_id: string | null;
     clients: {
         name: string;
         email: string;
@@ -33,11 +35,19 @@ type BookingForEdit = {
     } | null;
 };
 
+type VehicleOption = {
+    id: string; brand: string; model: string; license_plate: string;
+    vehicle_type: string; vehicle_year: number | null; vehicle_color: string | null;
+    seats: number; luggage_capacity: number;
+    infant_seat_count: number; child_seat_count: number; booster_seat_count: number;
+    isofix_available: boolean; wheelchair_access: string; wheelchair_capacity: number;
+    mobility_aid_storage: boolean; extra_large_luggage: boolean;
+};
+
 type ChauffeurOption = {
-  id: string;
-  name: string;
-  email: string;
-  account_status: string;
+    id: string; name: string; email: string;
+    account_status: string; accepts_pets: boolean;
+    vehicles: VehicleOption[];
 };
 
 type AdminBookingEditFormProps = {
@@ -70,6 +80,7 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     const [notes, setNotes] = useState(booking.notes ?? "");
     const [status, setStatus] = useState(booking.status);
     const [chauffeurId, setChauffeurId] = useState(booking.chauffeur_id ?? "");
+    const [vehicleId, setVehicleId] = useState(booking.vehicle_id ?? "");
     const [clientName, setClientName] = useState(booking.clients?.name ?? "");
     const [clientEmail, setClientEmail] = useState(booking.clients?.email ?? "");
     const [clientPhone, setClientPhone] = useState(booking.clients?.phone ?? "");
@@ -82,10 +93,44 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     const [wheelchairPassengerCount, setWheelchairPassengerCount] = useState(String(booking.wheelchair_passenger_count ?? 0));
     const [mobilityAidStorageRequired, setMobilityAidStorageRequired] = useState(booking.mobility_aid_storage_required ?? false);
     const [extraLargeLuggageRequired, setExtraLargeLuggageRequired] = useState(booking.extra_large_luggage_required ?? false);
+    
+    // Finds the selected chauffeur and provides that chauffeur's vehicles.
+    const selectedChauffeur = chauffeurs.find((chauffeur) => chauffeur.id === chauffeurId);
+    const selectedChauffeurVehicles = selectedChauffeur?.vehicles ?? [];
+
+    /* Filters the selected chauffeur's vehicles using the current booking values entered in this form. */
+    const matchingVehicleOptions = selectedChauffeurVehicles.filter((vehicle) =>
+        getVehicleMatchResult(
+            {
+                seats: vehicle.seats,
+                luggageCapacity: vehicle.luggage_capacity,
+                infantSeatCount: vehicle.infant_seat_count,
+                childSeatCount: vehicle.child_seat_count,
+                boosterSeatCount: vehicle.booster_seat_count,
+                isofixAvailable: vehicle.isofix_available,
+                wheelchairAccess: vehicle.wheelchair_access as VehicleWheelchairAccess,
+                wheelchairCapacity: vehicle.wheelchair_capacity,
+                mobilityAidStorage: vehicle.mobility_aid_storage,
+                extraLargeLuggage: vehicle.extra_large_luggage,
+            },
+            {
+                passengers: Number(passengers || 0),
+                luggage: Number(luggage || 0),
+                infantSeatCountRequired: Number(infantSeatCountRequired || 0),
+                childSeatCountRequired: Number(childSeatCountRequired || 0),
+                boosterSeatCountRequired: Number(boosterSeatCountRequired || 0),
+                isofixRequired,
+                wheelchairRequirement,
+                wheelchairPassengerCount: Number(wheelchairPassengerCount || 0),
+                mobilityAidStorageRequired,
+                extraLargeLuggageRequired,
+            }
+        ).matches
+    );
 
     const [successMessage, setSuccessMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
-   const [isSaving, setIsSaving] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     /*=======================================================================================
         If pickupDate exists AND pickupDate is earlier than today,use pickupDate as the minimum date.
@@ -108,7 +153,7 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
         body: JSON.stringify({
             clientName, clientEmail, clientPhone, pickupLocation, destination,
             pickupDate, pickupTime, passengers, luggage, tripType, notes,
-            status, hasPets, chauffeurId,
+            status, hasPets, chauffeurId, vehicleId,
             infantSeatCountRequired, childSeatCountRequired, boosterSeatCountRequired,
             isofixRequired, wheelchairRequirement, wheelchairPassengerCount,
             mobilityAidStorageRequired, extraLargeLuggageRequired, }) });
@@ -191,12 +236,30 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                     {/* Explanation: min-w-0: allows the grid item and select to shrink inside the mobile form border. 
                         max-w-full: prevents the select from becoming wider than its parent. */}
                     <div className={`${formStyles.label} min-w-0`}>  Assigned chauffeur
-                        <select  value={chauffeurId} onChange={(event) => setChauffeurId(event.target.value)} className={`${formStyles.selectWFull} min-w-0 max-w-full text-xs! sm:text-sm!`}>
+                        <select  value={chauffeurId} onChange={(event) => {setChauffeurId(event.target.value); setVehicleId("");}} className={`${formStyles.selectWFull} min-w-0 max-w-full text-xs! sm:text-sm!`}>
                             <option value="">No chauffeur assigned</option>
                                 {chauffeurs.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} - {chauffeur.email} </option> ))  }
                         </select>
                     </div>
-
+                    <div className={`${formStyles.label} min-w-0`}>
+                        Assigned vehicle
+                        <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}
+                            disabled={!chauffeurId}  required={Boolean(chauffeurId)}  className={`${formStyles.selectWFull} min-w-0 max-w-full text-xs! sm:text-sm! disabled:opacity-50`} >
+                            <option value=""> 
+                                {chauffeurId ? "Select matching vehicle" : "Select chauffeur first"} 
+                            </option>
+                            {matchingVehicleOptions.map((vehicle) => (
+                                <option key={vehicle.id} value={vehicle.id}>
+                                    {vehicle.brand} {vehicle.model} — {vehicle.license_plate}
+                                </option>
+                            ))}
+                        </select>
+                        {chauffeurId && matchingVehicleOptions.length === 0 && (
+                            <p className="mt-2 text-xs text-red-300">
+                                This chauffeur has no vehicle matching the current booking requirements.
+                            </p>
+                        )}
+                    </div>
                     <div className="flex items-center gap-4 px-4 pb-4 pt-6 text-sm text-slate-300 align-top">
                         <input type="checkbox" checked={hasPets} onChange={(event) => setHasPets(event.target.checked)}  className="h-5 w-5"/>   
                         <div className={formStyles.label}>  has pets  </div>

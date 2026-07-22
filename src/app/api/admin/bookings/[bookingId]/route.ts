@@ -47,6 +47,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const status = String(body.status || "").trim();
     const hasPets  =  Boolean(body.hasPets )
     const chauffeurId = String(body.chauffeurId || "").trim();
+    const vehicleId = String(body.vehicleId || "").trim();
     const wheelchairRequirement = String(body.wheelchairRequirement || "none").trim();
     const isofixRequired = body.isofixRequired === true;
     const mobilityAidStorageRequired = body.mobilityAidStorageRequired === true;
@@ -111,6 +112,24 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         );
     }
 
+    /*
+        A selected chauffeur requires one exact vehicle.
+        A vehicle cannot be selected without a chauffeur.
+   */
+    if (chauffeurId && !vehicleId) {
+        return NextResponse.json(
+            { message: "Select a matching vehicle for the chauffeur." },
+            { status: 400 }
+        );
+    }
+
+    if (!chauffeurId && vehicleId) {
+        return NextResponse.json(
+            { message: "A vehicle cannot be assigned without a chauffeur." },
+            { status: 400 }
+        );
+    }
+
     /* =========================================================================================
         VALIDATE CHAUFFEUR AND VEHICLE MATCHING
 
@@ -126,7 +145,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
             .select(`
                 id, account_status, accepts_pets,
                 vehicles(
-                    seats, luggage_capacity,
+                    id, seats, luggage_capacity,
                     infant_seat_count, child_seat_count, booster_seat_count,
                     isofix_available, wheelchair_access, wheelchair_capacity,
                     mobility_aid_storage, extra_large_luggage ) `)
@@ -154,39 +173,56 @@ export async function PATCH(request: Request, { params }: RouteContext) {
                 { status: 400 }
             );
         }
+        /*
+        Finds the exact selected vehicle inside the selected chauffeur's vehicles.
+        find() returns the vehicle object or undefined.
+        */
+        const selectedVehicle = (chauffeurRow.vehicles ?? []).find( (vehicle) => vehicle.id === vehicleId );
 
-        const hasMatchingVehicle = (chauffeurRow.vehicles ?? []).some((vehicle) =>
-            getVehicleMatchResult(
-                {
-                    seats: vehicle.seats,
-                    luggageCapacity: vehicle.luggage_capacity,
-                    infantSeatCount: vehicle.infant_seat_count,
-                    childSeatCount: vehicle.child_seat_count,
-                    boosterSeatCount: vehicle.booster_seat_count,
-                    isofixAvailable: vehicle.isofix_available,
-                    wheelchairAccess: vehicle.wheelchair_access as VehicleWheelchairAccess,
-                    wheelchairCapacity: vehicle.wheelchair_capacity,
-                    mobilityAidStorage: vehicle.mobility_aid_storage,
-                    extraLargeLuggage: vehicle.extra_large_luggage,
-                },
-                {
-                    passengers: passengerCount,
-                    luggage: luggageCount,
-                    infantSeatCountRequired,
-                    childSeatCountRequired,
-                    boosterSeatCountRequired,
-                    isofixRequired,
-                    wheelchairRequirement: wheelchairRequirement as WheelchairRequirement,
-                    wheelchairPassengerCount,
-                    mobilityAidStorageRequired,
-                    extraLargeLuggageRequired,
-                }
-            ).matches
+        if (!selectedVehicle) {
+            return NextResponse.json(
+                { message: "The selected vehicle does not belong to this chauffeur." },
+                { status: 400 }
+            );
+        }
+
+        /* Compares the exact vehicle with the current booking requirements. 
+            Does the selected vehicle belong to this chauffeur?
+            Does that exact vehicle match the booking?
+        */
+        const vehicleMatchResult = getVehicleMatchResult(
+            {
+                seats: selectedVehicle.seats,
+                luggageCapacity: selectedVehicle.luggage_capacity,
+                infantSeatCount: selectedVehicle.infant_seat_count,
+                childSeatCount: selectedVehicle.child_seat_count,
+                boosterSeatCount: selectedVehicle.booster_seat_count,
+                isofixAvailable: selectedVehicle.isofix_available,
+                wheelchairAccess: selectedVehicle.wheelchair_access as VehicleWheelchairAccess,
+                wheelchairCapacity: selectedVehicle.wheelchair_capacity,
+                mobilityAidStorage: selectedVehicle.mobility_aid_storage,
+                extraLargeLuggage: selectedVehicle.extra_large_luggage,
+            },
+            {
+                passengers: passengerCount,
+                luggage: luggageCount,
+                infantSeatCountRequired,
+                childSeatCountRequired,
+                boosterSeatCountRequired,
+                isofixRequired,
+                wheelchairRequirement: wheelchairRequirement as WheelchairRequirement,
+                wheelchairPassengerCount,
+                mobilityAidStorageRequired,
+                extraLargeLuggageRequired,
+            }
         );
 
-        if (!hasMatchingVehicle) {
+        if (!vehicleMatchResult.matches) {
             return NextResponse.json(
-                { message: "The selected chauffeur has no vehicle matching this booking." },
+                {
+                    message: "The selected vehicle does not match this booking.",
+                    reasons: vehicleMatchResult.reasons,
+                },
                 { status: 400 }
             );
         }
@@ -232,6 +268,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         p_extra_large_luggage_required: extraLargeLuggageRequired,
 
         p_chauffeur_id: chauffeurId || null,
+        p_vehicle_id: vehicleId || null,
         p_status: status,
     });
 

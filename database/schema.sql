@@ -243,7 +243,13 @@ CREATE TABLE public.bookings (
 
     client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
     chauffeur_id UUID REFERENCES chauffeurs(id) ON DELETE SET NULL, /*A booking can exist without a chauffeur at first.*/
+    /*
+      Stores the exact vehicle assigned to this booking.
 
+      NULL means that no vehicle has been selected yet.
+      ON DELETE SET NULL preserves the booking when a vehicle is deleted.
+    */
+    vehicle_id UUID NULL REFERENCES public.vehicles(id) ON DELETE SET NULL,
     pickup_location TEXT NOT NULL,
     destination TEXT NOT NULL,
     pickup_date DATE NOT NULL,
@@ -316,6 +322,7 @@ CREATE INDEX idx_bookings_client_id ON bookings(client_id); /* Find all bookings
 CREATE INDEX idx_bookings_chauffeur_id ON bookings(chauffeur_id); /* Find all bookings assigned to one chauffeur */
 CREATE INDEX idx_bookings_status ON bookings(status); /* Find pending/confirmed/cancelled bookings */
 CREATE INDEX idx_bookings_pickup_date ON bookings(pickup_date); /* Find bookings for a date  */
+CREATE INDEX bookings_vehicle_id_idx ON public.bookings(vehicle_id); /*  Improves queries that search or join bookings using the assigned vehicle.*/
 
 CREATE INDEX idx_vehicles_chauffeur_id ON vehicles(chauffeur_id); /* Find vehicles for a chauffeur */
 
@@ -839,6 +846,7 @@ CREATE OR REPLACE FUNCTION public.update_booking_admin_details(
     p_mobility_aid_storage_required BOOLEAN,
     p_extra_large_luggage_required BOOLEAN,
     p_chauffeur_id UUID,
+    p_vehicle_id UUID,
     p_status public.booking_status
 )
 RETURNS VOID
@@ -943,7 +951,8 @@ BEGIN
         wheelchair_requirement = p_wheelchair_requirement,
         wheelchair_passenger_count = p_wheelchair_passenger_count,
         mobility_aid_storage_required = p_mobility_aid_storage_required,
-        extra_large_luggage_required = p_extra_large_luggage_required
+        extra_large_luggage_required = p_extra_large_luggage_required,
+        vehicle_id = p_vehicle_id
     WHERE id = p_booking_id;
 
 

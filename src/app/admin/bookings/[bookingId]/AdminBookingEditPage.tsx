@@ -16,7 +16,7 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
         .from("bookings")
         .select(`
                 id, pickup_date, pickup_location, destination, pickup_time,
-                passengers, luggage, trip_type, notes, status, chauffeur_id, has_pets,
+                passengers, luggage, trip_type, notes, status, chauffeur_id, vehicle_id, has_pets,
                 infant_seat_count_required, child_seat_count_required,
                 booster_seat_count_required, isofix_required,
                 wheelchair_requirement, wheelchair_passenger_count,
@@ -38,12 +38,12 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
     .from("chauffeurs")
     .select(`
         id, name, email, account_status, accepts_pets,
-        vehicles( 
-            id, brand, model, license_plate,
-            seats, luggage_capacity,
+        vehicles(
+            id, brand, model, license_plate, vehicle_type,
+            vehicle_year, vehicle_color, seats, luggage_capacity,
             infant_seat_count, child_seat_count, booster_seat_count,
             isofix_available, wheelchair_access, wheelchair_capacity,
-            mobility_aid_storage, extra_large_luggage) `)
+            mobility_aid_storage, extra_large_luggage)`)
     .eq("account_status", "approved") //Only return chauffeurs whose account_status is approved.
     .order("name", { ascending: true });
     if (chauffeursError) { console.error("Could not load chauffeurs:", chauffeursError); }
@@ -82,7 +82,7 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
         - the booking includes a pet;
         - the chauffeur does not accept pets.
         When both conditions are true, return FALSE removes that chauffeur.
-        
+
         VEHICLE CHECK:
         (chauffeur.vehicles ?? []).some((vehicle) => ...)
         This checks the chauffeur's vehicles.
