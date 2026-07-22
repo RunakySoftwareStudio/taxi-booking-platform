@@ -14,6 +14,8 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getVehicleMatchResult, type VehicleWheelchairAccess } from "@/lib/vehicleMatching";
+import type { WheelchairRequirement } from "@/types/wheelchairRequirementType";
 
 type RouteContext = {params: Promise<{ bookingId: string; }>;};
 
@@ -109,11 +111,25 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         );
     }
 
-    // Verifies that the selected chauffeur exists and is approved.
+    /* =========================================================================================
+        VALIDATE CHAUFFEUR AND VEHICLE MATCHING
+
+        The selected chauffeur must:
+        - exist;
+        - have approved status;
+        - accept pets when required;
+        - have at least one vehicle matching all booking requirements.
+    ========================================================================================= */
     if (chauffeurId) {
         const { data: chauffeurRow, error: chauffeurError } = await supabaseAdmin
             .from("chauffeurs")
-            .select("id, account_status")
+            .select(`
+                id, account_status, accepts_pets,
+                vehicles(
+                    seats, luggage_capacity,
+                    infant_seat_count, child_seat_count, booster_seat_count,
+                    isofix_available, wheelchair_access, wheelchair_capacity,
+                    mobility_aid_storage, extra_large_luggage ) `)
             .eq("id", chauffeurId)
             .maybeSingle();
 
@@ -127,12 +143,54 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
         if (!chauffeurRow || chauffeurRow.account_status !== "approved") {
             return NextResponse.json(
-                { message: "Only approved chauffeurs can be assigned to a booking." },
+                { message: "Only approved chauffeurs can be assigned." },
+                { status: 400 }
+            );
+        }
+
+        if (hasPets && !chauffeurRow.accepts_pets) {
+            return NextResponse.json(
+                { message: "The selected chauffeur does not accept pets." },
+                { status: 400 }
+            );
+        }
+
+        const hasMatchingVehicle = (chauffeurRow.vehicles ?? []).some((vehicle) =>
+            getVehicleMatchResult(
+                {
+                    seats: vehicle.seats,
+                    luggageCapacity: vehicle.luggage_capacity,
+                    infantSeatCount: vehicle.infant_seat_count,
+                    childSeatCount: vehicle.child_seat_count,
+                    boosterSeatCount: vehicle.booster_seat_count,
+                    isofixAvailable: vehicle.isofix_available,
+                    wheelchairAccess: vehicle.wheelchair_access as VehicleWheelchairAccess,
+                    wheelchairCapacity: vehicle.wheelchair_capacity,
+                    mobilityAidStorage: vehicle.mobility_aid_storage,
+                    extraLargeLuggage: vehicle.extra_large_luggage,
+                },
+                {
+                    passengers: passengerCount,
+                    luggage: luggageCount,
+                    infantSeatCountRequired,
+                    childSeatCountRequired,
+                    boosterSeatCountRequired,
+                    isofixRequired,
+                    wheelchairRequirement: wheelchairRequirement as WheelchairRequirement,
+                    wheelchairPassengerCount,
+                    mobilityAidStorageRequired,
+                    extraLargeLuggageRequired,
+                }
+            ).matches
+        );
+
+        if (!hasMatchingVehicle) {
+            return NextResponse.json(
+                { message: "The selected chauffeur has no vehicle matching this booking." },
                 { status: 400 }
             );
         }
     }
-
     /* ============================================================
     UPDATE CLIENT, BOOKING AND BUSY PERIOD
     rpc() calls the PostgreSQL function:  update_booking_admin_details
