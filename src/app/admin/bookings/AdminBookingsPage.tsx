@@ -113,6 +113,14 @@ async function updateBookingAdminFields(formData: FormData) {
             { data: defaultVehicle, error: vehicleError },
         ] = await Promise.all([
             supabaseAdmin.from("bookings").select(`
+                chauffeur_id, vehicle_id,
+                vehicles(
+                    id, chauffeur_id,
+                    seats, luggage_capacity,
+                    infant_seat_count, child_seat_count, booster_seat_count,
+                    isofix_available, wheelchair_access, wheelchair_capacity,
+                    mobility_aid_storage, extra_large_luggage
+                ),
                 passengers, luggage, has_pets,
                 infant_seat_count_required, child_seat_count_required,
                 booster_seat_count_required, isofix_required,
@@ -144,35 +152,52 @@ async function updateBookingAdminFields(formData: FormData) {
         if (bookingRow.has_pets && !chauffeurRow.accepts_pets) { redirect("/admin/bookings?error=chauffeur-does-not-accept-pets"); }
         if (!defaultVehicle) {redirect("/admin/bookings?error=default-vehicle-missing"); }
 
-        const matchResult = getVehicleMatchResult(
-            {
-                seats: defaultVehicle.seats,
-                luggageCapacity: defaultVehicle.luggage_capacity,
-                infantSeatCount: defaultVehicle.infant_seat_count,
-                childSeatCount: defaultVehicle.child_seat_count,
-                boosterSeatCount: defaultVehicle.booster_seat_count,
-                isofixAvailable: defaultVehicle.isofix_available,
-                wheelchairAccess: defaultVehicle.wheelchair_access as VehicleWheelchairAccess,
-                wheelchairCapacity: defaultVehicle.wheelchair_capacity,
-                mobilityAidStorage: defaultVehicle.mobility_aid_storage,
-                extraLargeLuggage: defaultVehicle.extra_large_luggage,
-            },
-            {
-                passengers: bookingRow.passengers,
-                luggage: bookingRow.luggage ?? 0,
-                infantSeatCountRequired: bookingRow.infant_seat_count_required,
-                childSeatCountRequired: bookingRow.child_seat_count_required,
-                boosterSeatCountRequired: bookingRow.booster_seat_count_required,
-                isofixRequired: bookingRow.isofix_required,
-                wheelchairRequirement: bookingRow.wheelchair_requirement as WheelchairRequirement,
-                wheelchairPassengerCount: bookingRow.wheelchair_passenger_count,
-                mobilityAidStorageRequired: bookingRow.mobility_aid_storage_required,
-                extraLargeLuggageRequired: bookingRow.extra_large_luggage_required,
-            }
-        );
+        const vehicleMatchesBooking = (vehicle: NonNullable<typeof defaultVehicle>) =>
+            getVehicleMatchResult(
+                {
+                    seats: vehicle.seats,
+                    luggageCapacity: vehicle.luggage_capacity,
+                    infantSeatCount: vehicle.infant_seat_count,
+                    childSeatCount: vehicle.child_seat_count,
+                    boosterSeatCount: vehicle.booster_seat_count,
+                    isofixAvailable: vehicle.isofix_available,
+                    wheelchairAccess: vehicle.wheelchair_access as VehicleWheelchairAccess,
+                    wheelchairCapacity: vehicle.wheelchair_capacity,
+                    mobilityAidStorage: vehicle.mobility_aid_storage,
+                    extraLargeLuggage: vehicle.extra_large_luggage,
+                },
+                {
+                    passengers: bookingRow.passengers,
+                    luggage: bookingRow.luggage ?? 0,
+                    infantSeatCountRequired: bookingRow.infant_seat_count_required,
+                    childSeatCountRequired: bookingRow.child_seat_count_required,
+                    boosterSeatCountRequired: bookingRow.booster_seat_count_required,
+                    isofixRequired: bookingRow.isofix_required,
+                    wheelchairRequirement: bookingRow.wheelchair_requirement as WheelchairRequirement,
+                    wheelchairPassengerCount: bookingRow.wheelchair_passenger_count,
+                    mobilityAidStorageRequired: bookingRow.mobility_aid_storage_required,
+                    extraLargeLuggageRequired: bookingRow.extra_large_luggage_required,
+                }
+            ).matches;
 
-        if (!matchResult.matches) { redirect("/admin/bookings?error=default-vehicle-mismatch"); }
-        vehicleId = defaultVehicle.id;
+        const currentVehicle = Array.isArray(bookingRow.vehicles)
+            ? bookingRow.vehicles[0]
+            : bookingRow.vehicles;
+
+        const currentVehicleCanStay =
+            bookingRow.chauffeur_id === chauffeurId &&
+            bookingRow.vehicle_id !== null &&
+            currentVehicle?.id === bookingRow.vehicle_id &&
+            currentVehicle.chauffeur_id === chauffeurId &&
+            vehicleMatchesBooking(currentVehicle);
+
+        if (currentVehicleCanStay && currentVehicle) {
+            vehicleId = currentVehicle.id;
+        } else {
+            if (!defaultVehicle) { redirect("/admin/bookings?error=default-vehicle-missing"); }
+            if (!vehicleMatchesBooking(defaultVehicle)) { redirect("/admin/bookings?error=default-vehicle-mismatch"); }
+            vehicleId = defaultVehicle.id;
+        }
     }
 
     /* Saves chauffeur, exact vehicle, status and busy period together. */
