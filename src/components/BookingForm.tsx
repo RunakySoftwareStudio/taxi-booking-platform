@@ -52,6 +52,7 @@ export default function BookingForm() {
     const [routeEstimate, setRouteEstimate] = useState<RouteEstimate | null>(null);
     const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
     const [routeEstimateError, setRouteEstimateError] = useState("");
+    const [needsPassengerSupport, setNeedsPassengerSupport] = useState(false);
 
     // When submittedBooking changes from null to a real booking, scroll smoothly to the result area.
     useEffect(() => {
@@ -120,19 +121,17 @@ export default function BookingForm() {
 
     // Converts a stable trip-type database value into translated visible text.
     function getTripTypeLabel(tripTypeValue: string) {
-    const tripTypeTranslationKeys: Record<string, string> = {
-        "one-way": "tripTypeOneWay",
-        return: "tripTypeReturn",
-        airport: "tripTypeAirport",
-        business: "tripTypeBusiness",
-        hourly: "tripTypeHourly",
-    };
-
-    const translationKey = tripTypeTranslationKeys[tripTypeValue];
-
-    return translationKey
-        ? getTranslation("chauffeurDashboardPage", translationKey, languageCode)
-        : tripTypeValue;
+        const tripTypeTranslationKeys: Record<string, string> = {
+            "one-way": "tripTypeOneWay",
+            return: "tripTypeReturn",
+            airport: "tripTypeAirport",
+            business: "tripTypeBusiness",
+            hourly: "tripTypeHourly",
+        };
+        const translationKey = tripTypeTranslationKeys[tripTypeValue];
+        return translationKey
+            ? getTranslation("chauffeurDashboardPage", translationKey, languageCode)
+            : tripTypeValue;
     }
 
     // Converts a stable booking-status database value into translated visible text.
@@ -272,11 +271,23 @@ export default function BookingForm() {
             setRouteEstimate(null);
             setRouteEstimateError("");
             setIsCalculatingRoute(false);
+            setNeedsPassengerSupport(false);
         } catch (error) {
             console.error("Could not submit booking:", error);
             setErrorMessage(getBookingFormText("submitErrorMessage"));
         } finally {
             setIsSending(false);
+        }
+    }
+    // Shows or hides special requirements and restores safe defaults when disabled.
+    function handlePassengerSupportChange(isEnabled: boolean) {
+        setNeedsPassengerSupport(isEnabled);
+
+        if (!isEnabled) {
+            setIsofixRequired(false);
+            setWheelchairRequirement("none");
+            setMobilityAidStorageRequired(false);
+            setExtraLargeLuggageRequired(false);
         }
     }
 
@@ -480,67 +491,83 @@ export default function BookingForm() {
                             {getBookingFormText("hasPetsLabel")}
                         </label>
                     </div>
+
+                    {/* Need additinal vehicle support? yes or no? */}
                     <div className="mt-6 rounded-xl border border-cyan-400/20 bg-slate-950/30 p-4">
-                        <h3 className="font-semibold text-white">
-                            {getPassengerSupportText("passengerSupportTitle")}
-                        </h3>
-
-                        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            <label>
-                                <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("infantSeatsLabel")}</span>
-                                <input name="infantSeatCountRequired" type="number" min="0" defaultValue={bookingDraft?.infantSeatCountRequired || "0"} className={`${formStyles.inputUserPage} w-24!`} />
-                            </label>
-
-                            <label>
-                                <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("childSeatsLabel")}</span>
-                                <input name="childSeatCountRequired" type="number" min="0" defaultValue={bookingDraft?.childSeatCountRequired || "0"} className={`${formStyles.inputUserPage} w-24!`} />
-                            </label>
-
-                            <label>
-                                <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("boosterSeatsLabel")}</span>
-                                <input name="boosterSeatCountRequired" type="number" min="0" defaultValue={bookingDraft?.boosterSeatCountRequired || "0"} className={`${formStyles.inputUserPage} w-24!`} />
-                            </label>
-                        </div>
-
-                        <div className="mt-4 grid gap-4 md:grid-cols-2">
-                            <label>
-                                <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("wheelchairRequirementLabel")}</span>
-                                <select
-                                    value={wheelchairRequirement}
-                                    onChange={(event) => setWheelchairRequirement(event.target.value as WheelchairRequirement)}
-                                    className={`${formStyles.inputDateUserPage} w-72! max-w-full`}
-                                >
-                                    <option value="none">{getPassengerSupportText("wheelchairNone")}</option>
-                                    <option value="foldable">{getPassengerSupportText("wheelchairFoldableOnly")}</option>
-                                    <option value="remain_in_wheelchair">{getPassengerSupportText("wheelchairRemainSeated")}</option>
-                                </select>
-                            </label>
-
-                            {wheelchairRequirement === "remain_in_wheelchair" && (
-                                <label>
-                                    <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("wheelchairPassengerCountLabel")}</span>
-                                    <input name="wheelchairPassengerCount" type="number" min="1" required defaultValue={bookingDraft?.wheelchairPassengerCount || "1"} className={`${formStyles.inputUserPage} w-24!`} />
-                                </label>
-                            )}
-                        </div>
-
-                        <div className="mt-5 flex flex-wrap gap-4">
-                            <label className="flex items-center gap-2 text-sm">
-                                <input type="checkbox" checked={isofixRequired} onChange={(event) => setIsofixRequired(event.target.checked)} className="h-5 w-5" />
-                                {getPassengerSupportText("isofixLabel")}
-                            </label>
-
-                            <label className="flex items-center gap-2 text-sm">
-                                <input type="checkbox" checked={mobilityAidStorageRequired} onChange={(event) => setMobilityAidStorageRequired(event.target.checked)} className="h-5 w-5" />
-                                {getPassengerSupportText("mobilityAidStorageLabel")}
-                            </label>
-
-                            <label className="flex items-center gap-2 text-sm">
-                                <input type="checkbox" checked={extraLargeLuggageRequired} onChange={(event) => setExtraLargeLuggageRequired(event.target.checked)} className="h-5 w-5" />
-                                {getPassengerSupportText("extraLargeLuggageLabel")}
-                            </label>
-                        </div>
+                        <label className="flex items-start gap-3">
+                            <input type="checkbox" checked={needsPassengerSupport} onChange={(event) => handlePassengerSupportChange(event.target.checked)}  className="mt-1 h-5 w-5" />
+                            <span>
+                                <span className="block font-semibold text-cyan-300"> {getPassengerSupportText("additionalSupportQuestion")} </span>
+                                <span className="mt-1 block text-sm text-slate-400"> {getPassengerSupportText("additionalSupportDescription")}  </span>
+                            </span>
+                        </label>
                     </div>
+
+                    {/* Additinal vehicle support section */}
+                    {needsPassengerSupport && (
+                        <div className="mt-6 rounded-xl border border-cyan-400/20 bg-slate-950/30 p-4">
+                            <h3 className="font-semibold text-white">
+                                {getPassengerSupportText("passengerSupportTitle")}
+                            </h3>
+
+                            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <label>
+                                    <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("infantSeatsLabel")}</span>
+                                    <input name="infantSeatCountRequired" type="number" min="0" defaultValue={bookingDraft?.infantSeatCountRequired || "0"} className={`${formStyles.inputUserPage} w-24!`} />
+                                </label>
+
+                                <label>
+                                    <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("childSeatsLabel")}</span>
+                                    <input name="childSeatCountRequired" type="number" min="0" defaultValue={bookingDraft?.childSeatCountRequired || "0"} className={`${formStyles.inputUserPage} w-24!`} />
+                                </label>
+
+                                <label>
+                                    <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("boosterSeatsLabel")}</span>
+                                    <input name="boosterSeatCountRequired" type="number" min="0" defaultValue={bookingDraft?.boosterSeatCountRequired || "0"} className={`${formStyles.inputUserPage} w-24!`} />
+                                </label>
+                            </div>
+
+                            <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                <label>
+                                    <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("wheelchairRequirementLabel")}</span>
+                                    <select
+                                        value={wheelchairRequirement}
+                                        onChange={(event) => setWheelchairRequirement(event.target.value as WheelchairRequirement)}
+                                        className={`${formStyles.inputDateUserPage} w-72! max-w-full`}
+                                    >
+                                        <option value="none">{getPassengerSupportText("wheelchairNone")}</option>
+                                        <option value="foldable">{getPassengerSupportText("wheelchairFoldableOnly")}</option>
+                                        <option value="remain_in_wheelchair">{getPassengerSupportText("wheelchairRemainSeated")}</option>
+                                    </select>
+                                </label>
+
+                                {wheelchairRequirement === "remain_in_wheelchair" && (
+                                    <label>
+                                        <span className="mb-2 block text-sm font-medium">{getPassengerSupportText("wheelchairPassengerCountLabel")}</span>
+                                        <input name="wheelchairPassengerCount" type="number" min="1" required defaultValue={bookingDraft?.wheelchairPassengerCount || "1"} className={`${formStyles.inputUserPage} w-24!`} />
+                                    </label>
+                                )}
+                            </div>
+
+                            <div className="mt-5 flex flex-wrap gap-4">
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" checked={isofixRequired} onChange={(event) => setIsofixRequired(event.target.checked)} className="h-5 w-5" />
+                                    {getPassengerSupportText("isofixLabel")}
+                                </label>
+
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" checked={mobilityAidStorageRequired} onChange={(event) => setMobilityAidStorageRequired(event.target.checked)} className="h-5 w-5" />
+                                    {getPassengerSupportText("mobilityAidStorageLabel")}
+                                </label>
+
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" checked={extraLargeLuggageRequired} onChange={(event) => setExtraLargeLuggageRequired(event.target.checked)} className="h-5 w-5" />
+                                    {getPassengerSupportText("extraLargeLuggageLabel")}
+                                </label>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="mt-5 sm:mt-6">
                         <label htmlFor="notes" className="mb-2 block text-sm font-medium"> {getBookingFormText("notesLabel")} </label>
                         <textarea id="notes" name="notes" rows={4} placeholder={getBookingFormText("notesPlaceholder")} defaultValue={bookingDraft?.notes || ""} className={formStyles.textareaMainPg}/>

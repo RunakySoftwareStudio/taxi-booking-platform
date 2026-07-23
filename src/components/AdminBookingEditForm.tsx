@@ -44,6 +44,18 @@ type VehicleOption = {
     mobility_aid_storage: boolean; extra_large_luggage: boolean;
 };
 
+// Converts database vehicle fields to the central matching-helper structure.
+function toVehicleForMatching(vehicle: VehicleOption) {
+    return {
+        seats: vehicle.seats, luggageCapacity: vehicle.luggage_capacity,
+        infantSeatCount: vehicle.infant_seat_count, childSeatCount: vehicle.child_seat_count,
+        boosterSeatCount: vehicle.booster_seat_count, isofixAvailable: vehicle.isofix_available,
+        wheelchairAccess: vehicle.wheelchair_access as VehicleWheelchairAccess,
+        wheelchairCapacity: vehicle.wheelchair_capacity,
+        mobilityAidStorage: vehicle.mobility_aid_storage,
+        extraLargeLuggage: vehicle.extra_large_luggage,
+    };
+}
 type ChauffeurOption = {
     id: string; name: string; email: string;
     account_status: string; accepts_pets: boolean;
@@ -93,39 +105,56 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     const [wheelchairPassengerCount, setWheelchairPassengerCount] = useState(String(booking.wheelchair_passenger_count ?? 0));
     const [mobilityAidStorageRequired, setMobilityAidStorageRequired] = useState(booking.mobility_aid_storage_required ?? false);
     const [extraLargeLuggageRequired, setExtraLargeLuggageRequired] = useState(booking.extra_large_luggage_required ?? false);
-    
-    // Finds the selected chauffeur and provides that chauffeur's vehicles.
-    const selectedChauffeur = chauffeurs.find((chauffeur) => chauffeur.id === chauffeurId);
-    const selectedChauffeurVehicles = selectedChauffeur?.vehicles ?? [];
+   
+    // Clears the assignment when booking requirements change.
+    function clearAssignment() {
+        setChauffeurId("");
+        setVehicleId("");
+    }
 
-    /* Filters the selected chauffeur's vehicles using the current booking values entered in this form. */
-    const matchingVehicleOptions = selectedChauffeurVehicles.filter((vehicle) =>
-        getVehicleMatchResult(
-            {
-                seats: vehicle.seats,
-                luggageCapacity: vehicle.luggage_capacity,
-                infantSeatCount: vehicle.infant_seat_count,
-                childSeatCount: vehicle.child_seat_count,
-                boosterSeatCount: vehicle.booster_seat_count,
-                isofixAvailable: vehicle.isofix_available,
-                wheelchairAccess: vehicle.wheelchair_access as VehicleWheelchairAccess,
-                wheelchairCapacity: vehicle.wheelchair_capacity,
-                mobilityAidStorage: vehicle.mobility_aid_storage,
-                extraLargeLuggage: vehicle.extra_large_luggage,
-            },
-            {
-                passengers: Number(passengers || 0),
-                luggage: Number(luggage || 0),
-                infantSeatCountRequired: Number(infantSeatCountRequired || 0),
-                childSeatCountRequired: Number(childSeatCountRequired || 0),
-                boosterSeatCountRequired: Number(boosterSeatCountRequired || 0),
-                isofixRequired,
-                wheelchairRequirement,
-                wheelchairPassengerCount: Number(wheelchairPassengerCount || 0),
-                mobilityAidStorageRequired,
-                extraLargeLuggageRequired,
-            }
-        ).matches
+    /* =========================================================================================
+    DYNAMIC CHAUFFEUR AND VEHICLE MATCHING
+
+    Uses the current values visible in this edit form.
+    filter(): Keeps only chauffeurs with at least one matching vehicle.
+    some():  Returns TRUE when at least one vehicle matches every booking requirement.
+    FILTER CHAUFFEURS BY PET ACCEPTANCE AND VEHICLE MATCHING
+
+        (chauffeurs ?? [])
+        Uses the chauffeur list when it exists.
+        When chauffeurs is null or undefined, it uses an empty array instead.
+
+        .filter((chauffeur) => { ... })
+        Checks every chauffeur separately.
+        The chauffeur remains in matchingChauffeurs only when this function returns TRUE.
+        example:
+            const values = [1, 2, 3, 4];
+            const largerValues = values.filter((value) => value > 2);
+    ========================================================================================= */
+    const currentBookingForMatching = {
+        passengers: Number(passengers || 0), luggage: Number(luggage || 0),
+        infantSeatCountRequired: Number(infantSeatCountRequired || 0),
+        childSeatCountRequired: Number(childSeatCountRequired || 0),
+        boosterSeatCountRequired: Number(boosterSeatCountRequired || 0),
+        isofixRequired, wheelchairRequirement,
+        wheelchairPassengerCount: Number(wheelchairPassengerCount || 0),
+        mobilityAidStorageRequired, extraLargeLuggageRequired,
+    };
+
+    const matchingChauffeurOptions = chauffeurs.filter((chauffeur) => {
+        if (hasPets && !chauffeur.accepts_pets) { return false; }
+
+        return (chauffeur.vehicles ?? []).some((vehicle) =>
+            getVehicleMatchResult(
+                toVehicleForMatching(vehicle),
+                currentBookingForMatching
+            ).matches
+        );
+    });
+
+    const selectedChauffeur = matchingChauffeurOptions.find( (chauffeur) => chauffeur.id === chauffeurId);
+    const matchingVehicleOptions = (selectedChauffeur?.vehicles ?? []).filter((vehicle) =>
+        getVehicleMatchResult( toVehicleForMatching(vehicle),  currentBookingForMatching ).matches
     );
 
     const [successMessage, setSuccessMessage] = useState("");
@@ -182,7 +211,7 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                 <h2 className="text-lg font-semibold text-white">Client information</h2>
                 <div className="mt-5 grid gap-5 md:grid-cols-3">
                     <label className={formStyles.label}> Client name
-                        <input value={clientName} onChange={(event) => setClientName(event.target.value)} required className={`${formStyles.inputWFullCyan} text-[13px] sm:text-sm`} />
+                        <input value={clientName} onChange={(event) => setClientName(event.target.value) } required className={`${formStyles.inputWFullCyan} text-[13px] sm:text-sm`} />
                     </label>
                     <label className={formStyles.label}>  Client email
                         <input type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} required className={`${formStyles.inputWFullCyan} text-[13px] sm:text-sm`} />
@@ -193,11 +222,10 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                 </div>
             </section>
 
-            {/* Explanation: grid-cols-1 controls mobile; md:grid-cols-2 changes it to two columns on larger screens. 
-                grid-cols-1 explicitly restricts the mobile column to the available width.*/}
+            {/* Explanation: grid-cols-1 controls mobile; md:grid-cols-2 changes it to two columns on larger screens. grid-cols-1 explicitly restricts the mobile column to the available width.*/}
             <div className="mt-3 grid grid-cols-1 gap-5 md:grid-cols-2">
                     <div className={formStyles.label}> Location
-                        <input value={pickupLocation}  onChange={(event) => setPickupLocation(event.target.value)} required className={`${formStyles.inputWFullCyan} text-xs! sm:text-sm!`}/>
+                        <input value={pickupLocation}  onChange={(event) => {setPickupLocation(event.target.value); clearAssignment();}} required className={`${formStyles.inputWFullCyan} text-xs! sm:text-sm!`}/>
                     </div>
                     <div className={formStyles.label}>  Destination
                         <input  value={destination} onChange={(event) => setDestination(event.target.value)}  required className={`${formStyles.inputWFullCyan} text-xs! sm:text-sm!`}/>
@@ -213,11 +241,11 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                         </label>
                         <label className="block">
                             <span className={formStyles.label}>Luggage</span>
-                            <input type="number" min="0" value={luggage}  onChange={(event) => setLuggage(event.target.value)} required  className={`${formStyles.inputWFullCyan} w-18!`} /> 
+                            <input type="number" min="0" value={luggage}  onChange={(event) => {setLuggage(event.target.value); clearAssignment();}} required  className={`${formStyles.inputWFullCyan} w-18!`} /> 
                         </label>
                         <label className="block">
                             <span className={formStyles.label}>Pax</span>
-                            <input type="number" min="1" value={passengers} onChange={(event) => setPassengers(event.target.value)} required className={`${formStyles.inputWFullCyan} w-18!`} />  
+                            <input type="number" min="1" value={passengers} onChange={(event) => {setPassengers(event.target.value); clearAssignment();}} required className={`${formStyles.inputWFullCyan} w-18!`} />  
                         </label>
                     </div>
 
@@ -232,14 +260,99 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                                 {bookingStatusOptions.map((statusOption) => ( <option key={statusOption} value={statusOption}> {statusOption}  </option>  ))}
                             </select>
                         </div>
+                        <div className="flex items-center gap-4 px-4 pb-2 pt-6 text-sm text-slate-300 align-top ">
+                            <input type="checkbox" checked={hasPets} onChange={(event) => {setHasPets(event.target.checked); clearAssignment();}}  className="h-5 w-5"/>   
+                        <div className={formStyles.label}>  has pets  </div>
                     </div>
-                    {/* Explanation: min-w-0: allows the grid item and select to shrink inside the mobile form border. 
-                        max-w-full: prevents the select from becoming wider than its parent. */}
+                    </div>
+
+                    {/*Passenger support section: */}        
+                    <section className="md:col-span-2 rounded-2xl border border-cyan-400/20 bg-white/5 p-5 text-xs! sm:text-sm!">
+                        <h2 className="text-lg font-semibold text-cyan-300">Passenger support</h2>
+
+                        <div className="mt-4 flex flex-wrap items-end gap-3">
+                            <label className="block text-xs! sm:text-sm!">
+                                <span className={formStyles.label}>Infant seats</span>
+                                <input type="number" min="0" 
+                                    value={infantSeatCountRequired} onChange={(event) => {setInfantSeatCountRequired(event.target.value); clearAssignment();}} 
+                                    className={`${formStyles.inputWFullCyan} w-24!`} />
+                            </label>
+
+                            <label className="block text-xs! sm:text-sm!">
+                                <span className={formStyles.label}>Child seats</span>
+                                <input type="number" min="0" 
+                                    value={childSeatCountRequired} onChange={(event) => {setChildSeatCountRequired(event.target.value); clearAssignment();}} 
+                                    className={`${formStyles.inputWFullCyan} w-24!`} />
+                            </label>
+
+                            <label className="block text-xs! sm:text-sm!">
+                                <span className={formStyles.label}>Booster seats</span>
+                                <input type="number" min="0" 
+                                    value={boosterSeatCountRequired} onChange={(event) => {setBoosterSeatCountRequired(event.target.value); clearAssignment();}} 
+                                    className={`${formStyles.inputWFullCyan} w-24!`} />
+                            </label>
+
+                            <label className="block text-xs! sm:text-sm!">
+                                <span className={formStyles.label}>Wheelchair passengers</span>
+                                <input type="number" min={wheelchairRequirement === "remain_in_wheelchair" ? "1" : "0"} 
+                                    value={wheelchairPassengerCount} onChange={(event) => {setWheelchairPassengerCount(event.target.value); clearAssignment();}} 
+                                    disabled={wheelchairRequirement !== "remain_in_wheelchair"} className={`${formStyles.inputWFullCyan} w-24! disabled:opacity-50`} />
+                            </label>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 text-xs! sm:text-sm!">
+                            <label className="block min-w-0 text-xs! sm:text-sm!">
+                                <span className={formStyles.label}>Wheelchair requirement</span>
+                                <select className={`${formStyles.selectWFull} w-72! max-w-full`}
+                                    value={wheelchairRequirement}
+                                    onChange={(event) => {
+                                        const nextRequirement = event.target.value as WheelchairRequirement;
+                                        setWheelchairRequirement(nextRequirement);
+                                        setWheelchairPassengerCount(nextRequirement === "remain_in_wheelchair" ? "1" : "0");
+                                        clearAssignment();
+                                    }} >
+                                    <option value="none">None</option>
+                                    <option value="foldable">Foldable wheelchair</option>
+                                    <option value="remain_in_wheelchair">Remain seated in wheelchair</option>
+                                </select>
+                            </label>
+
+                            <div className="flex flex-wrap items-center gap-4">
+                                <label className="flex items-center gap-2 text-xs! sm:text-sm!">
+                                    <input type="checkbox" checked={isofixRequired} 
+                                        onChange={(event) => {setIsofixRequired(event.target.checked); clearAssignment();}} 
+                                        className="h-5 w-5" />
+                                        ISOFIX required
+                                </label>
+
+                                <label className="flex items-center gap-2 text-xs! sm:text-sm!">
+                                    <input type="checkbox" checked={mobilityAidStorageRequired} 
+                                        onChange={(event) => {setMobilityAidStorageRequired(event.target.checked); clearAssignment();}} 
+                                        className="h-5 w-5" />
+                                        Mobility-aid storage
+                                </label>
+
+                                <label className="flex items-center gap-2 text-xs! sm:text-sm!">
+                                    <input type="checkbox" checked={extraLargeLuggageRequired} 
+                                        onChange={(event) => {setExtraLargeLuggageRequired(event.target.checked); clearAssignment();}}
+                                        className="h-5 w-5" />
+                                        Extra-large luggage
+                                </label>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Explanation: min-w-0: allows the grid item and select to shrink inside the mobile form border.  max-w-full: prevents the select from becoming wider than its parent. */}
                     <div className={`${formStyles.label} min-w-0`}>  Assigned chauffeur
                         <select  value={chauffeurId} onChange={(event) => {setChauffeurId(event.target.value); setVehicleId("");}} className={`${formStyles.selectWFull} min-w-0 max-w-full text-xs! sm:text-sm!`}>
                             <option value="">No chauffeur assigned</option>
-                                {chauffeurs.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} - {chauffeur.email} </option> ))  }
+                                {matchingChauffeurOptions.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} - {chauffeur.email} </option> ))  }
                         </select>
+                        {chauffeurId && matchingVehicleOptions.length === 0 && (
+                            <p className="mt-2 text-xs text-red-300">
+                                This chauffeur has no vehicle matching the current booking requirements.
+                            </p>
+                        )}
                     </div>
                     <div className={`${formStyles.label} min-w-0`}>
                         Assigned vehicle
@@ -254,76 +367,8 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                                 </option>
                             ))}
                         </select>
-                        {chauffeurId && matchingVehicleOptions.length === 0 && (
-                            <p className="mt-2 text-xs text-red-300">
-                                This chauffeur has no vehicle matching the current booking requirements.
-                            </p>
-                        )}
+
                     </div>
-                    <div className="flex items-center gap-4 px-4 pb-4 pt-6 text-sm text-slate-300 align-top">
-                        <input type="checkbox" checked={hasPets} onChange={(event) => setHasPets(event.target.checked)}  className="h-5 w-5"/>   
-                        <div className={formStyles.label}>  has pets  </div>
-                    </div>
-                            
-                    <section className="md:col-span-2 rounded-2xl border border-cyan-400/20 bg-white/5 p-5 text-xs! sm:text-sm!">
-                        <h2 className="text-lg font-semibold text-cyan-300">Passenger support</h2>
-
-                        <div className="mt-4 flex flex-wrap items-end gap-3">
-                            <label className="block text-xs! sm:text-sm!">
-                                <span className={formStyles.label}>Infant seats</span>
-                                <input type="number" min="0" value={infantSeatCountRequired} onChange={(event) => setInfantSeatCountRequired(event.target.value)} className={`${formStyles.inputWFullCyan} w-24!`} />
-                            </label>
-
-                            <label className="block text-xs! sm:text-sm!">
-                                <span className={formStyles.label}>Child seats</span>
-                                <input type="number" min="0" value={childSeatCountRequired} onChange={(event) => setChildSeatCountRequired(event.target.value)} className={`${formStyles.inputWFullCyan} w-24!`} />
-                            </label>
-
-                            <label className="block text-xs! sm:text-sm!">
-                                <span className={formStyles.label}>Booster seats</span>
-                                <input type="number" min="0" value={boosterSeatCountRequired} onChange={(event) => setBoosterSeatCountRequired(event.target.value)} className={`${formStyles.inputWFullCyan} w-24!`} />
-                            </label>
-
-                            <label className="block text-xs! sm:text-sm!">
-                                <span className={formStyles.label}>Wheelchair passengers</span>
-                                <input type="number" min={wheelchairRequirement === "remain_in_wheelchair" ? "1" : "0"} value={wheelchairPassengerCount} onChange={(event) => setWheelchairPassengerCount(event.target.value)} disabled={wheelchairRequirement !== "remain_in_wheelchair"} className={`${formStyles.inputWFullCyan} w-24! disabled:opacity-50`} />
-                            </label>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 text-xs! sm:text-sm!">
-                            <label className="block min-w-0 text-xs! sm:text-sm!">
-                                <span className={formStyles.label}>Wheelchair requirement</span>
-                                <select className={`${formStyles.selectWFull} w-72! max-w-full`}
-                                    value={wheelchairRequirement}
-                                    onChange={(event) => {
-                                        const nextRequirement = event.target.value as WheelchairRequirement;
-                                        setWheelchairRequirement(nextRequirement);
-                                        setWheelchairPassengerCount(nextRequirement === "remain_in_wheelchair" ? "1" : "0");
-                                    }} >
-                                    <option value="none">None</option>
-                                    <option value="foldable">Foldable wheelchair</option>
-                                    <option value="remain_in_wheelchair">Remain seated in wheelchair</option>
-                                </select>
-                            </label>
-
-                            <div className="flex flex-wrap items-center gap-4">
-                                <label className="flex items-center gap-2 text-xs! sm:text-sm!">
-                                    <input type="checkbox" checked={isofixRequired} onChange={(event) => setIsofixRequired(event.target.checked)} className="h-5 w-5" />
-                                    ISOFIX required
-                                </label>
-
-                                <label className="flex items-center gap-2 text-xs! sm:text-sm!">
-                                    <input type="checkbox" checked={mobilityAidStorageRequired} onChange={(event) => setMobilityAidStorageRequired(event.target.checked)} className="h-5 w-5" />
-                                    Mobility-aid storage
-                                </label>
-
-                                <label className="flex items-center gap-2 text-xs! sm:text-sm!">
-                                    <input type="checkbox" checked={extraLargeLuggageRequired} onChange={(event) => setExtraLargeLuggageRequired(event.target.checked)} className="h-5 w-5" />
-                                    Extra-large luggage
-                                </label>
-                            </div>
-                        </div>
-                    </section>
                     <div className="md:col-span-2"> 
                         <span className={formStyles.span}> Notes </span>
                         <textarea  value={notes}  onChange={(event) => setNotes(event.target.value)}  placeholder="Optional booking notes" className={formStyles.textarea} />

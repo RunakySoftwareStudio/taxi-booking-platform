@@ -131,6 +131,7 @@ CREATE TYPE wheelchair_access_type AS ENUM (
 CREATE TABLE vehicles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   chauffeur_id UUID NOT NULL REFERENCES chauffeurs(id) ON DELETE CASCADE,
+  is_default_vehicle BOOLEAN NOT NULL DEFAULT FALSE, /* TRUE marks the chauffeur's normal vehicle.  Only one vehicle per chauffeur may be the default. */
   brand TEXT NOT NULL,
   model TEXT NOT NULL,
   vehicle_year INTEGER,
@@ -288,7 +289,6 @@ CREATE TABLE public.bookings (
 
     /*
       none and foldable require zero passengers remaining in a wheelchair.
-
       remain_in_wheelchair requires at least one wheelchair passenger.
     */
     CONSTRAINT bookings_wheelchair_requirement_consistent
@@ -301,6 +301,20 @@ CREATE TABLE public.bookings (
             (
                 wheelchair_requirement = 'remain_in_wheelchair'
                 AND wheelchair_passenger_count >= 1
+            )
+        ),
+
+    /*
+    Active bookings require both a chauffeur assignment and an exact assigned vehicle.
+    The API separately verifies that the chauffeur is approved and that the selected vehicle matches the booking.
+    pending, rejected and cancelled bookings may remain unassigned.
+    */
+    CONSTRAINT bookings_active_assignment_required
+        CHECK (
+            status NOT IN ('accepted', 'confirmed', 'completed')
+            OR (
+                chauffeur_id IS NOT NULL
+                AND vehicle_id IS NOT NULL
             )
         )
 );
@@ -325,6 +339,7 @@ CREATE INDEX idx_bookings_pickup_date ON bookings(pickup_date); /* Find bookings
 CREATE INDEX bookings_vehicle_id_idx ON public.bookings(vehicle_id); /*  Improves queries that search or join bookings using the assigned vehicle.*/
 
 CREATE INDEX idx_vehicles_chauffeur_id ON vehicles(chauffeur_id); /* Find vehicles for a chauffeur */
+CREATE UNIQUE INDEX vehicles_one_default_vehicle_per_chauffeur_idx ON public.vehicles(chauffeur_id) WHERE is_default_vehicle = TRUE;
 
 CREATE INDEX idx_chauffeur_availability_chauffeur_id ON chauffeur_availability(chauffeur_id); /* Find availability for a chauffeur */
 
@@ -597,6 +612,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.update_booking_admin_assignment(
     p_booking_id UUID,
     p_chauffeur_id UUID,
+    p_vehicle_id UUID,
     p_status public.booking_status
 )
 /*-------------------------------
@@ -669,10 +685,24 @@ BEGIN
        active booking status  AND no assigned chauffeur
     ----------------------------------------------------------- */
     IF p_status IN ('accepted', 'confirmed', 'completed')
-       AND p_chauffeur_id IS NULL THEN
-
+        AND (p_chauffeur_id IS NULL OR p_vehicle_id IS NULL) THEN
         RAISE EXCEPTION
-            'An accepted, confirmed or completed booking requires a chauffeur.'
+            'An accepted, confirmed or completed booking requires a chauffeur and vehicle.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* The selected vehicle must belong to the selected chauffeur. */
+    IF p_vehicle_id IS NOT NULL
+    AND (
+        p_chauffeur_id IS NULL
+        OR NOT EXISTS (
+            SELECT 1
+            FROM public.vehicles
+            WHERE id = p_vehicle_id
+                AND chauffeur_id = p_chauffeur_id
+        )
+    ) THEN
+        RAISE EXCEPTION 'The selected vehicle does not belong to the chauffeur.'
         USING ERRCODE = '22023';
     END IF;
 
@@ -745,6 +775,7 @@ BEGIN
     UPDATE public.bookings
     SET
         chauffeur_id = p_chauffeur_id,
+        vehicle_id = p_vehicle_id,
         status = p_status
     WHERE id = p_booking_id;
 
@@ -806,9 +837,15 @@ END;
 $$;
 /*===========================================================
 =============================================================*/
+/* Removes the obsolete assignment-function overload from older database versions. */
+DROP FUNCTION IF EXISTS public.update_booking_admin_assignment(
+    UUID,
+    UUID,
+    public.booking_status
+);
 
 /* ============================================================
-   FUNCTION PURPOSE
+   FUNCTION PURPOSE:
 
    Updates all editable booking and client information.
 
@@ -928,7 +965,7 @@ BEGIN
        - notes;
        - pet information.
 
-       Status and chauffeur_id are not updated here.
+       Status, chauffeur_id and vehicle_id are not updated here.
 
        They are handled by update_booking_admin_assignment()
        because that function also manages the busy period.
@@ -951,8 +988,7 @@ BEGIN
         wheelchair_requirement = p_wheelchair_requirement,
         wheelchair_passenger_count = p_wheelchair_passenger_count,
         mobility_aid_storage_required = p_mobility_aid_storage_required,
-        extra_large_luggage_required = p_extra_large_luggage_required,
-        vehicle_id = p_vehicle_id
+        extra_large_luggage_required = p_extra_large_luggage_required
     WHERE id = p_booking_id;
 
 
@@ -965,7 +1001,7 @@ BEGIN
        update_booking_admin_assignment() will:
 
        - remove the booking's previous busy period;
-       - update chauffeur_id and booking status;
+       - update chauffeur_id, vehicle_id and booking status;
        - calculate the busy-period end time;
        - create a new busy period for active statuses;
        - reject overlapping chauffeur bookings.
@@ -976,6 +1012,7 @@ BEGIN
     PERFORM public.update_booking_admin_assignment(
         p_booking_id,
         p_chauffeur_id,
+        p_vehicle_id,
         p_status
     );
 
@@ -990,6 +1027,8 @@ BEGIN
     ======================================================== */
 END;
 $$;
+
+
 /* ==========example trigger function=================
  -- When a chauffeur is assigned to a booking, automatically set status to assigned and update
 

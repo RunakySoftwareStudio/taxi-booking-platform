@@ -1279,6 +1279,34 @@ export const translations = {
         tr: "Tekerlekli sandalyede oturmaya devam et",
         fa: "باقی ماندن روی ویلچر",
     },
+    assignedVehicleLabel: {
+        en: "Assigned vehicle",
+        nl: "Toegewezen voertuig",
+        ar: "المركبة المخصصة",
+        tr: "Atanan araç",
+        fa: "خودروی اختصاص‌یافته",
+    },
+    vehicleNotAssigned: {
+        en: "Not assigned",
+        nl: "Niet toegewezen",
+        ar: "غير مخصصة",
+        tr: "Atanmadı",
+        fa: "اختصاص داده نشده",
+    },
+    additionalSupportQuestion: {
+    en: "Do you need additional passenger support?",
+    nl: "Heeft u extra passagiersvoorzieningen nodig?",
+    ar: "هل تحتاج إلى دعم إضافي للركاب؟",
+    tr: "Ek yolcu desteğine ihtiyacınız var mı?",
+    fa: "آیا به امکانات اضافی برای مسافر نیاز دارید؟",
+    },
+    additionalSupportDescription: {
+        en: "Child seats, wheelchair transport or special luggage requirements.",
+        nl: "Kinderzitjes, rolstoelvervoer of speciale bagagevereisten.",
+        ar: "مقاعد الأطفال أو نقل الكراسي المتحركة أو متطلبات الأمتعة الخاصة.",
+        tr: "Çocuk koltuğu, tekerlekli sandalye taşıma veya özel bagaj gereksinimleri.",
+        fa: "صندلی کودک، حمل ویلچر یا نیازهای ویژه بار.",
+    },
   },
 
   logoutButton: {
