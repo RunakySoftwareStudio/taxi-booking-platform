@@ -180,6 +180,7 @@ export const tableStyles = {
     cellInfo:                 "text-md text-slate-400 text-start",     
     cellStatusInfo:           "px-3 py-1 text-sm font-medium text-cyan-200 text-start",
     cellCaptionGroup:         "font-medium text-white text-start",
+    cellCaptionGroupBold:     "font-bold text-white text-start",
     cellCaption:              "p-4 text-start",
     cellCaptionSecondRow:     "font-semibold text-cyan-300 text-start",
     selectTable:              "rounded-lg border border-cyan-400/30 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-300 text-start",  

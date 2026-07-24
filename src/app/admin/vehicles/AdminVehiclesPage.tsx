@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { Fragment } from "react";
 
-//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/vehicles/page.tsx 
+//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/vehicles/page.tsx
 
 type AdminVehiclesPageProps = {
   searchParams: Promise<{
@@ -71,7 +71,7 @@ function getWheelchairAccessLabel(accessValue: string) {
 
 async function addVehicle(formData: FormData) {
     "use server";
-    
+
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const model = String(formData.get("model") || "").trim();
     const brand = String(formData.get("brand") || "").trim();
@@ -162,7 +162,7 @@ async function addVehicle(formData: FormData) {
     .select()
     .single();
 
-    if (error) { 
+    if (error) {
         console.error("Could not add vehicle:", error);
         if (error.code === "23505") { redirect(`/admin/vehicles?error=duplicate-license-plate&${previousFormQuery}`);; }
         redirect(`/admin/vehicles?error=add-vehicle-failed&${previousFormQuery}`);; //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
@@ -224,8 +224,8 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
     };
     const { data: vehicles, error: vehiclesError } = await supabaseAdmin
       .from("vehicles")
-      .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity, 
-        infant_seat_count, child_seat_count, booster_seat_count, isofix_available, wheelchair_access, 
+      .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity,
+        infant_seat_count, child_seat_count, booster_seat_count, isofix_available, wheelchair_access,
         wheelchair_capacity, mobility_aid_storage, extra_large_luggage,
         created_at, chauffeurs (name, email, phone )` )
       .order("chauffeur_id,created_at", { ascending: false });
@@ -262,8 +262,8 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
 
     return (
       <main className={pageStyles.main}>
-        <div className={pageStyles.container}> 
-          <Link  href="/admin" className={formStyles.link} > ← Back to admin dashboard </Link>
+        <div className={pageStyles.container}>
+          <Link  href="/admin" className={formStyles.link} > â† Back to admin dashboard </Link>
           <p className={pageStyles.pageLabelUpper}> Admin </p>
           <h1 className={pageStyles.pageTitle}>Vehicles</h1>
           <p className={pageStyles.pageDescription}> Add vehicles and connect them to approved chauffeurs. </p>
@@ -286,22 +286,22 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                             {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} - {chauffeur.email} </option> ))}
                         </select>
                     </label>
-                    
+
                     <label className="block">
                         <span className={formStyles.span}> Vehicle type </span>
                         <select  name="vehicleType"  required defaultValue={formValues.vehicleType} className={formStyles.selectWFull}>
                             <option value="">Select vehicle type</option>
                             {vehicleTypeOptions.map((vehicleType) => ( <option key={vehicleType} value={vehicleType}> {vehicleType} </option> ))}
                         </select>
-                    </label>  
-                    
+                    </label>
+
                     <label className="block">
                         <span className={formStyles.span}> Brand </span>
                         <input name="brand"  required defaultValue={formValues.brand} placeholder="Brand, example Mercedes" className={formStyles.inputWFullCyan} />
                     </label>
 
                     {/*   md:col-span-2: This makes the whole group start under the left side of the form instead of staying only in the third column.
-                          w-20! This forces the input to be small, even if formStyles.inputNumber has w-full. */} 
+                          w-20! This forces the input to be small, even if formStyles.inputNumber has w-full. */}
                     <label className="block">
                       <span className={formStyles.span}>Model</span>
                       <input name="model"  required defaultValue={formValues.model} placeholder="Model, example E-Class" className={formStyles.inputWFullCyan} />
@@ -327,12 +327,15 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                           <span className={formStyles.span}>Year</span>
                           <input  name="vehicleYear" type="number"  min="1980"  max="2100"  defaultValue={formValues.vehicleYear} placeholder="2024"  className={`${formStyles.inputNumber} w-24!`}  />
                         </label>
-                    </div>
-                      <label className="block">
+
+                        <label className="block">
                           <span className={formStyles.span}>Color</span>
-                          <input  name="vehicleColor"  defaultValue={formValues.vehicleColor} placeholder="Example: black"  className={formStyles.inputWFullCyan} />
-                      </label>
+                          <input  name="vehicleColor"  defaultValue={formValues.vehicleColor} placeholder="black"  className={`${formStyles.inputNumber} w-24!`}  />
+                        </label>
+                    </div>
+
                 </div>
+
                 <div className="md:col-span-3 rounded-xl border border-cyan-400/20 p-4 mt-4">
                     <h3 className="font-semibold text-cyan-300">Passenger support</h3>
                     <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -381,7 +384,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                         </label>
                     </div>
                 </div>
-                <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}> 
+                <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}>
                     Add vehicle
                 </button>
           </form>

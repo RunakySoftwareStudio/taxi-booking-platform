@@ -563,7 +563,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                             <Fragment key={booking.id}>
                                 <tr className={`${tableStyles.rowCyan} align-top border-b-0`}>
                                     <td className={tableStyles.cellCaption}>
-                                        <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || "Unknown client"} </div>
+                                        <div className={tableStyles.cellCaptionGroupBold}> {booking.clients?.name || "Unknown client"} </div>
                                         <div className={tableStyles.cellInfo}> Ref: {formatShortBookingReference(booking.id)} </div>
                                         <div className={tableStyles.cellInfo}> {booking.clients?.email}</div>
                                         <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
@@ -617,7 +617,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 </tr>
                                 <tr className="border-b border-cyan-400/70 bg-cyan-950/10">
                                     <td colSpan={10} className="px-4 py-3 text-sm text-slate-300">
-                                        <p className="mb-2 font-semibold text-white">Passenger support</p>
+                                        <p className="mb-2 font-meduim text-white">Passenger support:</p>
 
                                         <div className="flex flex-wrap gap-x-6 gap-y-2">
                                             <span><strong className="text-cyan-300">Infant seats:</strong> {booking.infant_seat_count_required}</span>
