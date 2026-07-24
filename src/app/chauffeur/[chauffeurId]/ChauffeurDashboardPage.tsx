@@ -9,7 +9,7 @@ import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import { Fragment } from "react";
 import { TranslatedText } from "@/components/TranslatedText";
 
-//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx 
+//export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx
 type TypeChauffeurRow = { id: string;  name: string;  email: string;  phone: string;  service_area: string | null;  account_status: string;};
 
 type TypeAssignedBookingRow = {
@@ -58,7 +58,7 @@ type TypeVehicleRow = {
 // Creates one readable label for the vehicle assigned to a booking.
 function getAssignedVehicleLabel(vehicle: TypeAssignedBookingRow["vehicles"]) {
     if (!vehicle) { return ""; }
-    return `${vehicle.brand} ${vehicle.model} — ${vehicle.license_plate}`;
+    return `${vehicle.brand} ${vehicle.model} â€” ${vehicle.license_plate}`;
 }
 
 /*
@@ -175,9 +175,9 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
   const pageMessage = await searchParams;
   const { chauffeurId } = await params;
     /*========================================
-        default             → homepage
-        if user is admin    → admin chauffeurs page
-        if user is chauffeur → homepage
+        default             â†’ homepage
+        if user is admin    â†’ admin chauffeurs page
+        if user is chauffeur â†’ homepage
     ===========================================  */
    // Check who is logged in and which chauffeur record belongs to them.
     const authSupabase = await createAuthClient();
@@ -210,7 +210,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
         .single();
 
     // Show error if chauffeur does not exists
-    if (chauffeurError || !supabaseAdminChauffeur) 
+    if (chauffeurError || !supabaseAdminChauffeur)
     {   console.error("Could not load chauffeur:", chauffeurError);
         return (
             <main className={pageStyles.main}>
@@ -224,22 +224,27 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
     // get the list of bookings of this chauffeurid in booking table
     const { data: supabaseAdminBookings, error: bookingsError } = await supabaseAdmin
         .from("bookings")
-        .select (`id, vehicle_id, pickup_location, destination, pickup_date, pickup_time, passengers, luggage, has_pets, trip_type, status, notes, clients (name, email, phone) `)
+        .select(`
+                id, vehicle_id, pickup_location, destination, pickup_date, pickup_time,
+                passengers, luggage, has_pets, trip_type, status, notes,
+                clients(name, email, phone),
+                vehicles(id, brand, model, license_plate)
+            `)
         .eq("chauffeur_id", chauffeurId)
         .order("pickup_date", { ascending: true })
         .order("pickup_time", { ascending: true });
-    
+
     // give warnning in form of red message if there are error in bookings
     if (bookingsError) { console.error("Could not load chauffeur bookings:", bookingsError);}
 
     const { data: supabaseAdminVehicles, error: vehiclesError } = await supabaseAdmin
         .from("vehicles")
-        .select(`id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, vehicle_year, vehicle_color, 
+        .select(`id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, vehicle_year, vehicle_color,
             infant_seat_count, child_seat_count, booster_seat_count, isofix_available, wheelchair_access,
             wheelchair_capacity, mobility_aid_storage, extra_large_luggage, created_at`)
         .eq("chauffeur_id", chauffeurId)
         .order("created_at", { ascending: false });
-    
+
     // give warnning in form of red message if there are error in vehicles
     if (vehiclesError) { console.error("Could not load chauffeur vehicles:", vehiclesError); }
 
@@ -247,7 +252,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
     const chauffeurRow = supabaseAdminChauffeur as TypeChauffeurRow;
     const bookingRows = (supabaseAdminBookings ?? []) as unknown as TypeAssignedBookingRow[];
     const vehicleRows = (supabaseAdminVehicles ?? []) as TypeVehicleRow[];
-    
+
     // get list of bookingStatuses types
     const { data: supabaseAdminBookingStatuses, error: bookingStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "booking_status" });
     if (bookingStatusError) { console.error("Could not load booking statuses:", bookingStatusError);}
@@ -256,7 +261,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
 
     return (
         <main className={pageStyles.main}>
-            <div className={pageStyles.container}> 
+            <div className={pageStyles.container}>
                 <div className="flex items-start justify-between gap-4">
                     <Link href={backLinkHref} className={formStyles.link}> <TranslatedText sectionName="chauffeurDashboardPage" textKey={backLinkTextKey} /> </Link>
                     <LogoutButton />
@@ -264,12 +269,12 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 <p className={pageStyles.pageLabelUpper}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="chauffeurLabel" /> </p>
                 <h1 className={pageStyles.pageTitle}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="welcomePrefix" /> {chauffeurRow.name} </h1>
                 <p className={pageStyles.pageDescription}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="description" /> </p>
-                
+
                 {pageMessage.success === "status-updated" && (<p className={pageStyles.successMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdatedSuccess" /> </p>)}
                 {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="missingFieldsError" /> </p>)}
                 {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdateFailedError" /> </p>)}
                 {pageMessage.error === "booking-time-conflict" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingTimeConflictError" /> </p> )}
-                
+
                 {/* Aligns labels with the active language while keeping email and phone characters left-to-right. */}
                 <div className={`${formStyles.info} mt-8 grid gap-4 sm:grid-cols-3`}>
                     <div className="text-start">
@@ -287,10 +292,10 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         <span className={formStyles.formInputInfoValue}>{chauffeurAccountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={chauffeurAccountStatusTextKey} /> : chauffeurRow.account_status}</span>
                     </div>
                 </div>
-                {/*====================================                
-                → shows chauffeur information
-                → has button: Manage availability
-                → Shows the three self-management options only to the chauffeur.
+                {/*====================================
+                â†’ shows chauffeur information
+                â†’ has button: Manage availability
+                â†’ Shows the three self-management options only to the chauffeur.
                 ==========================================*/}
                 {!isAdminUser && (
                     <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -371,9 +376,9 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             </div>
                         </div>
                     </article>  ))}
-                    {vehicleRows.length === 0 && ( 
-                        <div className={tableStyles.cellEmpty}> 
-                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" /> 
+                    {vehicleRows.length === 0 && (
+                        <div className={tableStyles.cellEmpty}>
+                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" />
                         </div>  )}
                 </div>
 
@@ -429,9 +434,9 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             </Fragment>
                         ))}
 
-                        {vehicleRows.length === 0 && ( 
-                            <tr> 
-                                <td className={tableStyles.cellEmpty} colSpan={8}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" /> </td> 
+                        {vehicleRows.length === 0 && (
+                            <tr>
+                                <td className={tableStyles.cellEmpty} colSpan={8}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="noVehiclesMessage" /> </td>
                             </tr> )}
                     </tbody>
                 </table>
@@ -454,7 +459,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             <div>
                                 <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="phoneLabel" />: </span> </span>
                                 <span className= {mobileStyle.infoValue} >{booking.clients?.phone}</span>
-                            </div>     
+                            </div>
                             <div>
                                 <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="pickupLabel" />: </span> </span>
                                 <span className={mobileStyle.infoValue}>{booking.pickup_location}</span>
@@ -462,7 +467,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             <div>
                                 <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="destinationLabel" />: </span></span>
                                 <span className={mobileStyle.infoValue}>{booking.destination}</span>
-                            </div>                       
+                            </div>
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
@@ -539,7 +544,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 {/* Desktop booking table */}
                 <div className={`${tableStyles.tableDiv} max-h-150 overflow-auto hidden lg:block`}>
                     <table className={tableStyles.table1000}>
-                        <thead className={`${tableStyles.tableHeaderCyan} sticky top-0 z-10`}> 
+                        <thead className={`${tableStyles.tableHeaderCyan} sticky top-0 z-10`}>
                             <tr>
                                 <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="clientLabel" /> </th>
                                 <th className={tableStyles.cellCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="pickupLabel" /> </th>
@@ -555,7 +560,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
 
                         <tbody>
                         {bookingRows.map((booking) => (
-                            <Fragment key={booking.id}>                           
+                            <Fragment key={booking.id}>
                                 <tr key={booking.id} className="border-b border-white/10">
                                     <td className={tableStyles.cellCaption}>
                                         <div className={tableStyles.cellCaptionGroup}> {booking.clients?.name || <TranslatedText sectionName="chauffeurDashboardPage" textKey="unknownClient" />} </div>
@@ -563,7 +568,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                         <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
                                     </td>
                                     <td className={tableStyles.cell}>{booking.pickup_location}</td>
-                                    <td className={tableStyles.cell}>{booking.destination}</td>     
+                                    <td className={tableStyles.cell}>{booking.destination}</td>
                                     <td className={tableStyles.cell}> {formatShortDate(booking.pickup_date)} </td>
                                     <td className={tableStyles.cell}> {formatShortTime(booking.pickup_time)} </td>
                                     <td className={tableStyles.cell}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="paxLabel" />: {booking.passengers} </td>
@@ -581,13 +586,13 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                 {/* Keeps notes aligned with the active language, while mixed text remains readable. */}
                                     <td colSpan={5} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
-                                            <span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span> 
+                                            <span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span>
                                             <span className="wrap-break-word"> {booking.notes || "-----"}</span>
                                         </div>
                                     </td>
                                     <td colSpan={2} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
-                                            <span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="assignedVehicleLabel" />: </span> 
+                                            <span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="assignedVehicleLabel" />: </span>
                                             <span className="wrap-break-word"> {booking.vehicles ? getAssignedVehicleLabel(booking.vehicles) : <TranslatedText sectionName="chauffeurDashboardPage" textKey="vehicleNotAssigned" />}</span>
                                         </div>
                                     </td>
@@ -607,7 +612,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                                         );
                                                     })}
                                                 </select>
-                                            </label>                                            
+                                            </label>
                                             <button type="submit" className={formStyles.smallButton}>
                                                 <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
                                             </button>
