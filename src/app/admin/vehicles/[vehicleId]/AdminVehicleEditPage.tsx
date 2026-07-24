@@ -40,7 +40,7 @@ export default async function AdminVehicleEditPage({params}: AdminVehicleEditPag
     <main className={pageStyles.main}>
         <div className={pageStyles.containerMedium}>
             <div className="flex flex-wrap items-center gap-4">
-                <Link href="/admin/vehicles" className={formStyles.link}> â† Back to admin vehicles </Link>
+                <Link href="/admin/vehicles" className={formStyles.link}> {"\u2190"} Back to admin vehicles </Link>
             </div>
             <p className={pageStyles.pageLabelUpper}>Admin</p>
             <h1 className={pageStyles.pageTitle}>Edit vehicle details</h1>

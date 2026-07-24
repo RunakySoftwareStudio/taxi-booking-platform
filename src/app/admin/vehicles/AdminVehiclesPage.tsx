@@ -263,7 +263,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
     return (
       <main className={pageStyles.main}>
         <div className={pageStyles.container}>
-          <Link  href="/admin" className={formStyles.link} > â† Back to admin dashboard </Link>
+          <Link  href="/admin" className={formStyles.link} > {"\u2190"} Back to admin dashboard </Link>
           <p className={pageStyles.pageLabelUpper}> Admin </p>
           <h1 className={pageStyles.pageTitle}>Vehicles</h1>
           <p className={pageStyles.pageDescription}> Add vehicles and connect them to approved chauffeurs. </p>

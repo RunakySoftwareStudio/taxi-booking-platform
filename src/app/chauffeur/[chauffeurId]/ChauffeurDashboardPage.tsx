@@ -58,7 +58,8 @@ type TypeVehicleRow = {
 // Creates one readable label for the vehicle assigned to a booking.
 function getAssignedVehicleLabel(vehicle: TypeAssignedBookingRow["vehicles"]) {
     if (!vehicle) { return ""; }
-    return `${vehicle.brand} ${vehicle.model} â€” ${vehicle.license_plate}`;
+    // displays as: Wagen mw33 — 08-44-XY. \u2014   \u=  “insert a Unicode character.” 2014 = is the hexadecimal Unicode number for the em dash.
+    return `${vehicle.brand} ${vehicle.model} \u2014 ${vehicle.license_plate}`;
 }
 
 /*
@@ -175,9 +176,9 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
   const pageMessage = await searchParams;
   const { chauffeurId } = await params;
     /*========================================
-        default             â†’ homepage
-        if user is admin    â†’ admin chauffeurs page
-        if user is chauffeur â†’ homepage
+        default             -> homepage
+        if user is admin    -> admin chauffeurs page
+        if user is chauffeur -> homepage
     ===========================================  */
    // Check who is logged in and which chauffeur record belongs to them.
     const authSupabase = await createAuthClient();
@@ -293,9 +294,9 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                     </div>
                 </div>
                 {/*====================================
-                â†’ shows chauffeur information
-                â†’ has button: Manage availability
-                â†’ Shows the three self-management options only to the chauffeur.
+                -> shows chauffeur information
+                -> has button: Manage availability
+                -> Shows the three self-management options only to the chauffeur.
                 ==========================================*/}
                 {!isAdminUser && (
                     <div className="mt-8 grid gap-4 md:grid-cols-2">
