@@ -13,7 +13,10 @@ type ChauffeurForEdit = {
   phone: string;
   service_area: string | null;
   account_status: string;
-  accepts_pets: boolean; 
+  accepts_pets: boolean;
+  operational_status: string;
+  status_reason: string | null;
+  status_changed_at: string;
 };
 
 type AdminChauffeurEditFormProps = {
@@ -21,7 +24,7 @@ type AdminChauffeurEditFormProps = {
   accountStatusOptions: string[];
 };
 
-export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions}: AdminChauffeurEditFormProps) 
+export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions}: AdminChauffeurEditFormProps)
 {
   const router = useRouter();
   const { languageCode } = useLanguage();
@@ -45,6 +48,8 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
   const [serviceArea, setServiceArea] = useState(chauffeur.service_area ?? "");
   const [accountStatus, setAccountStatus] = useState(chauffeur.account_status);
   const [acceptsPets, setAcceptsPets] = useState(chauffeur.accepts_pets);
+  const [operationalStatus, setOperationalStatus] = useState(chauffeur.operational_status);
+  const [statusReason, setStatusReason] = useState(chauffeur.status_reason ?? "");
 
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -60,7 +65,7 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
         const response = await fetch(`/api/admin/chauffeurs/${chauffeur.id}`, {
             method: "PATCH",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ name,  email, phone, serviceArea,  accountStatus, acceptsPets }),
+            body: JSON.stringify({ name, email, phone, serviceArea, accountStatus, acceptsPets, operationalStatus, statusReason}),
         });
 
         const result = await response.json();
@@ -68,11 +73,11 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
 
         setSuccessMessage(getAdminChauffeurEditText("updateSuccess"));
         router.refresh();
-    } 
+    }
     catch (error) {
         console.error("Could not update chauffeur:", error);
         setErrorMessage(getAdminChauffeurEditText("updateFailedError"));
-    } 
+    }
     finally { setIsSaving(false); }
   }
 
@@ -84,7 +89,7 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
         </div>
         <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
           <div className="grid gap-5 md:grid-cols-2">
-            
+
             <label className={formStyles.label}> {getAdminChauffeurEditText("nameLabel")}
               <input value={name} onChange={(event) => setName(event.target.value)} required className={formStyles.inputWFullCyan} />
             </label>
@@ -106,9 +111,26 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
                 {accountStatusOptions.map((status) => ( <option key={status} value={status}> {getAccountStatusLabel(status)} </option>))}
               </select>
             </label>
-            
+
+            <label className={formStyles.label}>Operational status
+              <select
+                  value={operationalStatus} required className={formStyles.selectWFull}
+                  onChange={(event) =>  { const newStatus = event.target.value; setOperationalStatus(event.target.value); if (newStatus === "available") {setStatusReason(""); }}} >
+                <option value="available">Available</option>
+                <option value="sick">Sick</option>
+                <option value="on_leave">On leave</option>
+                <option value="unavailable">Unavailable</option>
+              </select>
+            </label>
+            <label className="block md:col-span-2">
+              <span className={formStyles.span}>Operational status reason</span>
+                <textarea className={formStyles.textarea}
+                  value={statusReason} onChange={(event) => setStatusReason(event.target.value)}
+                  placeholder="For example: illness or temporary unavailability"
+                />
+            </label>
             <label className="flex items-center gap-3 text-sm text-white">
-              <input type="checkbox" checked={acceptsPets} onChange={(event) => setAcceptsPets(event.target.checked)}  className="h-5 w-5"/>             
+              <input type="checkbox" checked={acceptsPets} onChange={(event) => setAcceptsPets(event.target.checked)}  className="h-5 w-5"/>
                 {getAdminChauffeurEditText("acceptsPetsLabel")}
             </label>
           </div>

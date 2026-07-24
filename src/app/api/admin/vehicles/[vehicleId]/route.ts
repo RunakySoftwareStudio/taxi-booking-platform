@@ -19,6 +19,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
   if (profile?.role !== "admin") { return NextResponse.json({ message: "Not allowed." }, { status: 403 }); }
 
+  // This only reads and cleans the two values sent by AdminVehicleEditForm.
   const body = await request.json();
   const chauffeurId = String(body.chauffeurId || "").trim();
   const vehicleType = String(body.vehicleType || "").trim();
@@ -37,6 +38,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const wheelchairCapacity = Number(body.wheelchairCapacity || 0);
   const mobilityAidStorage = body.mobilityAidStorage === true;
   const extraLargeLuggage = body.extraLargeLuggage === true;
+  const vehicleStatus = String(body.vehicleStatus || "").trim();
+  const statusReason = String(body.statusReason || "").trim();
 
   if (!chauffeurId || !vehicleType || !brand || !model || !licensePlate) {
     return NextResponse.json( { message: "Please fill in all required fields." }, { status: 400 } );
@@ -65,6 +68,23 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (!vehicleTypeOptions.includes(vehicleType)) {
         return NextResponse.json({ message: "Invalid vehicle type." }, { status: 400 } );  
       }
+
+  const { data: allowedVehicleStatuses, error: vehicleStatusesError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "vehicle_operational_status", });
+  if (vehicleStatusesError) {
+      console.error("Could not load vehicle statuses:", vehicleStatusesError);
+      return NextResponse.json(
+          { message: "Could not validate vehicle status." },
+          { status: 500 }
+      );
+  }
+
+  const vehicleStatusOptions = (allowedVehicleStatuses ?? []) as string[];
+  if (!vehicleStatusOptions.includes(vehicleStatus)) {
+      return NextResponse.json(
+          { message: "Invalid vehicle status." },
+          { status: 400 }
+      );
+  }
 
   const { data: allowedWheelchairAccessTypes, error: wheelchairTypesError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "wheelchair_access_type" } );
     if (wheelchairTypesError) {
@@ -106,6 +126,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         wheelchair_capacity: wheelchairCapacity,
         mobility_aid_storage: mobilityAidStorage,
         extra_large_luggage: extraLargeLuggage,
+        vehicle_status: vehicleStatus,
+        status_reason: vehicleStatus === "available" ? null : statusReason || null,
+        status_changed_at: new Date().toISOString(),
     })
     .eq("id", vehicleId);
 

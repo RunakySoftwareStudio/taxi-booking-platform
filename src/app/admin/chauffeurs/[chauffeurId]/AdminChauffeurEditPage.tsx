@@ -14,16 +14,13 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
 
   const { data: chauffeurRow, error } = await supabaseAdmin
     .from("chauffeurs")
-    .select("id, name, email, phone, service_area, account_status,accepts_pets ")
+    .select('id, name, email, phone, service_area, account_status, accepts_pets ,operational_status, status_reason, status_changed_at')
     .eq("id", chauffeurId)
     .single();
 
-  if (error || !chauffeurRow) {
-    notFound();
-  }
+  if (error || !chauffeurRow) {  notFound(); }
 
   const { data: accountStatuses, error: statusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status" });
-
   if (statusError) { console.error("Could not load chauffeur account statuses:", statusError); }
 
   return (

@@ -23,6 +23,9 @@ type VehicleForEdit = {
     wheelchair_capacity: number;
     mobility_aid_storage: boolean;
     extra_large_luggage: boolean;
+    vehicle_status: string;
+    status_reason: string | null;
+    status_changed_at: string;
 };
 
 type ChauffeurOption = {
@@ -37,9 +40,10 @@ type AdminVehicleEditFormProps = {
     chauffeurs: ChauffeurOption[];
     vehicleTypeOptions: string[];
     wheelchairAccessOptions: string[];
+    vehicleStatusOptions: string[];
 };
 
-export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOptions, wheelchairAccessOptions,}: AdminVehicleEditFormProps) {
+export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOptions, wheelchairAccessOptions,vehicleStatusOptions,}: AdminVehicleEditFormProps) {
     const router = useRouter();
     const [chauffeurId, setChauffeurId] = useState(vehicle.chauffeur_id);
     const [vehicleType, setVehicleType] = useState(vehicle.vehicle_type);
@@ -58,6 +62,8 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
     const [wheelchairCapacity, setWheelchairCapacity] = useState(String(vehicle.wheelchair_capacity));
     const [mobilityAidStorage, setMobilityAidStorage] = useState(vehicle.mobility_aid_storage);
     const [extraLargeLuggage, setExtraLargeLuggage] = useState(vehicle.extra_large_luggage);
+    const [vehicleStatus, setVehicleStatus] = useState(vehicle.vehicle_status);
+    const [statusReason, setStatusReason] = useState(vehicle.status_reason ?? "");
     const [successMessage, setSuccessMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
     const [isSaving, setIsSaving] = useState(false);
@@ -75,19 +81,20 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
             body: JSON.stringify({
                 chauffeurId, vehicleType, brand, model, licensePlate, seats, luggageCapacity, vehicleYear, vehicleColor,
                 infantSeatCount, childSeatCount, boosterSeatCount, isofixAvailable, wheelchairAccess,
-                wheelchairCapacity, mobilityAidStorage, extraLargeLuggage}),
+                wheelchairCapacity, mobilityAidStorage, extraLargeLuggage,
+                vehicleStatus, statusReason}),
         });
-            
+
         const result = await response.json();
         if (!response.ok) { setErrorMessage(result.message || "Could not update vehicle.");  return; }
 
         setSuccessMessage("Vehicle details updated successfully.");
         router.refresh();
-    } 
+    }
     catch (error) {
         console.error("Could not update vehicle:", error);
         setErrorMessage("Could not update vehicle. Please try again.");
-    } 
+    }
     finally { setIsSaving(false);}
   }
 
@@ -109,6 +116,7 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
                             {vehicleTypeOptions.map((typeOption) => ( <option key={typeOption} value={typeOption}>  {typeOption} </option> ))}
                         </select>
                     </label >
+
                     <label  className={formStyles.formInfoCellCaption}> Brand
                         <input value={brand} onChange={(event) => setBrand(event.target.value)}  required className={formStyles.inputWFullCyan} />
                     </label >
@@ -135,15 +143,30 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
 
                         <label className="block">
                           <span className={formStyles.span}>Year</span>
-                          <input  value={vehicleYear}  onChange={(event) => setVehicleYear(event.target.value)} type="number" min="1980"  max="2100"   className={`${formStyles.inputNumber} w-24!`}  />
+                          <input  value={vehicleYear}  onChange={(event) => setVehicleYear(event.target.value)} type="number" min="1980"  max="2100"
+                                className={`${formStyles.inputNumber} w-24!`} placeholder="2024" />
+                        </label>
+                        <label className="block">
+                            <span className={formStyles.span}>Color</span>
+                            <input value={vehicleColor} onChange={(event) => setVehicleColor(event.target.value)}  className={`${formStyles.inputNumber} w-24!`} />
                         </label>
                     </div>
-
-                    <label className="block">
-                      <span className={formStyles.span}>Color</span>
-                      <input value={vehicleColor} onChange={(event) => setVehicleColor(event.target.value)} className={formStyles.input} />
+                    {/*======Operational status========*/}
+                    <label className={formStyles.formInfoCellCaption}> Operational status
+                        <select value={vehicleStatus}
+                            onChange={(event) => {const newStatus = event.target.value;  setVehicleStatus(newStatus); if (newStatus === "available") { setStatusReason(""); }
+}}                          required className={formStyles.selectWFull}>
+                            {vehicleStatusOptions.map((statusOption) => (<option key={statusOption} value={statusOption}>{statusOption}</option> ))}
+                        </select>
+                    </label>
+                    <label className="block md:col-span-1">
+                        <span className={formStyles.span}>Operational status reason</span>
+                        <textarea value={statusReason} onChange={(event) => setStatusReason(event.target.value)}
+                            placeholder="For example: damaged tyre or scheduled maintenance"  rows={3}  className={formStyles.textarea}
+                        />
                     </label>
 
+                    {/*=======Passenger support=========*/}
                     <div className="md:col-span-2 rounded-xl border border-cyan-400/20 p-4">
                         <h3 className="font-semibold text-cyan-300">Passenger support</h3>
 
