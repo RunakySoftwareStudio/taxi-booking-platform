@@ -1,5 +1,9 @@
-//This is a safe placeholder. It accepts email data, but it does not send anything yet.
-//→ sends or skips the email
+/* ============================================================
+   EMAIL SENDER
+
+   Sends email through Resend when the required environment
+   variables are configured. Otherwise, it safely skips sending.
+============================================================ */
 import { Resend } from "resend";
 import { type SendEmailInput, type SendEmailResult } from "./emailTypes";
 

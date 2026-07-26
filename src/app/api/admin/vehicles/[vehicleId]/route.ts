@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { sendGroupedAssignmentAlertEmail } from "@/lib/email/assignmentAlertEmailNotifications";
+import { type AssignmentAlertEmailBooking } from "@/lib/email/emailTypes";
 
 type RouteContext = { params: Promise<{ vehicleId: string; }>;};
 
@@ -106,6 +108,22 @@ export async function PATCH(request: Request, { params }: RouteContext) {
               { status: 400 } );
       }
 
+/* Loads the current status so an email is sent only after a real status change. */
+const {data: currentVehicle, error: currentVehicleError,} = await supabaseAdmin
+  .from("vehicles")
+  .select("vehicle_status")
+  .eq("id", vehicleId)
+  .maybeSingle();
+
+if (currentVehicleError || !currentVehicle) {console.error("Could not load the vehicle before updating:", currentVehicleError );
+  return NextResponse.json(
+    { message: "Could not load the vehicle." },
+    { status: 500 }
+  );
+}
+
+const vehicleStatusChanged =  currentVehicle.vehicle_status !== vehicleStatus;
+
   const { error } = await supabaseAdmin
     .from("vehicles")
     .update({
@@ -153,7 +171,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     */}
     const { data: affectedBookings,  error: affectedBookingsError } = await supabaseAdmin
       .from("bookings")
-      .select("id")
+      .select("id, pickup_location, destination, pickup_date, pickup_time")
       .eq("vehicle_id", vehicleId)
       .not("status", "in", "(completed,cancelled,rejected)");
 
@@ -168,6 +186,51 @@ export async function PATCH(request: Request, { params }: RouteContext) {
             } );
 
           if (alertSyncError) { console.error(`Could not synchronize assignment alert for booking ${affectedBooking.id}:`, alertSyncError ); }
+        }
+        /* Sends one grouped email when the vehicle becomes unavailable. */
+        if (vehicleStatusChanged && vehicleStatus !== "available" && (affectedBookings ?? []).length > 0 )
+        {
+          const affectedBookingIds = (affectedBookings ?? []).map((affectedBooking) => affectedBooking.id);
+          const {data: openAlerts, error: openAlertsError,} = await supabaseAdmin
+            .from("assignment_alerts")
+            .select("booking_id, issue_summary")
+            .eq("alert_status", "open")
+            .in("booking_id", affectedBookingIds);
+
+          if (openAlertsError) {console.error("Alerts were synchronized, but grouped vehicle email data could not be loaded:", openAlertsError);}
+          else
+          {
+            const alertSummaryByBookingId = new Map(
+              (openAlerts ?? []).map((alertRow) => [
+                alertRow.booking_id,
+                alertRow.issue_summary,
+              ])
+            );
+
+            const emailBookings: AssignmentAlertEmailBooking[] =
+              (affectedBookings ?? []).flatMap((affectedBooking) => {
+                const issueSummary = alertSummaryByBookingId.get(affectedBooking.id);
+                if (!issueSummary) {return [];}
+                return [{
+                  bookingId: affectedBooking.id,
+                  pickupLocation: affectedBooking.pickup_location,
+                  destination: affectedBooking.destination,
+                  pickupDate: affectedBooking.pickup_date,
+                  pickupTime: affectedBooking.pickup_time,
+                  issueSummary,
+                }];
+              });
+
+            const emailResult = await sendGroupedAssignmentAlertEmail({
+              sourceType: "vehicle",
+              sourceLabel: `${brand} ${model} (${licensePlate})`,
+              operationalStatus: vehicleStatus,
+              statusReason,
+              bookings: emailBookings,
+            });
+
+            if (!emailResult.success) {console.error("Vehicle was updated, but the grouped assignment-alert email failed:", emailResult.message ); }
+          }
         }
       }
 

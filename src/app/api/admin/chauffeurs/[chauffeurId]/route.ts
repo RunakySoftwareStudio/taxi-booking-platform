@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { sendGroupedAssignmentAlertEmail } from "@/lib/email/assignmentAlertEmailNotifications";
+import { type AssignmentAlertEmailBooking } from "@/lib/email/emailTypes";
 
 type RouteContext = {  params: Promise<{ chauffeurId: string;  }>;};
 
@@ -57,6 +59,31 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       );
     }
 
+    /*
+      Loads the current status so an email is sent only after a real status change.
+      This prevents another grouped email when the admin only edits the chauffeur’s name, phone or email while the chauffeur is already sick.
+    */
+    const {
+      data: currentChauffeur,
+      error: currentChauffeurError,
+    } = await supabaseAdmin
+      .from("chauffeurs")
+      .select("operational_status")
+      .eq("id", chauffeurId)
+      .maybeSingle();
+
+    if (currentChauffeurError || !currentChauffeur) {
+      console.error("Could not load the chauffeur before updating:", currentChauffeurError);
+
+      return NextResponse.json(
+        { message: "Could not load the chauffeur." },
+        { status: 500 }
+      );
+    }
+
+    const operationalStatusChanged = currentChauffeur.operational_status !== operationalStatus;
+
+    /* Update chauffeur data. */
     const { error } = await supabaseAdmin
       .from("chauffeurs")
       .update({
@@ -80,7 +107,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     // Rechecks unfinished bookings currently assigned to this chauffeur.
     const {data: affectedBookings, error: affectedBookingsError, } = await supabaseAdmin
       .from("bookings")
-      .select("id")
+      .select("id, pickup_location, destination, pickup_date, pickup_time")
       .eq("chauffeur_id", chauffeurId)
       .not("status", "in", "(completed,cancelled,rejected)");
 
@@ -98,8 +125,49 @@ export async function PATCH(request: Request, { params }: RouteContext) {
             p_source_id: chauffeurId,
           }
         );
+        if (alertSyncError) {console.error(`Could not synchronize assignment alert for booking ${affectedBooking.id}:`, alertSyncError );}
+      }
 
-        if (alertSyncError) {console.error(`Could not synchronize assignment alert for booking ${affectedBooking.id}:`, alertSyncError ); }
+      /* Sends one grouped email only when the chauffeur becomes unavailable. */
+      if (operationalStatusChanged && operationalStatus !== "available" && (affectedBookings ?? []).length > 0)
+      {
+        const affectedBookingIds = (affectedBookings ?? []).map((affectedBooking) => affectedBooking.id );
+        const {data: openAlerts, error: openAlertsError,} = await supabaseAdmin
+          .from("assignment_alerts")
+          .select("booking_id, issue_summary")
+          .eq("alert_status", "open")
+          .in("booking_id", affectedBookingIds);
+
+        if (openAlertsError) {console.error("Alerts were synchronized, but the grouped email data could not be loaded:", openAlertsError);}
+        else {
+          const alertSummaryByBookingId = new Map((openAlerts ?? []).map((alertRow) => [
+          alertRow.booking_id,
+          alertRow.issue_summary,]));
+
+          const emailBookings: AssignmentAlertEmailBooking[] =(affectedBookings ?? []).flatMap((affectedBooking) => {
+            const issueSummary = alertSummaryByBookingId.get(affectedBooking.id);
+            if (!issueSummary) {return [];}
+
+            return [{
+              bookingId: affectedBooking.id,
+              pickupLocation: affectedBooking.pickup_location,
+              destination: affectedBooking.destination,
+              pickupDate: affectedBooking.pickup_date,
+              pickupTime: affectedBooking.pickup_time,
+              issueSummary,
+            }];
+          });
+
+          const emailResult = await sendGroupedAssignmentAlertEmail({
+            sourceType: "chauffeur",
+            sourceLabel: name,
+            operationalStatus,
+            statusReason,
+            bookings: emailBookings,
+          });
+
+          if (!emailResult.success) {console.error("Chauffeur was updated, but the grouped assignment-alert email failed:", emailResult.message); }
+        }
       }
     }
 
