@@ -142,5 +142,34 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     }
 
     return NextResponse.json( { message: "Could not update vehicle." }, { status: 500 } ); }
-    return NextResponse.json({ message: "Vehicle updated successfully."  });
+
+    {/* Rechecks unfinished bookings currently assigned to this vehicle.
+      What it does: After saving a vehicle, the route:
+          Finds unfinished bookings assigned to that vehicle.
+          Runs sync_booking_assignment_alert() for each booking.
+          Creates or updates alerts when the vehicle makes an assignment invalid.
+          Resolves existing alerts when the assignment becomes valid again.
+          Leaves completed, cancelled, and rejected bookings untouched.
+    */}
+    const { data: affectedBookings,  error: affectedBookingsError } = await supabaseAdmin
+      .from("bookings")
+      .select("id")
+      .eq("vehicle_id", vehicleId)
+      .not("status", "in", "(completed,cancelled,rejected)");
+
+      if (affectedBookingsError) {console.error( "Vehicle updated, but affected bookings could not be loaded:", affectedBookingsError );  }
+      else {
+        for (const affectedBooking of affectedBookings ?? []) {
+          const { error: alertSyncError } = await supabaseAdmin.rpc( "sync_booking_assignment_alert",
+            {
+              p_booking_id: affectedBooking.id,
+              p_source_type: "vehicle",
+              p_source_id: vehicleId,
+            } );
+
+          if (alertSyncError) { console.error(`Could not synchronize assignment alert for booking ${affectedBooking.id}:`, alertSyncError ); }
+        }
+      }
+
+      return NextResponse.json({ message: "Vehicle updated successfully.", });
 }

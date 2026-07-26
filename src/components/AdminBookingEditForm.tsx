@@ -37,8 +37,8 @@ type BookingForEdit = {
 
 type VehicleOption = {
     id: string; brand: string; model: string; license_plate: string;
-    vehicle_type: string; vehicle_year: number | null; vehicle_color: string | null;
-    seats: number; luggage_capacity: number;
+    vehicle_type: string; vehicle_year: number | null; vehicle_status: string;
+    vehicle_color: string | null; seats: number; luggage_capacity: number;
     infant_seat_count: number; child_seat_count: number; booster_seat_count: number;
     isofix_available: boolean; wheelchair_access: string; wheelchair_capacity: number;
     mobility_aid_storage: boolean; extra_large_luggage: boolean;
@@ -144,19 +144,26 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     const matchingChauffeurOptions = chauffeurs.filter((chauffeur) => {
         if (hasPets && !chauffeur.accepts_pets) { return false; }
 
-        return (chauffeur.vehicles ?? []).some((vehicle) =>
-            getVehicleMatchResult(
-                toVehicleForMatching(vehicle),
-                currentBookingForMatching
-            ).matches
+        return (chauffeur.vehicles ?? []).some(
+            (vehicle) =>
+                vehicle.vehicle_status === "available" &&
+                getVehicleMatchResult(
+                    toVehicleForMatching(vehicle),
+                    currentBookingForMatching
+                ).matches
         );
     });
 
     const selectedChauffeur = matchingChauffeurOptions.find( (chauffeur) => chauffeur.id === chauffeurId);
-    const matchingVehicleOptions = (selectedChauffeur?.vehicles ?? []).filter((vehicle) =>
-        getVehicleMatchResult( toVehicleForMatching(vehicle),  currentBookingForMatching ).matches
+    /* Keeps only operationally available vehicles matching this booking. */
+    const matchingVehicleOptions = (selectedChauffeur?.vehicles ?? []).filter(
+        (vehicle) =>
+            vehicle.vehicle_status === "available" &&
+            getVehicleMatchResult(
+                toVehicleForMatching(vehicle),
+                currentBookingForMatching
+            ).matches
     );
-
     const [successMessage, setSuccessMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
     const [isSaving, setIsSaving] = useState(false);

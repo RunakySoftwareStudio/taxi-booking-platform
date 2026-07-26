@@ -23,6 +23,8 @@ type ChauffeurRow = {
     license_number: string | null;
     service_area: string | null;
     account_status: string;
+    operational_status: string;
+    status_reason: string | null;
     rating: number;
     accepts_pets: boolean; 
     created_at: string;
@@ -81,6 +83,52 @@ function formatShortChauffeurReference(chauffeurId: string) {
     return chauffeurId.slice(0, 8);
 }
 
+/* Returns red styling when a chauffeur is operationally unavailable. */
+function getChauffeurOperationalContainerClass( operationalStatus: string) {
+    return operationalStatus === "available"
+        ? ""
+        : "border-red-400/50 bg-red-400/10";
+}
+
+/* Returns the text color for the operational status. */
+function getChauffeurOperationalTextClass(operationalStatus: string) {
+    return operationalStatus === "available"
+        ? "text-green-300"
+        : "text-red-300";
+}
+
+/* ============================================================
+    SYNC CHAUFFEUR BOOKING ALERTS
+    This is a Server helper that is why we do not put "use server";  Called only by server-side code:
+
+   Rechecks every unfinished booking assigned to one chauffeur.
+   This is needed after changing the chauffeur's account status.
+============================================================ */
+async function syncChauffeurBookingAlerts(chauffeurId: string) {
+    const { data: bookingRows, error: bookingLoadError, } = await supabaseAdmin
+        .from("bookings")
+        .select("id")
+        .eq("chauffeur_id", chauffeurId)
+        .not("status", "in", "(completed,cancelled,rejected)");
+
+    if (bookingLoadError) {
+        console.error("Could not load chauffeur bookings for alert synchronization:", bookingLoadError );
+        return;
+    }
+
+    for (const bookingRow of bookingRows ?? []) {
+        const { error: alertSyncError } = await supabaseAdmin.rpc("sync_booking_assignment_alert",
+                {
+                    p_booking_id: bookingRow.id,
+                    p_source_type: "chauffeur",
+                    p_source_id: chauffeurId,
+                }
+            );
+
+        if (alertSyncError) {console.error(`Could not synchronize assignment alert for booking ${bookingRow.id}:`, alertSyncError ); }
+    }
+}
+
 async function changeChauffeurActiveStatus(formData: FormData) {
     "use server";
 
@@ -100,6 +148,9 @@ async function changeChauffeurActiveStatus(formData: FormData) {
         console.error("Could not change chauffeur active status:", error);
         redirect("/admin/chauffeurs?error=chauffeur-status-change-failed");
     }
+
+    /* Rechecks assignments affected by the chauffeur account change. */
+    await syncChauffeurBookingAlerts(chauffeurId);
 
     revalidatePath("/admin/chauffeurs");
     if ( nextAccountStatus === "approved" && currentAccountStatus === "pending_approval") { redirect("/admin/chauffeurs?success=chauffeur-approved");}
@@ -152,7 +203,8 @@ async function addChauffeur(formData: FormData) {
 }
 
 async function updateChauffeurStatus(formData: FormData) {
-  "use server";
+
+  "use server"; // this function(updateChauffeurStatus) is a Server Action; Called directly through a form:
 
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const accountStatus = String(formData.get("accountStatus") || "");
@@ -169,6 +221,9 @@ async function updateChauffeurStatus(formData: FormData) {
         redirect("/admin/chauffeurs?error=status-update-failed");
     }
 
+    /* Rechecks assignments affected by the chauffeur account change. */
+    await syncChauffeurBookingAlerts(chauffeurId);
+
     revalidatePath("/admin/chauffeurs");
     redirect("/admin/chauffeurs?success=status-updated");
 }
@@ -178,7 +233,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
     
     const { data: chauffeurs, error } = await supabaseAdmin
         .from("chauffeurs")
-        .select( ` id, name, email, phone, company_name, license_number, service_area, account_status, rating, accepts_pets, created_at`)
+        .select( ` id, name, email, phone, company_name, license_number, operational_status, status_reason, service_area, account_status, rating, accepts_pets, created_at`)
         .order("created_at", { ascending: false });
 
     const chauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
@@ -273,7 +328,9 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 {/*================= Mobile chauffeur cards ======================*/}
                 <div className="mt-6 grid gap-4 lg:hidden">
                 {sortedChauffeurRows.map((chauffeur) => (
-                    <article key={chauffeur.id}  className={formStyles.deActivateButtonPhone } >
+                    <article key={chauffeur.id}
+                        className={`${formStyles.deActivateButtonPhone} ${getChauffeurOperationalContainerClass(chauffeur.operational_status)}`}
+                    >
                         <div className={ chauffeur.account_status === "inactive" ? `${formStyles.inactiveDivNoBorder} opacity-50` : formStyles.ativeDivNoBorder } >
                             <div className="border-b border-white/10 pb-4">
                                 <p className="mt-1">
@@ -292,6 +349,19 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                     <span className= {mobileStyle.inforCaption}>Phone: </span>
                                     <span className= {mobileStyle.infoValue} >{chauffeur.phone}</span>
                                 </p>
+                                <div className="mt-2">
+                                    <span className={mobileStyle.inforCaption}>
+                                        Operational status:{" "}
+                                    </span>
+                                    <span className={`font-semibold ${getChauffeurOperationalTextClass(chauffeur.operational_status )}`}>
+                                        {chauffeur.operational_status}
+                                    </span>
+                                    {chauffeur.status_reason && (
+                                        <p className="mt-1 text-xs text-slate-400">
+                                            Reason: {chauffeur.status_reason}
+                                        </p> )
+                                    }
+                                </div>
                             </div>
                             <p className="mt-1">
                                 <span className= {mobileStyle.inforCaption}>Service area: </span>
@@ -361,11 +431,23 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
 
                         <tbody>
                             {sortedChauffeurRows.map((chauffeur) => (
-                                <tr key={chauffeur.id}  className={ chauffeur.account_status === "inactive" ? `${tableStyles.rowCyan} opacity-50` : tableStyles.rowCyan } >
+                                <tr key={chauffeur.id}
+                                    className={`${tableStyles.rowCyan} ${chauffeur.account_status === "inactive" ? "opacity-50" : "" }
+                                    ${getChauffeurOperationalContainerClass(chauffeur.operational_status )}`}
+                                >
                                     <td className="p-4 align-top text-start">
                                         <span className="block font-medium text-white"> {chauffeur.name} </span>
                                         <span className="mt-1 block text-xs text-cyan-300"> Ref: {formatShortChauffeurReference(chauffeur.id)} </span>
                                         <span className="mt-1 block text-sm text-slate-400 break-all"> {chauffeur.email} </span>
+                                        <span className={`mt-2 block text-xs font-semibold ${getChauffeurOperationalTextClass(chauffeur.operational_status )}`}>
+                                            Operational: {chauffeur.operational_status}
+                                        </span>
+
+                                    {chauffeur.status_reason && (
+                                        <span className="mt-1 block text-xs text-slate-400">
+                                            Reason: {chauffeur.status_reason}
+                                        </span> )
+                                    }
                                     </td>
                                     <td className={tableStyles.cell}>{chauffeur.phone}</td>
                                     <td className={tableStyles.cell}> {chauffeur.service_area || "-"} </td>

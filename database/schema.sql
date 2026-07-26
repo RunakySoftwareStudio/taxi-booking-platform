@@ -45,6 +45,14 @@ CREATE TYPE chauffeur_account_status AS ENUM (
   'inactive'
 );
 
+/* Chauffeur availability for daily operations. */
+CREATE TYPE chauffeur_operational_status AS ENUM (
+  'available',
+  'sick',
+  'on_leave',
+  'unavailable'
+);
+
 -- Chauffeurs who can receive taxi bookings
 CREATE TABLE chauffeurs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -55,8 +63,19 @@ CREATE TABLE chauffeurs (
   license_number TEXT,
   service_area TEXT,
   account_status chauffeur_account_status NOT NULL DEFAULT 'pending_approval',
+
+  /* Current operational availability of the chauffeur. */
+  operational_status chauffeur_operational_status
+    NOT NULL DEFAULT 'available',
+
+  /* Optional explanation, such as illness or planned leave. */
+  status_reason TEXT,
+
+  /* Records when the operational status was set or changed. */
+  status_changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
   rating NUMERIC(2, 1) DEFAULT 0.0,
-  accepts_pets boolean not null default false,
+  accepts_pets BOOLEAN NOT NULL DEFAULT false,
   bio TEXT,
   profile_photo_path TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
@@ -88,6 +107,14 @@ CREATE TYPE vehicle_type AS ENUM (
   'van',
   'minibus',
   'wheelchair'
+);
+
+/* Vehicle availability for daily operations. */
+CREATE TYPE vehicle_operational_status AS ENUM (
+  'available',
+  'damaged',
+  'maintenance',
+  'inactive'
 );
 
 /*
@@ -138,6 +165,17 @@ CREATE TABLE vehicles (
   vehicle_color TEXT,
   license_plate TEXT NOT NULL UNIQUE,
   vehicle_type vehicle_type NOT NULL DEFAULT 'standard',
+
+  /* Current operational availability of the vehicle. */
+  vehicle_status vehicle_operational_status
+  NOT NULL DEFAULT 'available',
+
+/* Optional explanation, such as damage or scheduled maintenance. */
+status_reason TEXT,
+
+  /* Records when the operational status was set or changed. */
+  status_changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
   seats INTEGER NOT NULL DEFAULT 4,
   luggage_capacity INTEGER NOT NULL DEFAULT 2,
 
@@ -208,6 +246,12 @@ CREATE TYPE availability_status AS ENUM (
   'holiday'
 );
 
+/* Tracks whether an assignment problem still requires admin attention. */
+CREATE TYPE assignment_alert_status AS ENUM (
+  'open',
+  'resolved'
+);
+
 -- Chauffeur availability schedule
 CREATE TABLE IF NOT EXISTS chauffeur_availability (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -224,9 +268,9 @@ CREATE TABLE IF NOT EXISTS chauffeur_availability (
 
 /*
   Defines how a passenger's wheelchair must be transported.
-  none:  
+  none:
     No wheelchair transport is required.
-  foldable:  
+  foldable:
     The passenger transfers to a normal seat and the folded wheelchair  is stored inside the vehicle.
   remain_in_wheelchair:
     One or more passengers remain seated in their wheelchairs.
@@ -319,6 +363,55 @@ CREATE TABLE public.bookings (
         )
 );
 
+/* ============================================================
+   ASSIGNMENT ALERTS
+
+   Stores chauffeur and vehicle assignment problems that require
+   administrator review.
+
+   Resolved alerts remain stored as historical records.
+============================================================ */
+CREATE TABLE public.assignment_alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  booking_id UUID NOT NULL
+    REFERENCES public.bookings(id)
+    ON DELETE CASCADE,
+  alert_status assignment_alert_status NOT NULL DEFAULT 'open',
+  issue_summary TEXT NOT NULL,
+
+  issue_details JSONB NOT NULL DEFAULT '{"issues":[]}'::JSONB,
+  source_type TEXT,
+  source_id UUID,
+
+  first_detected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_checked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  resolved_at TIMESTAMPTZ,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  /* Allows only the recognized sources of an assignment check. */
+  CONSTRAINT assignment_alerts_source_type_check
+    CHECK (
+      source_type IS NULL
+      OR source_type IN (
+        'vehicle',
+        'chauffeur',
+        'booking',
+        'assignment'
+      )
+    ),
+
+  /* Keeps alert status and resolved date consistent. */
+  CONSTRAINT assignment_alerts_resolved_at_check
+    CHECK (
+      (alert_status = 'open' AND resolved_at IS NULL)
+      OR
+      (alert_status = 'resolved' AND resolved_at IS NOT NULL)
+    )
+);
+
 -- Connects booking-created busy periods to their booking.
 ALTER TABLE chauffeur_availability
 ADD CONSTRAINT chauffeur_availability_booking_id_fkey
@@ -337,6 +430,22 @@ CREATE INDEX idx_bookings_chauffeur_id ON bookings(chauffeur_id); /* Find all bo
 CREATE INDEX idx_bookings_status ON bookings(status); /* Find pending/confirmed/cancelled bookings */
 CREATE INDEX idx_bookings_pickup_date ON bookings(pickup_date); /* Find bookings for a date  */
 CREATE INDEX bookings_vehicle_id_idx ON public.bookings(vehicle_id); /*  Improves queries that search or join bookings using the assigned vehicle.*/
+/* Allows only one unresolved assignment alert per booking.
+
+   A booking can have:
+   - one current open alert;
+   - multiple resolved historical alerts.
+*/
+CREATE UNIQUE INDEX assignment_alerts_one_open_per_booking
+ON public.assignment_alerts (booking_id)
+WHERE alert_status = 'open';
+
+/* Speeds up loading open alerts ordered by their latest check. */
+CREATE INDEX assignment_alerts_status_checked_index
+ON public.assignment_alerts (
+  alert_status,
+  last_checked_at DESC
+);
 
 CREATE INDEX idx_vehicles_chauffeur_id ON vehicles(chauffeur_id); /* Find vehicles for a chauffeur */
 CREATE UNIQUE INDEX vehicles_one_default_vehicle_per_chauffeur_idx ON public.vehicles(chauffeur_id) WHERE is_default_vehicle = TRUE;
@@ -475,10 +584,10 @@ ALTER TABLE public.chauffeurs ADD CONSTRAINT chauffeurs_profile_photo_path_lengt
 
 
 /* Automatically update updated_at columns */
-/* 
+/*
     1. This creates a PostgreSQL function named:update_updated_at_column
     2. The $$ is just a PostgreSQL way to mark the start and end of the function body.
-    
+
     Function = what should happen
     Trigger = when it should happen
 */
@@ -486,7 +595,7 @@ CREATE OR REPLACE FUNCTION update_updated_at_column() /* If this function alread
 RETURNS TRIGGER AS $$ -- trigger function, mot normal function that returns text, number, or table data.
 BEGIN
   NEW.updated_at = now(); -- NEW = the new version of the existing row. OLD = the old version of the row.  Set updated_at to the current time before an existing row is updated.
-  RETURN NEW; --Save this new changed version of the row. 
+  RETURN NEW; --Save this new changed version of the row.
 END; --This ends the function logic.
 $$ LANGUAGE plpgsql; -- PL/pgSQL is PostgreSQL’s procedural language, used for functions, triggers, loops, conditions, and database logic.
 
@@ -525,6 +634,12 @@ CREATE TRIGGER update_chauffeur_change_requests_updated_at
 BEFORE UPDATE ON public.chauffeur_change_requests
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
+
+/* Automatically updates assignment_alerts.updated_at when an alert changes. */
+CREATE TRIGGER update_assignment_alerts_updated_at
+BEFORE UPDATE ON public.assignment_alerts
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
 --===================================================================
 /* Enable Row Level Security */
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
@@ -533,6 +648,7 @@ ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chauffeur_availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chauffeur_change_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.assignment_alerts ENABLE ROW LEVEL SECURITY;
 
 /*======================================================================*/
 CREATE TABLE IF NOT EXISTS user_profiles (
@@ -569,7 +685,7 @@ EXECUTE FUNCTION update_updated_at_column();
 /* create a function to get data from enumrated types */
 -- you can call a function in his way: SELECT get_enum_values('booking_status');
 -- in supasql:  const { data: availabilityStatuses, error } = await supabaseAdmin.rpc( "get_enum_values", { p_enum_type_name: "availability_status",});
-/* Get enum values by enum type name 
+/* Get enum values by enum type name
 ------------------------------------------------------------------*/
 CREATE OR REPLACE FUNCTION public.get_enum_values(p_enum_type_name text)
 RETURNS text[]
@@ -616,10 +732,10 @@ CREATE OR REPLACE FUNCTION public.update_booking_admin_assignment(
     p_status public.booking_status
 )
 /*-------------------------------
-RETURNS VOID
-it does not return booking data. We mainly inspect whether an error occurred:
-const { error } = await supabaseAdmin.rpc(...);
-When successful:error = null
+    RETURNS VOID
+    it does not return booking data. We mainly inspect whether an error occurred:
+    const { error } = await supabaseAdmin.rpc(...);
+    When successful:error = null
 --------------------------------*/
 RETURNS VOID
 LANGUAGE plpgsql
@@ -835,14 +951,6 @@ BEGIN
     ----------------------------------------------------------- */
 END;
 $$;
-/*===========================================================
-=============================================================*/
-/* Removes the obsolete assignment-function overload from older database versions. */
-DROP FUNCTION IF EXISTS public.update_booking_admin_assignment(
-    UUID,
-    UUID,
-    public.booking_status
-);
 
 /* ============================================================
    FUNCTION PURPOSE:
@@ -1028,6 +1136,471 @@ BEGIN
 END;
 $$;
 
+/* ============================================================
+   VALIDATES ONE BOOKING ASSIGNMENT
+
+   Returns all current chauffeur and vehicle assignment problems.
+
+   The function will check:
+   - required chauffeur and vehicle;
+   - chauffeur approval and operational availability;
+   - pet acceptance;
+   - vehicle ownership and operational availability;
+   - all vehicle capability matching rules from vehicleMatching.ts.
+
+    - p_booking_id identifies the booking to validate.
+    - booking_row, chauffeur_row, and vehicle_row will hold the related database records.
+    - issues will collect every detected problem.
+    - normal_seats_required will reproduce the wheelchair-seat calculation from vehicleMatching.ts.
+
+    The function will eventually return one row containing:
+    - whether the assignment is valid;
+    - a short summary;
+    - all detailed issues as JSON.
+============================================================ */
+CREATE OR REPLACE FUNCTION public.validate_booking_assignment(
+  p_booking_id UUID
+)
+returns table (
+    is_valid boolean,
+    issue_summary text,
+    issue_details jsonb
+)
+language plpgsql
+stable
+set search_path = public
+as $$
+declare
+    booking_row public.bookings%rowtype;
+    chauffeur_row public.chauffeurs%rowtype;
+    vehicle_row public.vehicles%rowtype;
+    issues jsonb := '[]'::jsonb;
+    normal_seats_required integer := 0;
+begin
+
+    /* Loads the booking that must be validated. select ... into booking_row stores the complete booking row in the declared variable:*/
+    select *
+    into booking_row
+    from public.bookings
+    where id = p_booking_id;
+
+    /*if not found checks whether PostgreSQL found a booking with that ID.*/
+    if not found then
+        return query
+        select
+            false,
+            'Booking not found.'::text,
+            jsonb_build_object(
+                'issues',
+                jsonb_build_array(
+                    jsonb_build_object(
+                        'code', 'booking_not_found',
+                        'message', 'The booking could not be found.'
+                    )
+                )
+            );
+
+        return;
+    end if;
+
+    /* Checks whether the booking has a valid chauffeur record.
+        It handles two different problems:
+            chauffeur_id is null:    The booking has no chauffeur assignment.
+            chauffeur_id exists, but no chauffeur row is found: The saved reference points to a missing chauffeur record.
+        The issues := issues || ... expression adds a new JSON issue without deleting earlier issues.
+    */
+    if booking_row.chauffeur_id is null then
+        issues := issues || jsonb_build_array(
+            jsonb_build_object('code', 'chauffeur_missing', 'message', 'The booking has no assigned chauffeur.' )
+        );
+    else
+        select *
+        into chauffeur_row
+        from public.chauffeurs
+        where id = booking_row.chauffeur_id;
+
+        if not found then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object( 'code', 'chauffeur_not_found',  'message', 'The assigned chauffeur could not be found.' )
+            );
+        end if;
+    end if;
+
+    /* Validates the assigned chauffeur's current suitability.
+        The previous step may find no chauffeur record. In that case, we should not also test approval, availability, and pet acceptance against an empty row.
+        The validator now detects:
+            No chauffeur assigned
+            Chauffeur record missing
+            Chauffeur not approved
+            Chauffeur sick, on leave, or unavailable
+            Chauffeur does not accept required pets
+
+        jsonb_build_object() works in key-value pairs:'key', value
+        jsonb_build_object() expects an even number of arguments, because every key must have a value.
+            'code', 'chauffeur_unavailable'
+            means
+            "code": "chauffeur_unavailable"
+    */
+    if chauffeur_row.id is not null then
+        if chauffeur_row.account_status is distinct from 'approved' then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'chauffeur_not_approved',
+                    'message', 'The assigned chauffeur is not approved.'
+                )
+            );
+        end if;
+
+        if chauffeur_row.operational_status is distinct from 'available' then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'chauffeur_unavailable',
+                    'message', 'The assigned chauffeur is not operationally available.',
+                    'operational_status', chauffeur_row.operational_status,
+                    'status_reason', chauffeur_row.status_reason
+                )
+            );
+        end if;
+
+        if coalesce(booking_row.has_pets, false)
+           and not coalesce(chauffeur_row.accepts_pets, false) then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'chauffeur_rejects_pets',
+                    'message', 'The booking requires pet acceptance, but the assigned chauffeur does not accept pets.'
+                )
+            );
+        end if;
+    end if;
+
+    /* Checks whether the booking has a valid vehicle record.
+        This distinguishes between:
+            vehicle_id is null
+            and:
+            vehicle_id contains an ID, but the vehicle record no longer exists
+    */
+    if booking_row.vehicle_id is null then
+        issues := issues || jsonb_build_array(
+            jsonb_build_object(
+                'code', 'vehicle_missing',
+                'message', 'The booking has no assigned vehicle.'
+            )
+        );
+    else
+        select *
+        into vehicle_row
+        from public.vehicles
+        where id = booking_row.vehicle_id;
+
+        if not found then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_not_found',
+                    'message', 'The assigned vehicle could not be found.'
+                )
+            );
+        end if;
+    end if;
+
+    /* Validates the assigned vehicle's chauffeur and operational status.
+    This catches:
+        a vehicle belonging to another chauffeur;
+        a vehicle marked damaged, maintenance, or inactive.
+
+        Learning:
+            1. jsonb_build_object(...)
+                creates one JSON object:
+                {"code": "vehicle_wrong_chauffeur", "message": "The assigned vehicle does not belong to the assigned chauffeur." }
+
+            2. jsonb_build_array(...)
+                wraps that object inside an array:
+                [ {"code": "vehicle_wrong_chauffeur", "message": "The assigned vehicle does not belong to the assigned chauffeur." }]
+
+            2. issues := issues || new_issue_array
+                means:
+                existing issues + new issue
+    */
+    if vehicle_row.id is not null then
+        if vehicle_row.chauffeur_id is distinct from booking_row.chauffeur_id then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_wrong_chauffeur',
+                    'message', 'The assigned vehicle does not belong to the assigned chauffeur.'
+                )
+            );
+        end if;
+
+        if vehicle_row.vehicle_status is distinct from 'available' then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_unavailable',
+                    'message', 'The assigned vehicle is not operationally available.',
+                    'operational_status', vehicle_row.vehicle_status,
+                    'status_reason', vehicle_row.status_reason
+                )
+            );
+        end if;
+    end if;
+
+    /* Matches normal passenger seats and luggage capacity.
+        The calculation deliberately matches your TypeScript rule:
+            passengers - wheelchairPassengerCount
+            with a minimum value of 0, because passengers who remain seated in wheelchairs do not require ordinary vehicle seats
+    */
+    normal_seats_required := greatest(
+        0,
+        coalesce(booking_row.passengers, 0)
+        - coalesce(booking_row.wheelchair_passenger_count, 0)
+    );
+
+    if vehicle_row.id is not null then
+        if coalesce(vehicle_row.seats, 0) < normal_seats_required then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_seats_insufficient',
+                    'message', format(
+                        'The booking requires %s normal passenger seats, but the vehicle has %s.',
+                        normal_seats_required,
+                        coalesce(vehicle_row.seats, 0)),
+                    'required', normal_seats_required,
+                    'available', coalesce(vehicle_row.seats, 0)
+                )
+            );
+        end if;
+
+        if coalesce(vehicle_row.luggage_capacity, 0)
+           < coalesce(booking_row.luggage, 0) then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_luggage_insufficient',
+                    'message', format(
+                        'The booking requires luggage capacity for %s items, but the vehicle supports %s.',
+                        coalesce(booking_row.luggage, 0),
+                        coalesce(vehicle_row.luggage_capacity, 0)),
+                    'required', coalesce(booking_row.luggage, 0),
+                    'available', coalesce(vehicle_row.luggage_capacity, 0)
+                )
+            );
+        end if;
+    end if;
+
+    /* Matches child-seat and ISOFIX requirements. */
+    if vehicle_row.id is not null then
+        if coalesce(vehicle_row.infant_seat_count, 0)
+           < coalesce(booking_row.infant_seat_count_required, 0) then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_infant_seats_insufficient',
+                    'message', format(
+                        'The booking requires %s infant seats, but the vehicle has %s.',
+                        coalesce(booking_row.infant_seat_count_required, 0),
+                        coalesce(vehicle_row.infant_seat_count, 0)
+                    ),
+                    'required', coalesce(booking_row.infant_seat_count_required, 0),
+                    'available', coalesce(vehicle_row.infant_seat_count, 0)
+                )
+            );
+        end if;
+
+        if coalesce(vehicle_row.child_seat_count, 0)
+           < coalesce(booking_row.child_seat_count_required, 0) then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_child_seats_insufficient',
+                    'message', format(
+                        'The booking requires %s child seats, but the vehicle has %s.',
+                        coalesce(booking_row.child_seat_count_required, 0),
+                        coalesce(vehicle_row.child_seat_count, 0)
+                    ),
+                    'required', coalesce(booking_row.child_seat_count_required, 0),
+                    'available', coalesce(vehicle_row.child_seat_count, 0)
+                )
+            );
+        end if;
+
+        if coalesce(vehicle_row.booster_seat_count, 0)
+           < coalesce(booking_row.booster_seat_count_required, 0) then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_booster_seats_insufficient',
+                    'message', format(
+                        'The booking requires %s booster seats, but the vehicle has %s.',
+                        coalesce(booking_row.booster_seat_count_required, 0),
+                        coalesce(vehicle_row.booster_seat_count, 0)
+                    ),
+                    'required', coalesce(booking_row.booster_seat_count_required, 0),
+                    'available', coalesce(vehicle_row.booster_seat_count, 0)
+                )
+            );
+        end if;
+
+        if coalesce(booking_row.isofix_required, false)
+           and not coalesce(vehicle_row.isofix_available, false) then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_isofix_missing',
+                    'message', 'The booking requires ISOFIX, but the vehicle does not provide it.'
+                )
+            );
+        end if;
+    end if;
+
+    /* Matches foldable and remain-in-wheelchair requirements.
+        This mirrors the two wheelchair branches in vehicleMatching.ts:
+            foldable requires anything except none;
+            remain_in_wheelchair requires ramp or lift, plus enough wheelchair capacity
+    */
+    if vehicle_row.id is not null then
+        if booking_row.wheelchair_requirement = 'foldable'
+           and vehicle_row.wheelchair_access = 'none' then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_foldable_wheelchair_support_missing',
+                    'message', 'The booking requires support for a foldable wheelchair.'
+                )
+            );
+        end if;
+
+        if booking_row.wheelchair_requirement = 'remain_in_wheelchair' then
+            if vehicle_row.wheelchair_access not in ('ramp', 'lift') then
+                issues := issues || jsonb_build_array(
+                    jsonb_build_object(
+                        'code', 'vehicle_wheelchair_access_missing',
+                        'message', 'The booking requires wheelchair access by ramp or lift.'
+                    )
+                );
+            end if;
+
+            if coalesce(vehicle_row.wheelchair_capacity, 0)
+               < coalesce(booking_row.wheelchair_passenger_count, 0) then
+                issues := issues || jsonb_build_array(
+                    jsonb_build_object(
+                        'code', 'vehicle_wheelchair_capacity_insufficient',
+                        'message', format(
+                            'The booking requires capacity for %s wheelchair passengers, but the vehicle supports %s.',
+                            coalesce(booking_row.wheelchair_passenger_count, 0),
+                            coalesce(vehicle_row.wheelchair_capacity, 0)
+                        ),
+                        'required', coalesce(booking_row.wheelchair_passenger_count, 0),
+                        'available', coalesce(vehicle_row.wheelchair_capacity, 0)
+                    )
+                );
+            end if;
+        end if;
+    end if;
+    /* Matches mobility-aid storage and extra-large luggage requirements. */
+    if vehicle_row.id is not null then
+        if coalesce(booking_row.mobility_aid_storage_required, false)
+           and not coalesce(vehicle_row.mobility_aid_storage, false) then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_mobility_storage_missing',
+                    'message', 'The booking requires mobility-aid storage, but the vehicle does not provide it.'
+                )
+            );
+        end if;
+
+        if coalesce(booking_row.extra_large_luggage_required, false)
+           and not coalesce(vehicle_row.extra_large_luggage, false) then
+            issues := issues || jsonb_build_array(
+                jsonb_build_object(
+                    'code', 'vehicle_extra_large_luggage_missing',
+                    'message', 'The booking requires support for extra-large luggage, but the vehicle does not provide it.'
+                )
+            );
+        end if;
+    end if;
+
+  /* Returns valid only when no assignment problems were found. */
+    return query
+    select
+        jsonb_array_length(issues) = 0,
+        case
+            when jsonb_array_length(issues) = 0 then null::text
+            else issues -> 0 ->> 'message'
+        end,
+        jsonb_build_object('issues', issues);
+end;
+$$;
+
+/* ============================================================
+   SYNCHRONIZES ONE BOOKING'S ASSIGNMENT ALERT
+
+   - invalid assignment: creates or updates one open alert;
+   - valid assignment: resolves the existing open alert;
+   - resolved alerts remain stored as history.
+============================================================ */
+CREATE OR REPLACE FUNCTION public.sync_booking_assignment_alert(
+  p_booking_id UUID,
+  p_source_type TEXT DEFAULT 'assignment',
+  p_source_id UUID DEFAULT NULL
+)
+returns void
+language plpgsql
+set search_path = public
+as $$
+declare
+    validation_row record;
+begin
+    select *
+    into validation_row
+    from public.validate_booking_assignment(p_booking_id);
+
+     /* Creates or refreshes the open alert when the assignment is invalid.
+        If an open alert already exists, it is updated with the latest problems.
+        If no open alert exists, a new row is inserted.
+        The partial unique index still guarantees: one open alert per booking
+     */
+    if not validation_row.is_valid then
+        update public.assignment_alerts
+        set
+            issue_summary = validation_row.issue_summary,
+            issue_details = validation_row.issue_details,
+            source_type = p_source_type,
+            source_id = p_source_id,
+            last_checked_at = now(),
+            resolved_at = null
+        where booking_id = p_booking_id
+        and alert_status = 'open';
+
+        if not found then
+            insert into public.assignment_alerts (
+                booking_id,
+                alert_status,
+                issue_summary,
+                issue_details,
+                source_type,
+                source_id,
+                first_detected_at,
+                last_checked_at
+            )
+            values (
+                p_booking_id,
+                'open',
+                validation_row.issue_summary,
+                validation_row.issue_details,
+                p_source_type,
+                p_source_id,
+                now(),
+                now()
+            );
+        end if;
+
+        return;
+    end if;
+
+    /* Resolves the current open alert when the assignment is valid again. */
+    update public.assignment_alerts
+    set
+        alert_status = 'resolved',
+        source_type = p_source_type,
+        source_id = p_source_id,
+        last_checked_at = now(),
+        resolved_at = now()
+    where booking_id = p_booking_id
+    and alert_status = 'open';
+end;
+$$;
 
 /* ==========example trigger function=================
  -- When a chauffeur is assigned to a booking, automatically set status to assigned and update

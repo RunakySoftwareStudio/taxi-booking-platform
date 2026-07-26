@@ -15,6 +15,7 @@ type AdminVehiclesPageProps = {
     vehicleType?: string;
     brand?: string;
     model?: string;
+    vehicleLabel?: string;
     licensePlate?: string;
     seats?: string;
     luggageCapacity?: string;
@@ -38,6 +39,8 @@ type VehicleRow = {
     brand: string;
     model: string;
     license_plate: string;
+    vehicle_status: string;
+    status_reason: string | null;
     vehicle_year: number | null;
     vehicle_color: string | null;
     vehicle_type: string;
@@ -67,6 +70,25 @@ function getWheelchairAccessLabel(accessValue: string) {
     if (accessValue === "ramp") { return "Ramp"; }
     if (accessValue === "lift") { return "Lift"; }
     return accessValue;
+}
+
+/* Returns the background and border styling for one vehicle status.
+    available     → normal layout
+    damaged       → red
+    maintenance   → red
+    inactive      → gray
+  */
+function getVehicleStatusContainerClass(vehicleStatus: string) {
+    return vehicleStatus === "available"
+        ? ""
+        : "border-red-400/50 bg-red-400/10";
+}
+
+/* Returns the text styling for one vehicle status. */
+function getVehicleStatusTextClass(vehicleStatus: string) {
+    return vehicleStatus === "available"
+        ? "text-green-300"
+        : "text-red-300";
 }
 
 async function addVehicle(formData: FormData) {
@@ -187,6 +209,64 @@ async function deleteVehicle(formData: FormData) {
     const vehicleId = String(formData.get("vehicleId") || "");
     if (!vehicleId) { redirect("/admin/vehicles?error=missing-fields"); }
 
+    /* Loads a readable vehicle label for error messages. */
+    const { data: vehicleRow, error: vehicleLookupError } =
+      await supabaseAdmin
+        .from("vehicles")
+        .select("brand, model, license_plate")
+        .eq("id", vehicleId)
+        .maybeSingle();
+
+    if (vehicleLookupError) {
+      console.error("Could not load the vehicle before deletion:", vehicleLookupError);
+      redirect("/admin/vehicles?error=delete-vehicle-failed");
+    }
+
+    /* Creates a readable label such as Mercedes Vito (AB-12-CD). */
+    const vehicleLabel = vehicleRow
+      ? `${vehicleRow.brand} ${vehicleRow.model} (${vehicleRow.license_plate})`
+      : "This vehicle";
+
+    const chauffeurId = String(formData.get("chauffeurId") || "");
+
+    /* Prevents deletion when the vehicle is connected to booking history. */
+    const {count: linkedBookingCount, error: bookingCountError, } = await supabaseAdmin
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("vehicle_id", vehicleId);
+
+    if (bookingCountError) {
+      console.error( "Could not check whether the vehicle has bookings:", bookingCountError );
+      redirect("/admin/vehicles?error=delete-vehicle-failed");
+    }
+    console.error(
+      `Could not check whether ${vehicleLabel} has bookings:`,
+      bookingCountError
+    );
+
+    const encodedVehicleLabel = encodeURIComponent(vehicleLabel);
+    /**
+     * The resulting URL will look like:
+        /admin/vehicles?error=vehicle-has-bookings&chauffeurId=...#chauffeur-vehicles-...
+        The parts have separate purposes:
+        ?error=vehicle-has-bookings&chauffeurId=...        tells React which warning to display.
+        #chauffeur-vehicles-...        tells the browser where to scroll.
+
+        you need to give each chauffeur section an ID This creates an anchor such as: chauffeur-vehicles-3f8d...
+
+        It is redirected/scrolled to the same page next section: id={`chauffeur-vehicles-${group.chauffeurId}`}
+            <section key={group.chauffeurId} id={`chauffeur-vehicles-${group.chauffeurId}`} className="scroll-mt-24">
+        scroll-mt-24          leaves some space above the section, so it is not positioned tightly against the top of the screen.
+     */
+    if ((linkedBookingCount ?? 0) > 0) {
+      redirect(
+        `/admin/vehicles?error=vehicle-has-bookings` +
+        `&chauffeurId=${chauffeurId}` +
+        `&vehicleLabel=${encodedVehicleLabel}` +
+        `#chauffeur-vehicles-${chauffeurId}`);
+        }
+
+
     const { error } = await supabaseAdmin
       .from("vehicles")
       .delete()
@@ -203,6 +283,9 @@ async function deleteVehicle(formData: FormData) {
 
 export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPageProps) {
     const pageMessage = await searchParams;
+    /* Stores the vehicle label received through the URL. */
+    const deletedVehicleLabel =  pageMessage.vehicleLabel?.trim() || "Selected vehicle";
+
     const formValues = {
         chauffeurId: pageMessage.chauffeurId ?? "",
         vehicleType: pageMessage.vehicleType ?? "",
@@ -222,9 +305,10 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
         mobilityAidStorage: pageMessage.mobilityAidStorage ?? "false",
         extraLargeLuggage: pageMessage.extraLargeLuggage ?? "false",
     };
+
     const { data: vehicles, error: vehiclesError } = await supabaseAdmin
       .from("vehicles")
-      .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity,
+      .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_status, status_reason, vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity,
         infant_seat_count, child_seat_count, booster_seat_count, isofix_available, wheelchair_access,
         wheelchair_capacity, mobility_aid_storage, extra_large_luggage,
         created_at, chauffeurs (name, email, phone )` )
@@ -335,7 +419,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     </div>
 
                 </div>
-
+                {/* Passenger support*/}
                 <div className="md:col-span-3 rounded-xl border border-cyan-400/20 p-4 mt-4">
                     <h3 className="font-semibold text-cyan-300">Passenger support</h3>
                     <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -388,27 +472,37 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     Add vehicle
                 </button>
           </form>
-
+          {/*======section List of vehicles grouped by chauffeur======*/}
           <h3 className={tableStyles.headerTableSmall}>  List of vehicles grouped by chauffeur</h3>
           <div className="mt-8 space-y-8">
             {vehicleGroups.map((group) => (
-              <section key={group.chauffeurId} >
+              <section key={group.chauffeurId} id={`chauffeur-vehicles-${group.chauffeurId}`} className="scroll-mt-24">
                 <div className="mb-4">
                   <h2 className="text-lg font-bold text-white"> {"Chauffeur: " + group.chauffeurName}  </h2>
                   <p className="wrap-break-word text-sm text-slate-300"> {"Email: " + group.chauffeurEmail}  </p>
                   <p className="text-sm text-slate-300"> {"Phone: " + group.chauffeurPhone} </p>
                   <p className="mt-2 text-sm font-semibold text-cyan-200">  Vehicles: {group.vehicles.length}  </p>
                 </div>
-
-                {/* Mobile vehicle cards */}
+                {/* Shows the delete warning inside the affected chauffeur's vehicle section. */}
+                {pageMessage.error === "vehicle-has-bookings" && pageMessage.chauffeurId === group.chauffeurId && (
+                <p className={`${pageStyles.errorMsgPage} mb-4`}> Vehicle: {""}  {/* This stands to add a space after Vehicle: */}
+                    {deletedVehicleLabel} has booking history and cannot be deleted. Mark it inactive instead.
+                </p>)}
+                {/* ====Mobile vehicle cards===== */}
                 <div className="grid gap-4 lg:hidden text-start">
                   {group.vehicles.map((vehicle) => (
-                    <article  key={vehicle.id} className={mobileStyle.article}>
+                    <article key={vehicle.id} className={`${mobileStyle.article} ${getVehicleStatusContainerClass(vehicle.vehicle_status)}`}>
                       <div>
                         <span className={mobileStyle.inforCaptionBold}> Car brand(model): </span>
                         <span className={mobileStyle.infoValueBold}> {vehicle.brand}  ({vehicle.model}) </span>
                       </div>
-
+                      <div className="mt-2">
+                          <span className={mobileStyle.inforCaption}>Status: </span>
+                          <span
+                              className={`font-semibold ${getVehicleStatusTextClass(vehicle.vehicle_status )}`}>{vehicle.vehicle_status}
+                          </span>
+                          {vehicle.status_reason && (<p className="mt-1 text-xs text-slate-400"> Reason: {vehicle.status_reason}</p>)}
+                      </div>
                       <div className="mt-4 grid grid-cols-2 gap-1 ">
                         <div>
                           <span className={mobileStyle.inforCaption}> Year: </span>
@@ -461,6 +555,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
 
                         <form action={deleteVehicle}>
                           <input type="hidden" name="vehicleId" value={vehicle.id} />
+                          <input type="hidden" name="chauffeurId" value={vehicle.chauffeur_id}/>
                           <button type="submit" className={formStyles.deActiveDeleteButton}> Delete </button>
                         </form>
                       </div>
@@ -488,12 +583,18 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                     <tbody>
                       {group.vehicles.map((vehicle) => (
                           <Fragment key={vehicle.id}>
-                              <tr className={tableStyles.rowCyan}>
+                              <tr className={`${tableStyles.rowCyan} ${getVehicleStatusContainerClass(vehicle.vehicle_status)}`}>
                                   <td className={tableStyles.cell}>{vehicle.brand}</td>
                                   <td className={tableStyles.cell}>{vehicle.model}</td>
                                   <td className={tableStyles.cell}>{vehicle.vehicle_year || "-"}</td>
                                   <td className={tableStyles.cell}>{vehicle.vehicle_color || "-"}</td>
-                                  <td className={tableStyles.cell}>{vehicle.license_plate}</td>
+                                  <td className={tableStyles.cell}>
+                                    <div>{vehicle.license_plate}</div>
+                                    <div
+                                        className={`mt-1 text-xs font-semibold ${getVehicleStatusTextClass(vehicle.vehicle_status)}`}>
+                                        {vehicle.vehicle_status}
+                                    </div>
+                                  </td>
                                   <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
                                   <td className={tableStyles.cell}>{vehicle.seats}</td>
                                   <td className={tableStyles.cell}>{vehicle.luggage_capacity}</td>
@@ -502,13 +603,16 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                                           <Link href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton}>Details</Link>
                                           <form action={deleteVehicle}>
                                               <input type="hidden" name="vehicleId" value={vehicle.id} />
+                                              <input type="hidden" name="chauffeurId" value={vehicle.chauffeur_id}/>
                                               <button type="submit" className={formStyles.deActiveDeleteButton}>Delete</button>
                                           </form>
                                       </div>
                                   </td>
                               </tr>
 
-                              <tr className="border-b border-cyan-400/70 bg-cyan-950/10">
+                              <tr className={`border-b border-cyan-400/70 bg-cyan-950/10 ${
+                                  vehicle.vehicle_status === "inactive" ? "border-slate-600 bg-slate-800/70 opacity-80" :
+                                    vehicle.vehicle_status !== "available" ? "border-red-400/50 bg-red-400/10" : "" }`}>
                                   <td colSpan={9} className="px-4 py-3 text-sm text-slate-300">
                                       <div className="flex flex-wrap gap-x-6 gap-y-2">
                                           <span><strong className="text-cyan-300">Infant seats:</strong> {vehicle.infant_seat_count}</span>
@@ -519,6 +623,12 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                                           <span><strong className="text-cyan-300">Capacity:</strong> {vehicle.wheelchair_capacity}</span>
                                           <span><strong className="text-cyan-300">Mobility-aid storage:</strong> {vehicle.mobility_aid_storage ? "Yes" : "No"}</span>
                                           <span><strong className="text-cyan-300">Large luggage:</strong> {vehicle.extra_large_luggage ? "Yes" : "No"}</span>
+                                          {vehicle.status_reason && (
+                                            <span>
+                                                <strong className="text-red-300">Reason:</strong>{" "}
+                                                {vehicle.status_reason}
+                                            </span>)
+                                          }
                                       </div>
                                   </td>
                               </tr>

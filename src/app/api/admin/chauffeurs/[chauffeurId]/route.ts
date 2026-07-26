@@ -77,5 +77,31 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         if (error.code === "23505") { return NextResponse.json( { message: "A chauffeur with this email already exists." }, { status: 409 } );  }
         return NextResponse.json( { message: "Could not update chauffeur." },{ status: 500 } );
     }
-    return NextResponse.json({ message: "Chauffeur updated successfully.",  });
+    // Rechecks unfinished bookings currently assigned to this chauffeur.
+    const {data: affectedBookings, error: affectedBookingsError, } = await supabaseAdmin
+      .from("bookings")
+      .select("id")
+      .eq("chauffeur_id", chauffeurId)
+      .not("status", "in", "(completed,cancelled,rejected)");
+
+    if (affectedBookingsError) {
+      console.error("Chauffeur updated, but affected bookings could not be loaded:", affectedBookingsError );
+    }
+    else
+    {
+      for (const affectedBooking of affectedBookings ?? []) {
+        const { error: alertSyncError } = await supabaseAdmin.rpc(
+          "sync_booking_assignment_alert",
+          {
+            p_booking_id: affectedBooking.id,
+            p_source_type: "chauffeur",
+            p_source_id: chauffeurId,
+          }
+        );
+
+        if (alertSyncError) {console.error(`Could not synchronize assignment alert for booking ${affectedBooking.id}:`, alertSyncError ); }
+      }
+    }
+
+    return NextResponse.json({ message: "Chauffeur updated successfully.", });
 }

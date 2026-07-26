@@ -38,7 +38,7 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
     .select(`
         id, name, email, account_status, accepts_pets,
         vehicles(
-            id, brand, model, license_plate, vehicle_type,
+            id, brand, model, license_plate, vehicle_type, vehicle_status,
             vehicle_year, vehicle_color, seats, luggage_capacity,
             infant_seat_count, child_seat_count, booster_seat_count,
             isofix_available, wheelchair_access, wheelchair_capacity,

@@ -18,10 +18,17 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { getVehicleMatchResult, type VehicleWheelchairAccess } from "@/lib/vehicleMatching";
 import type { WheelchairRequirement } from "@/types/wheelchairRequirementType";
+import ScrollToBooking from "@/components/ScrollToBooking";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
 
-type AdminBookingsPageProps = { searchParams: Promise<{success?: string; error?: string; }>;};
+type AdminBookingsPageProps = {
+  searchParams: Promise<{
+    success?: string;
+    error?: string;
+    bookingId?: string;
+  }>;
+};
 
 // type  = creates a TypeScript rule/shape for data
 type BookingRow = 
@@ -45,6 +52,7 @@ type BookingRow =
 
 type ChauffeurVehicleOption = {
     id: string; is_default_vehicle: boolean;
+    vehicle_status: string;
     seats: number; luggage_capacity: number;
     infant_seat_count: number; child_seat_count: number; booster_seat_count: number;
     isofix_available: boolean; wheelchair_access: string; wheelchair_capacity: number;
@@ -54,8 +62,8 @@ type ChauffeurVehicleOption = {
 //each approved chauffeur now includes the default vehicle capabilities required for matching.
 type ChauffeurOption = {
     id: string; name: string; email: string;
-    account_status: string; accepts_pets: boolean;
-    vehicles: ChauffeurVehicleOption[];
+    account_status: string; operational_status: string;
+    accepts_pets: boolean; vehicles: ChauffeurVehicleOption[];
 };
 
 /*=============Tscrip rules===================
@@ -115,7 +123,7 @@ async function updateBookingAdminFields(formData: FormData) {
             supabaseAdmin.from("bookings").select(`
                 chauffeur_id, vehicle_id,
                 vehicles(
-                    id, chauffeur_id,
+                    id, chauffeur_id,vehicle_status,
                     seats, luggage_capacity,
                     infant_seat_count, child_seat_count, booster_seat_count,
                     isofix_available, wheelchair_access, wheelchair_capacity,
@@ -129,11 +137,11 @@ async function updateBookingAdminFields(formData: FormData) {
             `).eq("id", bookingId).maybeSingle(),
 
             supabaseAdmin.from("chauffeurs")
-                .select("id, account_status, accepts_pets")
+                .select("id, account_status, operational_status, accepts_pets")
                 .eq("id", chauffeurId).maybeSingle(),
 
             supabaseAdmin.from("vehicles").select(`
-                id, seats, luggage_capacity,
+                id, vehicle_status, seats, luggage_capacity,
                 infant_seat_count, child_seat_count, booster_seat_count,
                 isofix_available, wheelchair_access, wheelchair_capacity,
                 mobility_aid_storage, extra_large_luggage
@@ -149,8 +157,10 @@ async function updateBookingAdminFields(formData: FormData) {
         }
         if (!bookingRow) { redirect("/admin/bookings?error=booking-update-failed"); }
         if (!chauffeurRow || chauffeurRow.account_status !== "approved") { redirect("/admin/bookings?error=chauffeur-not-approved"); }
+        if (chauffeurRow.operational_status !== "available") { redirect("/admin/bookings?error=chauffeur-unavailable");}
         if (bookingRow.has_pets && !chauffeurRow.accepts_pets) { redirect("/admin/bookings?error=chauffeur-does-not-accept-pets"); }
         if (!defaultVehicle) {redirect("/admin/bookings?error=default-vehicle-missing"); }
+        if (defaultVehicle.vehicle_status !== "available") { redirect("/admin/bookings?error=default-vehicle-unavailable");}
 
         const vehicleMatchesBooking = (vehicle: NonNullable<typeof defaultVehicle>) =>
             getVehicleMatchResult(
@@ -189,6 +199,7 @@ async function updateBookingAdminFields(formData: FormData) {
             bookingRow.vehicle_id !== null &&
             currentVehicle?.id === bookingRow.vehicle_id &&
             currentVehicle.chauffeur_id === chauffeurId &&
+            currentVehicle.vehicle_status === "available" &&
             vehicleMatchesBooking(currentVehicle);
 
         if (currentVehicleCanStay && currentVehicle) {
@@ -218,13 +229,29 @@ async function updateBookingAdminFields(formData: FormData) {
 
         redirect("/admin/bookings?error=booking-update-failed");
     }
-
+    /* Rechecks and resolves the assignment alert after a valid reassignment. */
+    const { error: alertSyncError } = await supabaseAdmin.rpc("sync_booking_assignment_alert",
+        {
+            p_booking_id: bookingId,
+            p_source_type: "assignment",
+            p_source_id: bookingId,
+        }
+    );
+    if (alertSyncError) {
+        console.error(
+            `Booking ${bookingId} was updated, but its assignment alert could not be synchronized:`,
+            alertSyncError
+        );
+    }
     revalidatePath("/admin/bookings");
     redirect("/admin/bookings?success=booking-updated");
 }
 
 export default async function AdminBookingsPage({ searchParams}: AdminBookingsPageProps) {
-  const pageMessage = await searchParams;
+    const pageMessage = await searchParams;
+    /* Stores the booking selected from the assignment-alert page. */
+    const selectedBookingId = pageMessage.bookingId ?? null;
+
   const { data: bookings, error } = await supabaseAdmin // data: bookings= you are renaming data to bookings.
     .from("bookings")
     .select
@@ -258,13 +285,13 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     const { data: approvedChauffeurs, error: chauffeursError } = await supabaseAdmin
         .from("chauffeurs")
         .select(`
-            id, name, email, account_status, accepts_pets,
-            vehicles(
-                id, is_default_vehicle,
-                seats, luggage_capacity,
-                infant_seat_count, child_seat_count, booster_seat_count,
-                isofix_available, wheelchair_access, wheelchair_capacity,
-                mobility_aid_storage, extra_large_luggage)`)
+                id, name, email, account_status, operational_status, accepts_pets,
+                vehicles(
+                    id, is_default_vehicle, vehicle_status,
+                    seats, luggage_capacity,
+                    infant_seat_count, child_seat_count, booster_seat_count,
+                    isofix_available, wheelchair_access, wheelchair_capacity,
+                    mobility_aid_storage, extra_large_luggage)`)
         .eq("account_status", "approved")
         .order("name", { ascending: true });
 
@@ -318,12 +345,14 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     ========================================================================================= */
     function getQuickSaveChauffeurs(booking: BookingRow) {
         return chauffeurOptions.filter((chauffeur) => {
+            if (chauffeur.operational_status !== "available") {return false; }
             if (booking.has_pets && !chauffeur.accepts_pets) { return false; }
 
             const defaultVehicle = (chauffeur.vehicles ?? []).find(
-                (vehicle) => vehicle.is_default_vehicle
+                (vehicle) =>
+                    vehicle.is_default_vehicle &&
+                    vehicle.vehicle_status === "available"
             );
-
             if (!defaultVehicle) { return false; }
 
             return getVehicleMatchResult(
@@ -352,6 +381,7 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                     extraLargeLuggageRequired: booking.extra_large_luggage_required,
                 }
             ).matches;
+
         });
     }
 
@@ -372,6 +402,9 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     ========================================================*/
     return (
         <main className={pageStyles.main}>
+            {/* Scrolls to the booking opened from an assignment alert. */}
+            <ScrollToBooking bookingId={selectedBookingId} />
+
             <div className={pageStyles.container}> 
                 <Link  href="/admin" className={formStyles.link}  > ← Back to admin dashboard </Link>
                 <p className={pageStyles.pageLabelUpper}> Admin </p>
@@ -393,11 +426,21 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                 {pageMessage.error === "default-vehicle-missing" && (<p className={pageStyles.errorMsgPage}>The selected chauffeur has no default vehicle.</p>)}
                 {pageMessage.error === "default-vehicle-mismatch" && (<p className={pageStyles.errorMsgPage}>The default vehicle does not match this booking. Use Edit booking to select another vehicle.</p>)}
                 {pageMessage.error === "assignment-required" && ( <p className={pageStyles.errorMsgPage}>An active booking requires a chauffeur and matching vehicle.</p>)}
+                {pageMessage.error === "chauffeur-unavailable" && ( <p className={pageStyles.errorMsgPage}> The selected chauffeur is not operationally available. </p>)}
+                {pageMessage.error === "default-vehicle-unavailable" && (<p className={pageStyles.errorMsgPage}>The selected chauffeur&apos;s default vehicle is not operationally available. </p>)}
 
                 {/* Mobile booking cards */}
                 <div className="mt-10 grid gap-4 lg:hidden">
                     {bookingRows.map((booking) => (
-                            <article  key={booking.id} className={mobileStyle.article} >
+                        /*
+                            What this does:
+                                id={`booking-${booking.id}`}
+                                creates an HTML location such as:   booking-66905db4-95c5-49d5-a270-9ab573f6eebd
+                                This part checks whether the current card is the selected booking:  selectedBookingId === booking.id
+                                When true, it adds a red border and background.
+                        */
+                        <article  data-booking-id={booking.id} key={booking.id}
+                            className={`${mobileStyle.article} scroll-mt-24 ${ selectedBookingId === booking.id ? mobileStyle.redBorder : "" }`} >
                                 <div className="border-b border-white/10 pb-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
@@ -559,88 +602,107 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                         </tr>
                     </thead>
                         <tbody>
-                            {bookingRows.map((booking) => (
-                            <Fragment key={booking.id}>
-                                <tr className={`${tableStyles.rowCyan} align-top border-b-0`}>
-                                    <td className={tableStyles.cellCaption}>
-                                        <div className={tableStyles.cellCaptionGroupBold}> {booking.clients?.name || "Unknown client"} </div>
-                                        <div className={tableStyles.cellInfo}> Ref: {formatShortBookingReference(booking.id)} </div>
-                                        <div className={tableStyles.cellInfo}> {booking.clients?.email}</div>
-                                        <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
-                                    </td>
+                            {bookingRows.map((booking) => {
+                                    /* Checks whether this is the booking opened from an assignment alert. */
+                                    const isSelectedBooking = selectedBookingId === booking.id;
 
-                                    <td className={tableStyles.cell}>{booking.pickup_location}</td>
-                                    <td className={tableStyles.cell}>{booking.destination}</td>
-                                    <td className={tableStyles.cell}>{formatShortDate(booking.pickup_date)}</td>
-                                    <td className={tableStyles.cell}>{formatShortTime(booking.pickup_time)}</td>
-                                    <td className={tableStyles.cell}>Pax:{" "}{booking.passengers}</td>
-                                    <td className={tableStyles.cell}>Trip:{" "}{booking.trip_type}</td>
-                                    <td className={tableStyles.cell}>LUGG:{" "} {booking.luggage}</td>
-                                    <td className={`${tableStyles.cell} whitespace-nowrap`}>
-                                        <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
-                                            {booking.has_pets  ? "Pet ✓" : "No pet"}
-                                        </span>
-                                    </td>
-                                    <td className={tableStyles.cell}></td>
-                                </tr>
-                                <tr className="border-b border-cyan-400/10 bg-cyan-950/10">
-                                    <td colSpan={4} className="px-4 pb-4 pt-0 text-sm text-slate-300">
-                                        <div className="rounded-xl bg-slate-950/30 px-3 py-2">
-                                            <span className={tableStyles.cellCaptionSecondRow}>Notes: </span>
-                                            <span className= {tableStyles.cellNote}> {booking.notes || "-----"} </span>
-                                        </div>
-                                    </td>
-                                    <td colSpan={5} className="px-4 pb-4 pt-0 text-sm text-slate-300">
-                                        <form action={updateBookingAdminFields} className="flex items-end justify-end gap-3" >
-                                            <input type="hidden" name="bookingId" value={booking.id} />
-                                            <label className="grid w-32 shrink-0 gap-2">
-                                                <span className={tableStyles.cellCaptionSecondRow}> Booking status</span>
-                                                <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
-                                                    {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
-                                                </select>
-                                            </label>                                            
-                                            <label className="grid w-44 shrink-0 gap-2">
-                                                <span className={tableStyles.cellCaptionSecondRow}> Assigned chauffeur</span>
-                                                <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={formStyles.selectForm} >
-                                                    <option value="">Unassigned</option>
-                                                    {getQuickSaveChauffeurs(booking).map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
-                                                </select>
-                                            </label>
-                                            <button type="submit" className={formStyles.smallButton}>
-                                                Save
-                                            </button>
-                                            <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
-                                                Edit booking
-                                            </Link>
-                                        </form>
-                                    </td>
-                                </tr>
-                                <tr className="border-b border-cyan-400/70 bg-cyan-950/10">
-                                    <td colSpan={10} className="px-4 py-3 text-sm text-slate-300">
-                                        <p className="mb-2 font-meduim text-white">Passenger support:</p>
+                                    /* Returns the three desktop rows belonging to one booking. */
+                                    return (
+                                        <Fragment key={booking.id}>
+                                        {/*This highlights the first row of the selected desktop booking.
+                                            border-l-2 border-r-2 border-t-2 border-red-400
+                                            mean:
+                                                border-l-2 → left border
+                                                border-r-2 → right border
+                                                border-t-2 → top border
+                                                border-b-2 → bottom border
+                                                border-red-400 → red color
+                                        */}
+                                        <tr  data-booking-id={booking.id}
+                                              className={`${tableStyles.rowCyan} scroll-mt-24 align-top border-b-0  ${isSelectedBooking ? "bg-red-400/10" : "" }`}>
+                                            <td className={`${tableStyles.cellCaption} ${isSelectedBooking ? "border-l-2 border-t-2 border-red-400" : "" }`}>
+                                                <div className={tableStyles.cellCaptionGroupBold}> {booking.clients?.name || "Unknown client"} </div>
+                                                <div className={tableStyles.cellInfo}> Ref: {formatShortBookingReference(booking.id)} </div>
+                                                <div className={tableStyles.cellInfo}> {booking.clients?.email}</div>
+                                                <div className={tableStyles.cellInfo}> {booking.clients?.phone} </div>
+                                            </td>
 
-                                        <div className="flex flex-wrap gap-x-6 gap-y-2">
-                                            <span><strong className="text-cyan-300">Infant seats:</strong> {booking.infant_seat_count_required}</span>
-                                            <span><strong className="text-cyan-300">Child seats:</strong> {booking.child_seat_count_required}</span>
-                                            <span><strong className="text-cyan-300">Booster seats:</strong> {booking.booster_seat_count_required}</span>
-                                            <span><strong className="text-cyan-300">ISOFIX:</strong> {booking.isofix_required ? "Yes" : "No"}</span>
-                                            <span><strong className="text-cyan-300">Wheelchair:</strong> {getWheelchairRequirementLabel(booking.wheelchair_requirement)}</span>
+                                            <td className={`${tableStyles.cell} ${isSelectedBooking ? "border-t-2 border-red-400" : "" }`}>
+                                                {booking.pickup_location}
+                                            </td>
+                                            <td className={`${tableStyles.cell} ${isSelectedBooking ? "border-t-2 border-red-400" : "" }`}>{booking.destination}</td>
+                                            <td className={`${tableStyles.cell} ${isSelectedBooking ? "border-t-2 border-red-400" : "" }`}>{formatShortDate(booking.pickup_date)}</td>
+                                            <td className={`${tableStyles.cell} ${isSelectedBooking ? "border-t-2 border-red-400" : "" }`}>{formatShortTime(booking.pickup_time)}</td>
+                                            <td className={`${tableStyles.cell} ${isSelectedBooking ? "border-t-2 border-red-400" : "" }`}>Pax:{" "}{booking.passengers}</td>
+                                            <td className={`${tableStyles.cell} ${isSelectedBooking ? "border-t-2 border-red-400" : "" }`}>Trip:{" "}{booking.trip_type}</td>
+                                            <td className={`${tableStyles.cell} ${isSelectedBooking ? "border-t-2 border-red-400" : "" }`}>LUGG:{" "} {booking.luggage}</td>
+                                            <td className={`${tableStyles.cell} ${isSelectedBooking ? "border-t-2 border-red-400" : "" } whitespace-nowrap`}>
+                                                <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                                    {booking.has_pets  ? "Pet ✓" : "No pet"}
+                                                </span>
+                                            </td>
+                                            <td className={`${tableStyles.cell} ${isSelectedBooking ? "border-r-2 border-t-2 border-red-400" : ""}`}></td>
+                                        </tr>
+                                        <tr className={`border-b border-cyan-400/10 bg-cyan-950/10 ${isSelectedBooking ? "bg-red-400/10" : "" }`}>
+                                            <td colSpan={5}  className={`px-4 pb-4 pt-0 text-sm text-slate-300 ${ isSelectedBooking ? "border-l-2 border-red-400" : "" }`}>
+                                                <div className="rounded-xl bg-slate-950/30 px-3 py-2">
+                                                    <span className={tableStyles.cellCaptionSecondRow}>Notes: </span>
+                                                    <span className= {tableStyles.cellNote}> {booking.notes || "-----"} </span>
+                                                </div>
+                                            </td>
+                                            <td colSpan={5} className={`px-4 pb-4 pt-0 text-sm text-slate-300 ${isSelectedBooking ? "border-r-2 border-red-400" : "" }`}>
+                                                <form action={updateBookingAdminFields} className="flex items-end justify-end gap-3" >
+                                                    <input type="hidden" name="bookingId" value={booking.id} />
+                                                    <label className="grid w-32 shrink-0 gap-2">
+                                                        <span className={tableStyles.cellCaptionSecondRow}> Booking status</span>
+                                                        <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
+                                                            {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
+                                                        </select>
+                                                    </label>
+                                                    <label className="grid w-44 shrink-0 gap-2">
+                                                        <span className={tableStyles.cellCaptionSecondRow}> Assigned chauffeur</span>
+                                                        <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={formStyles.selectForm} >
+                                                            <option value="">Unassigned</option>
+                                                            {getQuickSaveChauffeurs(booking).map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
+                                                        </select>
+                                                    </label>
+                                                    <button type="submit" className={formStyles.smallButton}>
+                                                        Save
+                                                    </button>
+                                                    <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
+                                                        Edit booking
+                                                    </Link>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        <tr className={`border-b border-cyan-400/70 bg-cyan-950/10 ${isSelectedBooking ? "bg-red-400/10" : "" }`}>
+                                            <td colSpan={10} className={`px-4 py-3 text-sm text-slate-300 ${isSelectedBooking ? "border-x-2 border-b-2 border-red-400" : "" }`}>
+                                                <p className="mb-2 font-meduim text-white">Passenger support:</p>
 
-                                            {booking.wheelchair_requirement === "remain_in_wheelchair" && (
-                                                <span><strong className="text-cyan-300">Wheelchair passengers:</strong> {booking.wheelchair_passenger_count}</span>
-                                            )}
+                                                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                                    <span><strong className="text-cyan-300">Infant seats:</strong> {booking.infant_seat_count_required}</span>
+                                                    <span><strong className="text-cyan-300">Child seats:</strong> {booking.child_seat_count_required}</span>
+                                                    <span><strong className="text-cyan-300">Booster seats:</strong> {booking.booster_seat_count_required}</span>
+                                                    <span><strong className="text-cyan-300">ISOFIX:</strong> {booking.isofix_required ? "Yes" : "No"}</span>
+                                                    <span><strong className="text-cyan-300">Wheelchair:</strong> {getWheelchairRequirementLabel(booking.wheelchair_requirement)}</span>
 
-                                            <span><strong className="text-cyan-300">Mobility-aid storage:</strong> {booking.mobility_aid_storage_required ? "Yes" : "No"}</span>
-                                            <span><strong className="text-cyan-300">Large luggage:</strong> {booking.extra_large_luggage_required ? "Yes" : "No"}</span>
-                                            <span>
-                                                <strong className="text-cyan-300">Assigned vehicle:</strong>{" "}
-                                                {getAssignedVehicleLabel(booking.vehicles)}
-                                            </span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </Fragment>))}
+                                                    {booking.wheelchair_requirement === "remain_in_wheelchair" && (
+                                                        <span><strong className="text-cyan-300">Wheelchair passengers:</strong> {booking.wheelchair_passenger_count}</span>
+                                                    )}
 
+                                                    <span><strong className="text-cyan-300">Mobility-aid storage:</strong> {booking.mobility_aid_storage_required ? "Yes" : "No"}</span>
+                                                    <span><strong className="text-cyan-300">Large luggage:</strong> {booking.extra_large_luggage_required ? "Yes" : "No"}</span>
+                                                    <span>
+                                                        <strong className="text-cyan-300">Assigned vehicle:</strong>{" "}
+                                                        {getAssignedVehicleLabel(booking.vehicles)}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        </Fragment>
+                                    );
+                                }
+                            )}
                             {bookingRows.length === 0 && (<tr><td className={tableStyles.cellEmpty} colSpan={11}> No bookings found yet. </td></tr>)}
                         </tbody>
                     </table>

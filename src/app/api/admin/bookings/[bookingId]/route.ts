@@ -145,7 +145,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
             .select(`
                 id, account_status, accepts_pets,
                 vehicles(
-                    id, seats, luggage_capacity,
+                    id, vehicle_status, seats, luggage_capacity,
                     infant_seat_count, child_seat_count, booster_seat_count,
                     isofix_available, wheelchair_access, wheelchair_capacity,
                     mobility_aid_storage, extra_large_luggage ) `)
@@ -182,6 +182,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         if (!selectedVehicle) {
             return NextResponse.json(
                 { message: "The selected vehicle does not belong to this chauffeur." },
+                { status: 400 }
+            );
+        }
+
+        /* Refuses vehicles that are damaged, under maintenance or inactive. */
+        if (selectedVehicle.vehicle_status !== "available") {
+            return NextResponse.json(
+                { message: "The selected vehicle is not operationally available." },
                 { status: 400 }
             );
         }
@@ -332,8 +340,25 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         );
     }
 
+    /* Rechecks the booking assignment and resolves or refreshes its alert. */
+    const { error: alertSyncError } = await supabaseAdmin.rpc(
+        "sync_booking_assignment_alert",
+        {
+            p_booking_id: bookingId,
+            p_source_type: "assignment",
+            p_source_id: bookingId,
+        }
+    );
+
+    if (alertSyncError) {
+        console.error(
+            `Booking ${bookingId} was updated, but its assignment alert could not be synchronized:`,
+            alertSyncError
+        );
+    }
+
     revalidatePath("/admin/bookings");
     revalidatePath(`/admin/bookings/${bookingId}`);
-
+    revalidatePath("/admin/assignment-alerts");
     return NextResponse.json({message: "Booking updated successfully."});
 }

@@ -199,6 +199,7 @@ export const mobileStyle ={
     infoValueBold:                  "mt-1 wrap-break-word text-white font-bold wrap-break-word text-start",
     selectOption:                   "rounded-lg border border-cyan-400/30 bg-slate-950 px-2 py-0 text-white text-sm outline-none focus:border-cyan-300 leading-tight h-7 w-42 text-start ",
     article:                        "rounded-2xl border border-cyan-400/30 bg-cyan-950/20 p-4 text-sm text-white text-start",
+    redBorder:                      "border-2 border-red-400 bg-red-400/10 ring-2 ring-red-400/30" ,
     line:                           "border-t border-cyan-400/60 pt-4 text-start"  ,
 };
 
