@@ -635,13 +635,13 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                 </tr>
                                 <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
                                 {/* Keeps notes aligned with the active language, while mixed text remains readable. */}
-                                    <td colSpan={5} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
+                                    <td colSpan={4} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
                                             <span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span>
                                             <span className="wrap-break-word"> {booking.notes || "-----"}</span>
                                         </div>
                                     </td>
-                                    <td colSpan={2} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
+                                    <td colSpan={3} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
                                             <span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="assignedVehicleLabel" />: </span>
                                             <span className="wrap-break-word"> {booking.vehicles ? getAssignedVehicleLabel(booking.vehicles) : <TranslatedText sectionName="chauffeurDashboardPage" textKey="vehicleNotAssigned" />}</span>

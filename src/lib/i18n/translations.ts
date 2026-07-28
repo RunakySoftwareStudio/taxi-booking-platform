@@ -1280,11 +1280,11 @@ export const translations = {
         fa: "باقی ماندن روی ویلچر",
     },
     assignedVehicleLabel: {
-        en: "Assigned vehicle",
-        nl: "Toegewezen voertuig",
-        ar: "المركبة المخصصة",
-        tr: "Atanan araç",
-        fa: "خودروی اختصاص‌یافته",
+        en: "Vehicle",
+        nl: "Voertuig",
+        ar: "المركبة",
+        tr: "Araç",
+        fa: "خودرو",
     },
     vehicleNotAssigned: {
         en: "Not assigned",
