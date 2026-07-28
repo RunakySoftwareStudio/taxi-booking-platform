@@ -108,21 +108,29 @@ export async function PATCH(request: Request, { params }: RouteContext) {
               { status: 400 } );
       }
 
-/* Loads the current status so an email is sent only after a real status change. */
-const {data: currentVehicle, error: currentVehicleError,} = await supabaseAdmin
-  .from("vehicles")
-  .select("vehicle_status")
-  .eq("id", vehicleId)
-  .maybeSingle();
+  /* Loads the current status so an email is sent only after a real status change. */
+  const {data: currentVehicle, error: currentVehicleError,} = await supabaseAdmin
+    .from("vehicles")
+    .select("chauffeur_id, vehicle_status, is_default_vehicle")
+    .eq("id", vehicleId)
+    .maybeSingle();
 
-if (currentVehicleError || !currentVehicle) {console.error("Could not load the vehicle before updating:", currentVehicleError );
-  return NextResponse.json(
-    { message: "Could not load the vehicle." },
-    { status: 500 }
-  );
-}
+  if (currentVehicleError || !currentVehicle) {console.error("Could not load the vehicle before updating:", currentVehicleError );
+    return NextResponse.json(
+      { message: "Could not load the vehicle." },
+      { status: 500 }
+    );
+  }
 
-const vehicleStatusChanged =  currentVehicle.vehicle_status !== vehicleStatus;
+  const vehicleStatusChanged = currentVehicle.vehicle_status !== vehicleStatus;
+
+  /*
+  * A default vehicle must lose its default status when:
+  * - it is moved to another chauffeur; or
+  * - its operational status is no longer available.
+  */
+  const chauffeurChanged = currentVehicle.chauffeur_id !== chauffeurId;
+  const defaultVehicleMustBeCleared = currentVehicle.is_default_vehicle && (chauffeurChanged || vehicleStatus !== "available");
 
   const { error } = await supabaseAdmin
     .from("vehicles")
@@ -145,6 +153,11 @@ const vehicleStatusChanged =  currentVehicle.vehicle_status !== vehicleStatus;
         mobility_aid_storage: mobilityAidStorage,
         extra_large_luggage: extraLargeLuggage,
         vehicle_status: vehicleStatus,
+        /*
+        * Only writes is_default_vehicle when it must be cleared.
+        * Otherwise, the current database value is left untouched.
+        */
+        ...(defaultVehicleMustBeCleared ? { is_default_vehicle: false } : {}),
         status_reason: vehicleStatus === "available" ? null : statusReason || null,
         status_changed_at: new Date().toISOString(),
     })
@@ -235,4 +248,61 @@ const vehicleStatusChanged =  currentVehicle.vehicle_status !== vehicleStatus;
       }
 
       return NextResponse.json({ message: "Vehicle updated successfully.", });
+}
+
+/**
+ * Sets the selected vehicle as its chauffeur's default vehicle.
+ *
+ * The PostgreSQL RPC:
+ * - verifies that the vehicle exists;
+ * - requires the vehicle to be operationally available;
+ * - removes the chauffeur's previous default;
+ * - sets the selected vehicle as the new default atomically.
+ */
+export async function POST(_request: Request, { params }: RouteContext) {
+  const { vehicleId } = await params;
+  const authSupabase = await createClient();
+  const {data: { user },} = await authSupabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json(
+      { message: "Not logged in." },
+      { status: 401 }
+    );
+  }
+
+  /* Confirms that the logged-in user is an administrator. */
+  const { data: profile, error: profileError } = await authSupabase
+    .from("user_profiles")
+    .select("role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error("Could not load the user profile before setting the default vehicle:", profileError );
+    return NextResponse.json(
+      { message: "Could not verify administrator access." },
+      { status: 500 }
+    );
+  }
+
+  if (profile?.role !== "admin") {
+    return NextResponse.json(
+      { message: "Not allowed." },
+      { status: 403 }
+    );
+  }
+
+  /*
+   * Calls the atomic PostgreSQL function.
+   * The browser never directly changes is_default_vehicle.
+   */
+  const { error } = await supabaseAdmin.rpc("set_default_vehicle",{p_vehicle_id: vehicleId,});
+  if (error) {console.error("Could not set the default vehicle:", error);
+    return NextResponse.json(
+      { message: error.message || "Could not set the default vehicle.", },
+      { status: 400 }
+    );
+  }
+
+  return NextResponse.json({message: "Default vehicle updated successfully.",  });
 }

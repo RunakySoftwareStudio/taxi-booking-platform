@@ -52,6 +52,7 @@ type TypeVehicleRow = {
     wheelchair_capacity: number;
     mobility_aid_storage: boolean;
     extra_large_luggage: boolean;
+    is_default_vehicle: boolean;
     created_at: string;
 };
 
@@ -242,7 +243,7 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
         .from("vehicles")
         .select(`id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, vehicle_year, vehicle_color,
             infant_seat_count, child_seat_count, booster_seat_count, isofix_available, wheelchair_access,
-            wheelchair_capacity, mobility_aid_storage, extra_large_luggage, created_at`)
+            wheelchair_capacity, mobility_aid_storage, extra_large_luggage, is_default_vehicle, created_at`)
         .eq("chauffeur_id", chauffeurId)
         .order("created_at", { ascending: false });
 
@@ -275,7 +276,6 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="missingFieldsError" /> </p>)}
                 {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdateFailedError" /> </p>)}
                 {pageMessage.error === "booking-time-conflict" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingTimeConflictError" /> </p> )}
-
                 {/* Aligns labels with the active language while keeping email and phone characters left-to-right. */}
                 <div className={`${formStyles.info} mt-8 grid gap-4 sm:grid-cols-3`}>
                     <div className="text-start">
@@ -329,6 +329,13 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             <TranslatedText sectionName="chauffeurDashboardPage" textKey="brandModelLabel" />
                             <span className={mobileStyle.infoValue}> {vehicle.brand} ({vehicle.model})</span>
                         </div>
+                        {vehicle.is_default_vehicle && (
+                            <div className="mt-2">
+                                <span className="inline-flex rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-xs font-semibold text-yellow-200">
+                                    Default vehicle
+                                </span>
+                            </div>
+                        )}
                         <div className="mt-4 grid grid-cols-2 gap-1">
                             <div>
                                 <span className= {mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="licenseLabel" />: </span>
@@ -354,25 +361,59 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                 <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="colorLabel" />: </span>
                                 <span className={mobileStyle.infoValue} >{vehicle.vehicle_color?vehicle.vehicle_color: "---" }</span>
                             </div>
-                            <div className="mt-4 border-t border-white/10 pt-4">
-                                <p className="font-semibold text-cyan-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="passengerSupportTitle" /></p>
+                        </div>
+                        {/* passenger Support */}
+                        <div className="mt-4 border-t border-white/10 pt-4">
+                            <p className="font-semibold border-white"><TranslatedText sectionName="chauffeurDashboardPage" textKey="passengerSupportTitle" /></p>
 
-                                <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="infantSeatsLabel" />: </span><span className={mobileStyle.infoValue}>{vehicle.infant_seat_count}</span></div>
-                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="childSeatsLabel" />: </span><span className={mobileStyle.infoValue}>{vehicle.child_seat_count}</span></div>
-                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="boosterSeatsLabel" />: </span><span className={mobileStyle.infoValue}>{vehicle.booster_seat_count}</span></div>
-                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="isofixLabel" />: </span><span className={vehicle.isofix_available ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>{vehicle.isofix_available ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}</span></div>
-
-                                    <div className="col-span-2">
-                                        <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="wheelchairAccessLabel" />: </span>
-                                        <span className={mobileStyle.infoValue}>
-                                            {getWheelchairAccessTextKey(vehicle.wheelchair_access) ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={getWheelchairAccessTextKey(vehicle.wheelchair_access)} /> : vehicle.wheelchair_access}
-                                        </span>
-                                    </div>
-
-                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="wheelchairCapacityLabel" />: </span><span className={mobileStyle.infoValue}>{vehicle.wheelchair_capacity}</span></div>
-                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="mobilityAidStorageLabel" />: </span><span className={vehicle.mobility_aid_storage ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>{vehicle.mobility_aid_storage ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}</span></div>
-                                    <div><span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="extraLargeLuggageLabel" />: </span><span className={vehicle.extra_large_luggage ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed}>{vehicle.extra_large_luggage ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}</span></div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                    <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="infantSeatsLabel" />: </span>
+                                    <span className={mobileStyle.infoValue}>{vehicle.infant_seat_count}</span>
+                                </div>
+                                <div>
+                                    <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="childSeatsLabel" />: </span>
+                                    <span className={mobileStyle.infoValue}>{vehicle.child_seat_count}</span>
+                                </div>
+                                <div>
+                                    <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="boosterSeatsLabel" />: </span>
+                                    <span className={mobileStyle.infoValue}>{vehicle.booster_seat_count}</span>
+                                </div>
+                                <div>
+                                    <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="isofixLabel" />: </span>
+                                    <span className={vehicle.isofix_available ? tableStyles.cellGreenText : tableStyles.cellRedText}>
+                                        {vehicle.isofix_available ?
+                                        (<TranslatedText sectionName="chauffeurDashboardPage" textKey="yes"/>) :
+                                        ( <TranslatedText sectionName="chauffeurDashboardPage" textKey="no"/> )}
+                                    </span>
+                                </div>
+                                <div className="col-span-2">
+                                    <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="wheelchairAccessLabel" />: </span>
+                                    <span className={mobileStyle.infoValue}>
+                                        {getWheelchairAccessTextKey(vehicle.wheelchair_access) ?
+                                            <TranslatedText sectionName="chauffeurDashboardPage" textKey={getWheelchairAccessTextKey(vehicle.wheelchair_access)} /> : vehicle.wheelchair_access}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="wheelchairCapacityLabel" />: </span>
+                                    <span className={mobileStyle.infoValue}>{vehicle.wheelchair_capacity}</span>
+                                </div>
+                                <div>
+                                    <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="mobilityAidStorageLabel" />: </span>
+                                    <span
+                                        className={vehicle.mobility_aid_storage ? tableStyles.cellGreenText : tableStyles.cellRedText}>
+                                        {vehicle.mobility_aid_storage ?
+                                        (<TranslatedText sectionName="chauffeurDashboardPage" textKey="yes"/>) :
+                                        ( <TranslatedText sectionName="chauffeurDashboardPage" textKey="no"/> )}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className={mobileStyle.inforCaption}><TranslatedText sectionName="chauffeurDashboardPage" textKey="extraLargeLuggageLabel" />: </span>
+                                    <span className={vehicle.extra_large_luggage ? tableStyles.cellGreenText : tableStyles.cellRedText}>
+                                        {vehicle.extra_large_luggage ?
+                                        (<TranslatedText sectionName="chauffeurDashboardPage" textKey="yes"/>) :
+                                        ( <TranslatedText sectionName="chauffeurDashboardPage" textKey="no"/> )}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -403,7 +444,14 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         {vehicleRows.map((vehicle) => (
                             <Fragment key={vehicle.id}>
                                 <tr  className="border-b border-white/10">
-                                    <td className={tableStyles.cell}>{vehicle.brand}</td>
+                                    <td className={tableStyles.cell}>
+                                        <div>{vehicle.brand}</div>
+                                        {vehicle.is_default_vehicle && (
+                                            <div className="mt-1 text-xs font-semibold text-yellow-300">
+                                                Default vehicle
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className={tableStyles.cell}>{vehicle.model}</td>
                                     <td className={tableStyles.cell}>{vehicle.license_plate}</td>
                                     <td className={tableStyles.cell}>{vehicle.vehicle_type}</td>
@@ -494,8 +542,10 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                         </div>
                         <div>
                             <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="hasPetsLabel" />: </span>  </span>
-                            <span  className={booking.has_pets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
-                                {booking.has_pets ? <TranslatedText sectionName="chauffeurDashboardPage" textKey="yes" /> : <TranslatedText sectionName="chauffeurDashboardPage" textKey="no" />}
+                            <span  className={booking.has_pets ? tableStyles.cellGreenText : tableStyles.cellRedText} >
+                                {booking.has_pets ?
+                                (<TranslatedText sectionName="chauffeurDashboardPage" textKey="yes"/>) :
+                                ( <TranslatedText sectionName="chauffeurDashboardPage" textKey="no"/> )}
                             </span>
                         </div>
                         <div>

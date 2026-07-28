@@ -40,6 +40,7 @@ type VehicleRow = {
     model: string;
     license_plate: string;
     vehicle_status: string;
+    is_default_vehicle: boolean;
     status_reason: string | null;
     vehicle_year: number | null;
     vehicle_color: string | null;
@@ -190,6 +191,29 @@ async function addVehicle(formData: FormData) {
         redirect(`/admin/vehicles?error=add-vehicle-failed&${previousFormQuery}`);; //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
     }
 
+    /*
+  * Rechecks the chauffeur's vehicle count after adding the vehicle.
+  * When this is the chauffeur's only vehicle and it is available, the PostgreSQL function automatically marks it as default.
+  * When the chauffeur has multiple vehicles, the function does not choose between them automatically.
+  * Insert vehicle
+    → confirm insert succeeded
+    → call ensure_single_vehicle_default(...)
+    → refresh vehicle page
+    → redirect with success
+  */
+  const { error: defaultVehicleCheckError } = await supabaseAdmin.rpc("ensure_single_vehicle_default",{p_chauffeur_id: chauffeurId});
+  if (defaultVehicleCheckError) {
+      console.error("Vehicle was added, but the default-vehicle check failed:", defaultVehicleCheckError);
+      revalidatePath("/admin/vehicles");
+
+      redirect(
+          `/admin/vehicles?success=vehicle-added` +
+          `&error=default-vehicle-check-failed` +
+          `&chauffeurId=${chauffeurId}` +
+          `#chauffeur-vehicles-${chauffeurId}`
+      );
+  }
+
     //So after you add/update/delete a vehicle, the page should show fresh data.
     revalidatePath("/admin/vehicles");
 
@@ -281,6 +305,42 @@ async function deleteVehicle(formData: FormData) {
     redirect("/admin/vehicles?success=vehicle-deleted");
   }
 
+  /**
+ * Sets one vehicle as the chauffeur's default vehicle.
+ *
+ * The PostgreSQL RPC performs the change atomically:
+ * - removes the chauffeur's previous default;
+ * - sets the selected vehicle as the new default;
+ * - rejects unavailable vehicles.
+ */
+async function setDefaultVehicle(formData: FormData) {
+    "use server";
+
+    const vehicleId = String(formData.get("vehicleId") || "");
+    const chauffeurId = String(formData.get("chauffeurId") || "");
+    if (!vehicleId || !chauffeurId) {redirect("/admin/vehicles?error=missing-default-vehicle-fields");}
+
+    const { error } = await supabaseAdmin.rpc("set_default_vehicle", {p_vehicle_id: vehicleId, });
+    if (error) {
+        console.error("Could not set the default vehicle:", error);
+        const encodedErrorMessage = encodeURIComponent(error.message);
+        redirect(
+            `/admin/vehicles?error=set-default-vehicle-failed` +
+            `&chauffeurId=${chauffeurId}` +
+            `&vehicleLabel=${encodedErrorMessage}` +
+            `#chauffeur-vehicles-${chauffeurId}`
+        );
+    }
+
+    revalidatePath("/admin/vehicles");
+
+    redirect(
+        `/admin/vehicles?success=default-vehicle-updated` +
+        `&chauffeurId=${chauffeurId}` +
+        `#chauffeur-vehicles-${chauffeurId}`
+    );
+}
+
 export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPageProps) {
     const pageMessage = await searchParams;
     /* Stores the vehicle label received through the URL. */
@@ -308,7 +368,7 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
 
     const { data: vehicles, error: vehiclesError } = await supabaseAdmin
       .from("vehicles")
-      .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_status, status_reason, vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity,
+      .select( `id, chauffeur_id, brand, model, license_plate,  vehicle_status, is_default_vehicle, status_reason, vehicle_year, vehicle_color, vehicle_type, seats, luggage_capacity,
         infant_seat_count, child_seat_count, booster_seat_count, isofix_available, wheelchair_access,
         wheelchair_capacity, mobility_aid_storage, extra_large_luggage,
         created_at, chauffeurs (name, email, phone )` )
@@ -360,7 +420,9 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
           {pageMessage.error === "delete-vehicle-failed" && (<p className={pageStyles.errorMsgPage}> Could not delete vehicle. Please try again. </p>)}
           {pageMessage.error === "invalid-capabilities" && ( <p className={pageStyles.errorMsgPage}>Child-seat and wheelchair capacity values must be zero or higher.</p>)}
           {pageMessage.error === "invalid-wheelchair-settings" && (<p className={pageStyles.errorMsgPage}>Ramp or lift access requires a wheelchair capacity of at least 1. Other access types require capacity 0.</p>)}
-
+          {pageMessage.success === "default-vehicle-updated" && (<p className={pageStyles.successMsgPage}> Default vehicle updated successfully. </p>)}
+          {pageMessage.error === "missing-default-vehicle-fields" && (<p className={pageStyles.errorMsgPage}>The selected vehicle information is incomplete.</p>)}
+          {pageMessage.error === "default-vehicle-check-failed" && (<p className={pageStyles.errorMsgPage}>The vehicle was added, but its automatic default status could not be checked. Please review the chauffeur&apos;s vehicles. </p>)}
           <form  action={addVehicle}  className={formStyles.form}>
                 <div className={formStyles.formDivGridCol3}>
                     <label className="block">
@@ -483,19 +545,34 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                   <p className="text-sm text-slate-300"> {"Phone: " + group.chauffeurPhone} </p>
                   <p className="mt-2 text-sm font-semibold text-cyan-200">  Vehicles: {group.vehicles.length}  </p>
                 </div>
+
                 {/* Shows the delete warning inside the affected chauffeur's vehicle section. */}
                 {pageMessage.error === "vehicle-has-bookings" && pageMessage.chauffeurId === group.chauffeurId && (
-                <p className={`${pageStyles.errorMsgPage} mb-4`}> Vehicle: {""}  {/* This stands to add a space after Vehicle: */}
-                    {deletedVehicleLabel} has booking history and cannot be deleted. Mark it inactive instead.
-                </p>)}
+                  <p className={`${pageStyles.errorMsgPage} mb-4`}> Vehicle: {""}  {/* This stands to add a space after Vehicle: */}
+                      {deletedVehicleLabel} has booking history and cannot be deleted. Mark it inactive instead.
+                  </p>)}
+
+                {/* Show the RPC error inside the affected chauffeur section rather than at the top.  */}
+                {pageMessage.error === "set-default-vehicle-failed" && pageMessage.chauffeurId === group.chauffeurId && (
+                    <p className={`${pageStyles.errorMsgPage} mb-4`}>
+                        Could not update the default vehicle: {deletedVehicleLabel}
+                    </p>)}
+
                 {/* ====Mobile vehicle cards===== */}
                 <div className="grid gap-4 lg:hidden text-start">
                   {group.vehicles.map((vehicle) => (
                     <article key={vehicle.id} className={`${mobileStyle.article} ${getVehicleStatusContainerClass(vehicle.vehicle_status)}`}>
+                                          {vehicle.is_default_vehicle && (
+                      <div className="mb-2">
+                        <span className="inline-flex rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-xs font-semibold text-yellow-200">
+                          Default vehicle
+                        </span>
+                      </div> )}
                       <div>
                         <span className={mobileStyle.inforCaptionBold}> Car brand(model): </span>
                         <span className={mobileStyle.infoValueBold}> {vehicle.brand}  ({vehicle.model}) </span>
                       </div>
+
                       <div className="mt-2">
                           <span className={mobileStyle.inforCaption}>Status: </span>
                           <span
@@ -552,7 +629,31 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                         <Link  href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton} >
                           Details
                         </Link>
+                        {vehicle.is_default_vehicle ? (
+                            <span className="inline-flex rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-2 text-xs font-semibold text-yellow-200">
+                                Default vehicle
+                            </span>
+                        ) : vehicle.vehicle_status === "available" ? (
+                            <form action={setDefaultVehicle}>
+                                <input type="hidden" name="vehicleId" value={vehicle.id} />
+                                <input
+                                    type="hidden"
+                                    name="chauffeurId"
+                                    value={vehicle.chauffeur_id}
+                                />
 
+                                <button
+                                    type="submit"
+                                    className="rounded-lg border border-yellow-400/50 px-3 py-2 text-xs font-semibold text-yellow-200 hover:bg-yellow-400/10"
+                                >
+                                    Set as default
+                                </button>
+                            </form>
+                        ) : (
+                            <span className="text-xs font-semibold text-slate-500">
+                                Cannot be default
+                            </span>
+                        )}
                         <form action={deleteVehicle}>
                           <input type="hidden" name="vehicleId" value={vehicle.id} />
                           <input type="hidden" name="chauffeurId" value={vehicle.chauffeur_id}/>
@@ -584,7 +685,12 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                       {group.vehicles.map((vehicle) => (
                           <Fragment key={vehicle.id}>
                               <tr className={`${tableStyles.rowCyan} ${getVehicleStatusContainerClass(vehicle.vehicle_status)}`}>
-                                  <td className={tableStyles.cell}>{vehicle.brand}</td>
+                                  <td className={tableStyles.cell}>{vehicle.brand}
+                                    {vehicle.is_default_vehicle && (
+                                      <div className="mt-1 text-xs font-semibold text-yellow-300">
+                                        Default vehicle
+                                      </div>)}
+                                  </td>
                                   <td className={tableStyles.cell}>{vehicle.model}</td>
                                   <td className={tableStyles.cell}>{vehicle.vehicle_year || "-"}</td>
                                   <td className={tableStyles.cell}>{vehicle.vehicle_color || "-"}</td>
@@ -601,6 +707,23 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
                                   <td className={tableStyles.cell}>
                                       <div className="flex flex-wrap items-center gap-3">
                                           <Link href={`/admin/vehicles/${vehicle.id}`} className={formStyles.smallButton}>Details</Link>
+                                          {vehicle.is_default_vehicle ? (
+                                            <span className="text-xs font-semibold text-yellow-300"> Default </span>
+                                            ) : vehicle.vehicle_status === "available" ? (
+                                                <form action={setDefaultVehicle}>
+                                                    <input type="hidden" name="vehicleId" value={vehicle.id} />
+                                                    <input type="hidden" name="chauffeurId" value={vehicle.chauffeur_id}/>
+                                                    <button type="submit"
+                                                        className="rounded-lg border border-yellow-400/50 px-3 py-2 text-xs font-semibold text-yellow-200 hover:bg-yellow-400/10" >
+                                                        Set default
+                                                    </button>
+                                                </form>
+                                            ) : (
+                                                <span className="text-xs font-semibold text-slate-500">
+                                                    Unavailable
+                                                </span>
+                                            )
+                                          }
                                           <form action={deleteVehicle}>
                                               <input type="hidden" name="vehicleId" value={vehicle.id} />
                                               <input type="hidden" name="chauffeurId" value={vehicle.chauffeur_id}/>

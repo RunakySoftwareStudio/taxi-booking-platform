@@ -15,7 +15,7 @@ export default async function AdminVehicleEditPage({params}: AdminVehicleEditPag
         .select(`id, chauffeur_id, brand, model, license_plate, vehicle_type, seats, luggage_capacity, vehicle_year, vehicle_color,
                     infant_seat_count, child_seat_count, booster_seat_count, isofix_available,  wheelchair_access,
                     wheelchair_capacity, mobility_aid_storage, extra_large_luggage,
-                    vehicle_status, status_reason, status_changed_at`)
+                    vehicle_status, is_default_vehicle, status_reason, status_changed_at`)
         .eq("id", vehicleId)
         .single();
 

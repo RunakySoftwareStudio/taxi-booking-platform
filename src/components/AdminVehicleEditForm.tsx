@@ -24,6 +24,7 @@ type VehicleForEdit = {
     mobility_aid_storage: boolean;
     extra_large_luggage: boolean;
     vehicle_status: string;
+    is_default_vehicle: boolean;
     status_reason: string | null;
     status_changed_at: string;
 };
@@ -67,6 +68,22 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
     const [successMessage, setSuccessMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
     const [isSaving, setIsSaving] = useState(false);
+    const [isSettingDefault, setIsSettingDefault] = useState(false);
+    /*
+    * The chauffeur selection may have changed in the form but not
+    * yet been saved to the database.
+    */
+    const chauffeurSelectionChanged = chauffeurId !== vehicle.chauffeur_id;
+
+    /*
+    * The default action is allowed only when the database vehicle
+    * and the current form selection are both operationally available.
+    */
+    const canSetAsDefault =
+        !vehicle.is_default_vehicle &&
+        vehicle.vehicle_status === "available" &&
+        vehicleStatus === "available" &&
+        !chauffeurSelectionChanged;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,6 +114,36 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
     }
     finally { setIsSaving(false);}
   }
+/**
+ * Sets this vehicle as the chauffeur's default vehicle.
+ *
+ * The API route calls the atomic PostgreSQL function, so the
+ * browser never directly changes is_default_vehicle.
+ */
+async function handleSetDefaultVehicle() {
+    setSuccessMessage("");
+    setErrorMessage("");
+    setIsSettingDefault(true);
+
+    try {
+        const response = await fetch(`/api/admin/vehicles/${vehicle.id}`,{ method: "POST", });
+        const result = await response.json();
+        if (!response.ok) {
+            setErrorMessage(result.message || "Could not set the default vehicle." );
+            return;
+        }
+
+        setSuccessMessage(result.message || "Default vehicle updated successfully." );
+        router.refresh();
+    }
+    catch (error) {
+        console.error("Could not set the default vehicle:", error );
+        setErrorMessage("Could not set the default vehicle. Please try again.");
+    }
+    finally {
+        setIsSettingDefault(false);
+    }
+}
 
   return (
     <main>
@@ -165,7 +212,61 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
                             placeholder="For example: damaged tyre or scheduled maintenance"  rows={3}  className={formStyles.textarea}
                         />
                     </label>
+                    {/* Displays and manages the vehicle's default status. */}
+                    <div className="md:col-span-2 rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-4">
+                        <h3 className="font-semibold text-yellow-200">
+                            Default vehicle
+                        </h3>
 
+                        {vehicle.is_default_vehicle ? (
+                            <div className="mt-3">
+                                <span className="inline-flex rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-sm font-semibold text-yellow-200">
+                                    Current default vehicle
+                                </span>
+
+                                <p className="mt-2 text-sm text-slate-300">
+                                    This vehicle is currently the chauffeur&apos;s
+                                    default vehicle.
+                                </p>
+
+                                {(chauffeurSelectionChanged ||
+                                    vehicleStatus !== "available") && (
+                                    <p className="mt-2 text-sm font-semibold text-red-300">
+                                        Saving these changes will remove this vehicle&apos;s
+                                        default status.
+                                    </p>
+                                )}
+                            </div>
+                        ) : canSetAsDefault ? (
+                            <div className="mt-3">
+                                <p className="text-sm text-slate-300">
+                                    This vehicle is not currently the chauffeur&apos;s
+                                    default vehicle.
+                                </p>
+
+                                <button
+                                    type="button"
+                                    onClick={handleSetDefaultVehicle}
+                                    disabled={isSettingDefault || isSaving}
+                                    className="mt-3 rounded-lg border border-yellow-400/50 px-4 py-2 text-sm font-semibold text-yellow-200 hover:bg-yellow-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {isSettingDefault
+                                        ? "Setting default..."
+                                        : "Set as default"}
+                                </button>
+                            </div>
+                        ) : chauffeurSelectionChanged ? (
+                            <p className="mt-3 text-sm text-yellow-200">
+                                Save the chauffeur change before setting this vehicle
+                                as the new chauffeur&apos;s default.
+                            </p>
+                        ) : (
+                            <p className="mt-3 text-sm text-red-300">
+                                Only an operationally available vehicle can be selected
+                                as the default vehicle.
+                            </p>
+                        )}
+                    </div>
                     {/*=======Passenger support=========*/}
                     <div className="md:col-span-2 rounded-xl border border-cyan-400/20 p-4">
                         <h3 className="font-semibold text-cyan-300">Passenger support</h3>
@@ -219,7 +320,7 @@ export default function AdminVehicleEditForm({vehicle, chauffeurs, vehicleTypeOp
                         </div>
                     </div>
             </div>
-            <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`} >
+            <button type="submit" disabled={isSaving || isSettingDefault} className={`${formStyles.primaryButtonOutside} mt-6`} >
                 {isSaving ? "Saving..." : "Save vehicle details"}
             </button>
         </form>

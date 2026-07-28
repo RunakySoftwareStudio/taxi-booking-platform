@@ -176,6 +176,8 @@ export const tableStyles = {
     cellCheckBox:             "p-4 text-cyan-200 text-start",
     cellCheckBoxTextGreen:    "whitespace-nowrap inline-flex w-fit items-center justify-center whitespace-nowrap rounded-full bg-green-600/25 px-3 py-1.5 text-xs font-semibold leading-none text-green-100 ring-1 ring-green-500/40",
     cellCheckBoxTextRed:      "whitespace-nowrap inline-flex w-fit items-center justify-center whitespace-nowrap rounded-full bg-red-600/25 px-3 py-1.5 text-xs font-semibold leading-none text-red-100 ring-1 ring-red-500/40",
+    cellGreenText:            "font-semibold text-green-300",
+    cellRedText:              "font-semibold text-red-300",
     cellEmpty:                "p-2 text-md text-slate-300 text-start",
     cellInfo:                 "text-md text-slate-400 text-start",     
     cellStatusInfo:           "px-3 py-1 text-sm font-medium text-cyan-200 text-start",
