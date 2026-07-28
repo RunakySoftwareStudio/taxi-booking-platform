@@ -299,16 +299,23 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 -> Shows the three self-management options only to the chauffeur.
                 ==========================================*/}
                 {!isAdminUser && (
-                    <div className="mt-8 grid gap-4 md:grid-cols-2">
+                    <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <article className={`${formStyles.info} grid gap-4`}>
                             <p className="text-sm text-slate-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="editMyInformationDescription" /></p>
                             <Link href={`/chauffeur/${chauffeurRow.id}/profile`} className={formStyles.primaryButtonOutside}><TranslatedText sectionName="chauffeurDashboardPage" textKey="editMyInformationButton" /></Link>
                         </article>
-
                         <article className={`${formStyles.info} grid gap-4`}>
                             <p className="text-sm text-slate-300"><TranslatedText sectionName="chauffeurDashboardPage" textKey="manageUnavailabilityDescription" /></p>
                             <Link href={`/chauffeur/${chauffeurRow.id}/availability`} className={formStyles.primaryButtonOutside}>
                             <TranslatedText sectionName="chauffeurDashboardPage" textKey="manageUnavailabilityButton" /></Link>
+                        </article>
+                        <article className={`${formStyles.info} grid gap-4`}>
+                            <p className="text-sm text-slate-300">
+                                <TranslatedText sectionName="chauffeurDashboardPage" textKey="openBookingsDescription"/>
+                            </p>
+                            <Link href="/chauffeur/open-bookings" className={formStyles.primaryButtonOutside}>
+                                <TranslatedText sectionName="chauffeurDashboardPage" textKey="openBookingsButton" />
+                            </Link>
                         </article>
                     </div>
                 )}

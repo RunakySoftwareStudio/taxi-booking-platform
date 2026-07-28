@@ -296,6 +296,8 @@ CREATE TABLE public.bookings (
     */
     vehicle_id UUID NULL REFERENCES public.vehicles(id) ON DELETE SET NULL,
     pickup_location TEXT NOT NULL,
+    pickup_city TEXT,
+    destination_city TEXT,
     destination TEXT NOT NULL,
     pickup_date DATE NOT NULL,
     pickup_time TIME NOT NULL,
@@ -362,6 +364,13 @@ CREATE TABLE public.bookings (
             )
         )
 );
+
+/* This tells PostgreSQL: Store this explanation as documentation for bookings.pickup_city.*/
+COMMENT ON COLUMN public.bookings.pickup_city IS
+'Privacy-safe pickup city derived from the selected Mapbox location.';
+
+COMMENT ON COLUMN public.bookings.destination_city IS
+'Privacy-safe destination city derived from the selected Mapbox location.';
 
 /* ============================================================
    ASSIGNMENT ALERTS
@@ -1543,7 +1552,7 @@ returns table (
     issue_details jsonb
 )
 language plpgsql
-stable
+VOLATILE
 set search_path = public
 as $$
 declare

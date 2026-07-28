@@ -32,6 +32,7 @@ export type RetrievedLocation = {
     name: string;
     fullAddress: string;
     featureType: string;
+    city: string;
     coordinate: MapboxCoordinate;
 };
 
@@ -65,7 +66,14 @@ type MapboxRetrieveResponse = {
             full_address?: string;
             place_formatted?: string;
             feature_type?: string;
-            coordinates?: { longitude?: number; latitude?: number; };
+            context?: {
+                place?: {name?: string;};
+                locality?: {name?: string;};
+            };
+            coordinates?: {
+                longitude?: number;
+                latitude?: number;
+            };
         };
     }>;
 };
@@ -126,6 +134,18 @@ export async function retrieveLocation(mapboxId: string, sessionToken: string, l
     const result = await response.json() as MapboxRetrieveResponse;
     const firstFeature = result.features?.[0];
     const properties = firstFeature?.properties;
+    const featureType = properties?.feature_type || "location";
+    /*
+    Prefer Mapbox's structured place value.
+
+    If the selected feature itself represents a place or city,
+    its own name is used.
+
+    Locality is a fallback for results where Mapbox does not
+    provide a separate place layer.
+    */
+    const selectedFeatureCity = featureType === "place" || featureType === "city" ? properties?.name : "";
+    const city = properties?.context?.place?.name || selectedFeatureCity || properties?.context?.locality?.name || "";
     const geometryCoordinates = firstFeature?.geometry?.coordinates;
     const longitude =  geometryCoordinates?.[0] ?? properties?.coordinates?.longitude;
     const latitude = geometryCoordinates?.[1] ??  properties?.coordinates?.latitude;
@@ -142,7 +162,8 @@ export async function retrieveLocation(mapboxId: string, sessionToken: string, l
             properties?.place_formatted ||
             properties?.name ||
             "Selected location",
-        featureType: properties?.feature_type || "location",
-        coordinate: {longitude, latitude, },
+            featureType,
+            city,
+            coordinate: {longitude, latitude,},
     };
 }

@@ -24,7 +24,7 @@ export type LocationSuggestion = {
 };
 
 // Represents one selected location with exact coordinates.
-export type RetrievedLocation = LocationSuggestion & { coordinate: MapboxCoordinate };
+export type RetrievedLocation = LocationSuggestion & { city: string; coordinate: MapboxCoordinate;};
 
 // Represents calculated route distance and travel duration.
 export type RouteEstimate = {

@@ -25,6 +25,34 @@ function isValidMapboxCoordinate(value: unknown): value is MapboxCoordinate {
     );
 }
 
+/*
+  Validates a privacy-safe city value received from the booking form.
+
+  The browser must send a non-empty city name derived from the
+  selected Mapbox location.
+  .replace(/\s+/g, " ")
+        Changes repeated spaces into one space.
+
+  /[\u0000-\u001F\u007F]/.test(cleanedCity)
+        This part checks whether the city contains invisible control characters:
+        true  if an invalid control character was found
+        false if none was found
+*/
+function getValidatedCity(value: unknown): string | null {
+    if (typeof value !== "string") {return null;}
+
+    const cleanedCity = value.trim().replace(/\s+/g, " ");
+    if (
+        cleanedCity.length < 1 ||
+        cleanedCity.length > 120 ||
+        /[\u0000-\u001F\u007F]/.test(cleanedCity)
+    ) {
+        return null;
+    }
+
+    return cleanedCity;
+}
+
 export async function POST(request: Request) {
   try 
    {
@@ -42,6 +70,18 @@ export async function POST(request: Request) {
         const clientEmail = bookingRequest.email.trim().toLowerCase();
         const clientName = bookingRequest.name.trim();
         const clientPhone = bookingRequest.phone.trim();
+        /*
+        Validate the structured city values received from the selected
+        Mapbox pickup and destination locations.
+        */
+        const pickupCity = getValidatedCity(bookingRequest.pickupCity);
+        const destinationCity = getValidatedCity(bookingRequest.destinationCity);
+        if (!pickupCity || !destinationCity) {
+            return NextResponse.json(
+                { message:"A valid pickup city and destination city are required.",},
+                { status: 400 }
+            );
+        }
 
         // Validates the selected Mapbox coordinates received from the booking form.
         if ( !isValidMapboxCoordinate(bookingRequest.pickupCoordinate) || !isValidMapboxCoordinate(bookingRequest.destinationCoordinate)) 
@@ -169,7 +209,9 @@ export async function POST(request: Request) {
                 client_id: client.id,
                 chauffeur_id: null,
                 pickup_location: bookingRequest.pickup,
+                pickup_city: pickupCity,
                 destination: bookingRequest.destination,
+                destination_city: destinationCity,
                 pickup_date: bookingRequest.date,
                 pickup_time: bookingRequest.time,
                 estimated_duration_minutes: estimatedDurationMinutes,

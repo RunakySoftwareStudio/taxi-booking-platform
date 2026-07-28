@@ -5,7 +5,9 @@ import { type WheelchairRequirement } from "@/types/wheelchairRequirementType";
 
 export type BookingRequest = {
     pickup: string;
+    pickupCity: string;
     destination: string;
+    destinationCity: string;
     pickupCoordinate: MapboxCoordinate;
     destinationCoordinate: MapboxCoordinate;
     date: string;

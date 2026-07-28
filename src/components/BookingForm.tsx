@@ -170,7 +170,9 @@ export default function BookingForm() {
     function createBookingRequest(formData: FormData, selectedPickup: RetrievedLocation,  selectedDestination: RetrievedLocation ): BookingRequest {
         return {
             pickup: String(formData.get("pickup") || ""),
+            pickupCity: selectedPickup.city.trim(),
             destination: String(formData.get("destination") || ""),
+            destinationCity: selectedDestination.city.trim(),
             pickupCoordinate: selectedPickup.coordinate,
             destinationCoordinate: selectedDestination.coordinate,
             date: String(formData.get("date") || ""),

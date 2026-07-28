@@ -726,6 +726,22 @@ export const translations = {
       tr: "Çalışamayacağınız tatil, izin günü veya saatleri ekleyin.", 
       fa: "تعطیلات، روزهای غیبت یا ساعت‌هایی را که نمی‌توانید کار کنید اضافه کنید." 
     },
+    // Text for the open-bookings card.
+    openBookingsButton: {
+      en: "View open bookings",
+      nl: "Openstaande boekingen bekijken",
+      ar: "عرض الحجوزات المتاحة",
+      tr: "Açık rezervasyonları görüntüle",
+      fa: "مشاهده رزروهای آزاد",
+    },
+
+    openBookingsDescription: {
+      en: "View available booking requests and claim a suitable trip with your default vehicle.",
+      nl: "Bekijk beschikbare boekingsaanvragen en accepteer een geschikte rit met uw standaardvoertuig.",
+      ar: "اعرض طلبات الحجز المتاحة واقبل رحلة مناسبة باستخدام مركبتك الافتراضية.",
+      tr: "Mevcut rezervasyon taleplerini görüntüleyin ve varsayılan aracınızla uygun bir yolculuğu kabul edin.",
+      fa: "درخواست‌های رزرو موجود را ببینید و یک سفر مناسب را با خودروی پیش‌فرض خود بپذیرید.",
+    },
     // Text for the chauffeur vehicle card.
     viewMyVehiclesButton: { 
       en: "View my vehicles", 
@@ -1306,6 +1322,136 @@ export const translations = {
         ar: "مقاعد الأطفال أو نقل الكراسي المتحركة أو متطلبات الأمتعة الخاصة.",
         tr: "Çocuk koltuğu, tekerlekli sandalye taşıma veya özel bagaj gereksinimleri.",
         fa: "صندلی کودک، حمل ویلچر یا نیازهای ویژه بار.",
+    },
+  },
+
+  chauffeurOpenBookingsPage: {
+    backToDashboard: {
+      en: "← Back to dashboard",
+      nl: "← Terug naar dashboard",
+      ar: "العودة إلى لوحة التحكم →",
+      tr: "← Kontrol paneline dön",
+      fa: "بازگشت به داشبورد →",
+    },
+
+    label: {
+      en: "Open bookings",
+      nl: "Openstaande boekingen",
+      ar: "الحجوزات المتاحة",
+      tr: "Açık rezervasyonlar",
+      fa: "رزروهای آزاد",
+    },
+
+    title: {
+      en: "Available booking requests",
+      nl: "Beschikbare boekingsaanvragen",
+      ar: "طلبات الحجز المتاحة",
+      tr: "Mevcut rezervasyon talepleri",
+      fa: "درخواست‌های رزرو موجود",
+    },
+
+    description: {
+      en: "Review privacy-safe trip information and claim a suitable booking with your available default vehicle.",
+      nl: "Bekijk privacyveilige ritinformatie en accepteer een geschikte boeking met uw beschikbare standaardvoertuig.",
+      ar: "راجع معلومات الرحلة الآمنة للخصوصية واقبل حجزًا مناسبًا باستخدام مركبتك الافتراضية المتاحة.",
+      tr: "Gizliliği koruyan yolculuk bilgilerini inceleyin ve mevcut varsayılan aracınızla uygun bir rezervasyonu kabul edin.",
+      fa: "اطلاعات سفر با حفظ حریم خصوصی را بررسی کنید و یک رزرو مناسب را با خودروی پیش‌فرض در دسترس خود بپذیرید.",
+    },
+
+    defaultVehicleTitle: {
+      en: "Default vehicle used for claims",
+      nl: "Standaardvoertuig voor boekingen",
+      ar: "المركبة الافتراضية المستخدمة لقبول الحجوزات",
+      tr: "Rezervasyonlar için kullanılan varsayılan araç",
+      fa: "خودروی پیش‌فرض برای پذیرش رزروها",
+    },
+
+    loadingMessage: {
+      en: "Loading open bookings...",
+      nl: "Openstaande boekingen laden...",
+      ar: "جارٍ تحميل الحجوزات المتاحة...",
+      tr: "Açık rezervasyonlar yükleniyor...",
+      fa: "در حال بارگذاری رزروهای آزاد...",
+    },
+
+    noBookingsMessage: {
+      en: "No open bookings are currently available.",
+      nl: "Er zijn momenteel geen openstaande boekingen beschikbaar.",
+      ar: "لا توجد حجوزات متاحة حاليًا.",
+      tr: "Şu anda açık rezervasyon bulunmuyor.",
+      fa: "در حال حاضر رزرو آزادی موجود نیست.",
+    },
+
+    claimButton: {
+      en: "Claim booking",
+      nl: "Boeking accepteren",
+      ar: "قبول الحجز",
+      tr: "Rezervasyonu kabul et",
+      fa: "پذیرش رزرو",
+    },
+
+    claimingButton: {
+      en: "Claiming...",
+      nl: "Bezig met accepteren...",
+      ar: "جارٍ قبول الحجز...",
+      tr: "Kabul ediliyor...",
+      fa: "در حال پذیرش...",
+    },
+
+    claimSuccess: {
+      en: "The booking was claimed successfully.",
+      nl: "De boeking is succesvol geaccepteerd.",
+      ar: "تم قبول الحجز بنجاح.",
+      tr: "Rezervasyon başarıyla kabul edildi.",
+      fa: "رزرو با موفقیت پذیرفته شد.",
+    },
+
+    loadFailedError: {
+      en: "Open bookings could not be loaded.",
+      nl: "Openstaande boekingen konden niet worden geladen.",
+      ar: "تعذر تحميل الحجوزات المتاحة.",
+      tr: "Açık rezervasyonlar yüklenemedi.",
+      fa: "رزروهای آزاد بارگذاری نشدند.",
+    },
+
+    claimFailedError: {
+      en: "The booking could not be claimed.",
+      nl: "De boeking kon niet worden geaccepteerd.",
+      ar: "تعذر قبول الحجز.",
+      tr: "Rezervasyon kabul edilemedi.",
+      fa: "رزرو پذیرفته نشد.",
+    },
+
+    pickupCityLabel: {
+      en: "Pickup city",
+      nl: "Ophaalplaats",
+      ar: "مدينة الانطلاق",
+      tr: "Alınış şehri",
+      fa: "شهر مبدأ",
+    },
+
+    destinationCityLabel: {
+      en: "Destination city",
+      nl: "Bestemmingsplaats",
+      ar: "مدينة الوجهة",
+      tr: "Varış şehri",
+      fa: "شهر مقصد",
+    },
+
+    estimatedDurationLabel: {
+      en: "Estimated duration",
+      nl: "Geschatte duur",
+      ar: "المدة التقديرية",
+      tr: "Tahmini süre",
+      fa: "مدت تخمینی",
+    },
+
+    minutesUnit: {
+      en: "minutes",
+      nl: "minuten",
+      ar: "دقيقة",
+      tr: "dakika",
+      fa: "دقیقه",
     },
   },
 
