@@ -1,0 +1,21 @@
+import type { PricingProfile } from "@/types/pricingProfileType";
+
+/**
+ * Purpose:
+ * Stores the temporary Dutch daytime pricing profile used for testing.
+ *
+ * Example:
+ * A journey starts with a €4.00 base fare, plus €2.50 per kilometre
+ * and €0.40 per estimated driving minute.
+ *
+ * These values exclude VAT.
+ * Later, the active pricing profile will come from Supabase.
+ */
+export const dutchDaytimePricingProfile: PricingProfile = {
+    countryCode: "NL",
+    currencyCode: "EUR",
+    baseFareExcludingVat: 4.00,
+    distanceRatePerKmExcludingVat: 2.50,
+    durationRatePerMinuteExcludingVat: 0.40,
+    minimumFareExcludingVat: 15.00,
+};
