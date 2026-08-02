@@ -10,10 +10,14 @@
  * It does not calculate the journey price.
  */
 export type PricingProfile = {
+    pricingProfileCode: string;
+    pricingProfileVersion: number;
     countryCode: string;
     currencyCode: string;
     baseFareExcludingVat: number;
     distanceRatePerKmExcludingVat: number;
     durationRatePerMinuteExcludingVat: number;
     minimumFareExcludingVat: number;
+    effectiveFrom: string;
+    effectiveUntil: string | null;
 };
