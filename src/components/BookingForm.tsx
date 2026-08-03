@@ -12,6 +12,8 @@ import MapboxLocationSearchInput from "@/components/MapboxLocationSearchInput";
 import type { RetrievedLocation, RouteEstimate, RouteEstimateResponse } from "@/types/mapboxType";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import { type WheelchairRequirement } from "@/types/wheelchairRequirementType";
+import type { TemporaryJourneyQuote } from "@/types/temporaryJourneyQuoteType";
+import type { CreateJourneyQuoteResponse } from "@/types/createJourneyQuoteResponseType";
 
 function getTodayDateInputValue() {
   const today = new Date();
@@ -50,6 +52,13 @@ export default function BookingForm() {
 
     // Stores the automatically calculated Mapbox route information.
     const [routeEstimate, setRouteEstimate] = useState<RouteEstimate | null>(null);
+
+    // Stores the temporary server-calculated price shown during booking review.
+    const [journeyQuote, setJourneyQuote] = useState<TemporaryJourneyQuote | null>(null);
+
+    // Prevents repeated clicks while the quote API is calculating the price.
+    const [isCreatingQuote, setIsCreatingQuote] = useState(false);
+
     const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
     const [routeEstimateError, setRouteEstimateError] = useState("");
     const [needsPassengerSupport, setNeedsPassengerSupport] = useState(false);
@@ -198,32 +207,71 @@ export default function BookingForm() {
         };
     }
 
-    function handleReviewBooking(event: FormEvent<HTMLFormElement>) {
+    /**
+     * Requests a temporary server-calculated quote for the current route.
+     * Returns null when the quote cannot be created.
+     * This function:
+        Sends only distance and duration to the server.
+        Receives the server-calculated quote.
+        Stores it in journeyQuote.
+        Returns null if anything fails.
+        Always resets isCreatingQuote.
+     */
+    async function createJourneyQuoteForReview(): Promise<TemporaryJourneyQuote | null> {
+        if (!routeEstimate) { return null; }
+        setIsCreatingQuote(true);
+
+        try {
+            const response = await fetch("/api/journey-quotes", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    distanceKm: routeEstimate.distanceKilometers,
+                    estimatedDurationMinutes: routeEstimate.durationMinutes,
+                }),
+            });
+
+            if (!response.ok) {throw new Error("The temporary journey quote could not be created."); }
+            const responseBody = (await response.json()) as CreateJourneyQuoteResponse;
+            setJourneyQuote(responseBody.journeyQuote);
+            return responseBody.journeyQuote;
+        } 
+        catch (error) {
+            console.error("Could not create journey quote:", error);
+            setJourneyQuote(null);
+            return null;
+        } 
+        finally {
+            setIsCreatingQuote(false);
+        }
+    }
+
+    async function handleReviewBooking(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        // Prevents manually typed text from being submitted without selecting Mapbox results.
-        if (!pickupLocation || !destinationLocation) {
-            setErrorMessage(getBookingFormText("locationSelectResultText"));
-            return;
-        }
-        // Waits for a valid route calculation before opening the review screen.
-        if (isCalculatingRoute) {
-            setErrorMessage(getBookingFormText("routeCalculationPendingText"));
-            return;
-        }
-        if (!routeEstimate) {
-            setErrorMessage(getBookingFormText("routeEstimateFailedText"));
-            return;
-        }
-        const form = event.currentTarget;
-        const formData = new FormData(form);
+
+        // Prevent manually typed locations without selecting Mapbox results.
+        if (!pickupLocation || !destinationLocation) { setErrorMessage(getBookingFormText("locationSelectResultText")); return; }
+
+        // Wait until a valid route is available.
+        if (isCalculatingRoute) { setErrorMessage(getBookingFormText("routeCalculationPendingText")); return; }
+        if (!routeEstimate) { setErrorMessage(getBookingFormText("routeEstimateFailedText")); return; }
+
+        const formData = new FormData(event.currentTarget);
         const bookingRequest = createBookingRequest(formData, pickupLocation, destinationLocation);
 
         setErrorMessage("");
         setSubmitted(false);
         setSubmittedBooking(null);
+        setJourneyQuote(null);
+        setRouteEstimateError("");
+
+        // Create the temporary price before opening the review screen.
+        const createdJourneyQuote = await createJourneyQuoteForReview();
+        //The temporary price could not be created. Please try again.
+        if (!createdJourneyQuote) { setErrorMessage(getBookingFormText("journeyQuoteFailedText")); return; }
+
         setBookingDraft(bookingRequest);
         setIsReviewing(true);
-        setRouteEstimateError("");
     }
 
     function handleBackToEdit() {
@@ -425,17 +473,24 @@ export default function BookingForm() {
                                 {isCalculatingRoute && (<p className="mt-2 text-sm text-slate-300 text-start">{getBookingFormText("routeCalculatingText")}</p>  )}
                                 {routeEstimate && !isCalculatingRoute && (
                                     <>
-                                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                            <p className="text-start">
-                                                <span className="font-semibold text-cyan-300">{getBookingFormText("routeDistanceLabel")} </span>
-                                                <span className="technical-value">{routeEstimate.distanceKilometers} {getBookingFormText("routeKilometersUnit")}</span>
-                                            </p>
+                                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                        <p className="text-start">
+                                            <span className="font-semibold text-cyan-300">{getBookingFormText("routeDistanceLabel")} </span>
+                                            <span className="technical-value">{routeEstimate.distanceKilometers} {getBookingFormText("routeKilometersUnit")}</span>
+                                        </p>
 
+                                        <p className="text-start">
+                                            <span className="font-semibold text-cyan-300">{getBookingFormText("routeDurationLabel")} </span>
+                                            <span className="technical-value">{routeEstimate.durationMinutes} {getBookingFormText("routeMinutesUnit")}</span>
+                                        </p>
+
+                                        {journeyQuote && (
                                             <p className="text-start">
-                                                <span className="font-semibold text-cyan-300">{getBookingFormText("routeDurationLabel")} </span>
-                                                <span className="technical-value">{routeEstimate.durationMinutes} {getBookingFormText("routeMinutesUnit")}</span>
+                                                <span className="font-semibold text-cyan-300">{getBookingFormText("journeyPriceLabel")} </span>
+                                                <span className="technical-value">{journeyQuote.currencyCode} {journeyQuote.fareCalculation.finalTotalIncludingVat.toFixed(2)}</span>
                                             </p>
-                                        </div>
+                                        )}
+                                    </div>
                                         <p className="mt-3 text-sm text-slate-400 text-start">{getBookingFormText("routeEstimateNotice")}</p>
                                     </>
                                 )}
@@ -575,7 +630,14 @@ export default function BookingForm() {
                         <textarea id="notes" name="notes" rows={4} placeholder={getBookingFormText("notesPlaceholder")} defaultValue={bookingDraft?.notes || ""} className={formStyles.textareaMainPg}/>
                     </div>
 
-                    <button type="submit" className={formStyles.submitSmallButtonUserPage}> {getBookingFormText("reviewBookingButton")} </button>
+                    {/** 
+                        Now, while /api/journey-quotes is creating the temporary quote:
+                        The button is disabled. Repeated clicks are prevented.
+                        The text changes to Calculating price....
+                    */}
+                    <button type="submit" disabled={isCreatingQuote} className={formStyles.submitSmallButtonUserPage}>
+                        {isCreatingQuote ? getBookingFormText("calculatingPriceButton") : getBookingFormText("reviewBookingButton")}
+                    </button>
                 </form>
             )}
 

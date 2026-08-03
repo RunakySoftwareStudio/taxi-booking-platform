@@ -2732,6 +2732,27 @@ export const translations = {
       tr: "Rezervasyonu gözden geçir",
       fa: "بازبینی رزرو",
     },
+    calculatingPriceButton: {
+      en: "Calculating price...",
+      nl: "Prijs berekenen...",
+      ar: "جارٍ حساب السعر...",
+      tr: "Fiyat hesaplanıyor...",
+      fa: "در حال محاسبه قیمت...",
+    },
+    journeyQuoteFailedText: {
+        en: "The temporary price could not be calculated. Please try again.",
+        nl: "De tijdelijke prijs kon niet worden berekend. Probeer het opnieuw.",
+        ar: "تعذر حساب السعر المؤقت. يرجى المحاولة مرة أخرى.",
+        tr: "Geçici fiyat hesaplanamadı. Lütfen tekrar deneyin.",
+        fa: "قیمت موقت محاسبه نشد. لطفاً دوباره تلاش کنید.",
+    },
+    journeyPriceLabel: {
+        en: "Total price:",
+        nl: "Totale prijs:",
+        ar: "السعر الإجمالي:",
+        tr: "Toplam fiyat:",
+        fa: "قیمت کل:",
+    },
     reviewLabel: {
       en: "Review booking",
       nl: "Boeking controleren",
