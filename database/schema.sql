@@ -282,6 +282,40 @@ CREATE TYPE public.wheelchair_requirement_type AS ENUM (
     'remain_in_wheelchair'
 );
 
+-- =========================================================
+-- JOURNEY QUOTES
+-- Stores temporary server-calculated prices before booking.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.journey_quotes (
+    quote_id UUID PRIMARY KEY,
+    pricing_profile_code TEXT NOT NULL,
+    pricing_profile_version INTEGER NOT NULL,
+    country_code TEXT NOT NULL,
+    currency_code TEXT NOT NULL,
+    distance_km NUMERIC(10, 3) NOT NULL,
+    estimated_duration_minutes NUMERIC(10, 2) NOT NULL,
+    tax_rate_percentage NUMERIC(5, 2) NOT NULL,
+    basic_fare_excluding_vat NUMERIC(12, 4) NOT NULL,
+    vat_amount NUMERIC(12, 4) NOT NULL,
+    total_including_vat_before_rounding NUMERIC(12, 4) NOT NULL,
+    final_total_including_vat NUMERIC(12, 2) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+
+    CONSTRAINT journey_quotes_expiration_after_creation
+        CHECK (expires_at > created_at)
+);
+
+-- Helps the application efficiently find expired quotes.
+CREATE INDEX IF NOT EXISTS journey_quotes_expires_at_idx
+    ON public.journey_quotes (expires_at);
+
+-- Quotes are created and accessed only through secure server routes.
+ALTER TABLE public.journey_quotes
+    ENABLE ROW LEVEL SECURITY;
+
 -- Taxi trip booking requests
 CREATE TABLE public.bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
