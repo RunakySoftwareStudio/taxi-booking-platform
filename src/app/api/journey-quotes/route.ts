@@ -6,6 +6,8 @@ import { dutchDaytimePricingProfile } from "@/data/pricingProfileData";
 import { createTemporaryJourneyQuote } from "@/lib/pricing/createTemporaryJourneyQuote";
 import { isCreateJourneyQuoteRequest } from "@/lib/pricing/isCreateJourneyQuoteRequest";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import type { CreateJourneyQuoteResponse } from "@/types/createJourneyQuoteResponseType";
+
 
 const quoteValidityMinutes = 15;
 
@@ -70,9 +72,15 @@ export async function POST(request: Request) {
         );
     }
 
+    /*
+        Build a response that must match the successful API response type.
+        CreateJourneyQuoteResponse is the reusable type.
+        responseBody, is the actual object returned as JSON.
+        TypeScript, verifies that responseBody, follows the required structure.
+    */
+    const responseBody: CreateJourneyQuoteResponse = {journeyQuote};
+
     // Return only the successfully stored temporary quote.
-    return NextResponse.json(
-        { journeyQuote },
-        { status: 201 }
-    );
+    return NextResponse.json(responseBody,{ status: 201 });
+
 }
