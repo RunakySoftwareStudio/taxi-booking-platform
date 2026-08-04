@@ -317,6 +317,7 @@ export default function BookingForm() {
 
             setPickupLocation(null);
             setDestinationLocation(null);
+
             // Clears the previous Mapbox journey result after successful booking.
             setRouteEstimate(null);
             setRouteEstimateError("");
@@ -332,7 +333,6 @@ export default function BookingForm() {
     // Shows or hides special requirements and restores safe defaults when disabled.
     function handlePassengerSupportChange(isEnabled: boolean) {
         setNeedsPassengerSupport(isEnabled);
-
         if (!isEnabled) {
             setIsofixRequired(false);
             setWheelchairRequirement("none");
@@ -350,6 +350,7 @@ export default function BookingForm() {
                 <p className="mt-4 text-slate-300"> {getBookingFormText("description")} </p>
             </div>
 
+            {/*====*****Review booking.****====*/}
             {isReviewing && bookingDraft ? (
                 <div className="mt-8 rounded-2xl border-2 border-cyan-300/40 bg-slate-950 p-4 sm:mt-12 sm:p-6">
                     <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300"> {getBookingFormText("reviewLabel")} </p>
@@ -385,10 +386,7 @@ export default function BookingForm() {
                                 <span className={formStyles.formPCyan}> {getBookingFormText("summaryTimeLabel")} </span>
                                 <span className={formStyles.formP}>{formatShortTime(bookingDraft.time)}</span>
                             </div>
-                            <div>
-                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryEstimatedDurationLabel")} </span>
-                                <span className={formStyles.formP}> {bookingDraft.estimatedDurationMinutes} {getBookingFormText("minutesUnit")} </span>
-                            </div>
+
                             <div>
                                 <span className={formStyles.formPCyan}> {getBookingFormText("summaryPassengersLabel")} </span>
                                 <span className={formStyles.formP}>{bookingDraft.passengers}</span>
@@ -407,27 +405,32 @@ export default function BookingForm() {
                                     {bookingDraft.hasPets ? "✓" : "X"}
                                 </span>
                             </div>
-
                         </div>
-                        <div className="mt-5 rounded-xl border border-cyan-400/20 p-4">
-                            <p className="font-semibold text-white">
-                                {getPassengerSupportText("passengerSupportTitle")}
-                            </p>
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("infantSeatsLabel")} </span><span className={formStyles.formP}>{bookingDraft.infantSeatCountRequired}</span></div>
-                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("childSeatsLabel")} </span><span className={formStyles.formP}>{bookingDraft.childSeatCountRequired}</span></div>
-                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("boosterSeatsLabel")} </span><span className={formStyles.formP}>{bookingDraft.boosterSeatCountRequired}</span></div>
-                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("isofixLabel")} </span><span className={formStyles.formP}>{bookingDraft.isofixRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
-                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairRequirementLabel")} </span><span className={formStyles.formP}>{getWheelchairRequirementLabel(bookingDraft.wheelchairRequirement)}</span></div>
 
-                                {bookingDraft.wheelchairRequirement === "remain_in_wheelchair" && (
-                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairPassengerCountLabel")} </span><span className={formStyles.formP}>{bookingDraft.wheelchairPassengerCount}</span></div>
-                                )}
+                        {/*====Review booking. Show PassengerSupport if the checkbox is checked.====*/}
+                        {needsPassengerSupport && (
+                            <div className="mt-5 rounded-xl border border-cyan-400/20 p-4">
+                                <p className="font-semibold text-white">
+                                    {getPassengerSupportText("passengerSupportTitle")}
+                                </p>
+                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("infantSeatsLabel")} </span><span className={formStyles.formP}>{bookingDraft.infantSeatCountRequired}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("childSeatsLabel")} </span><span className={formStyles.formP}>{bookingDraft.childSeatCountRequired}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("boosterSeatsLabel")} </span><span className={formStyles.formP}>{bookingDraft.boosterSeatCountRequired}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("isofixLabel")} </span><span className={formStyles.formP}>{bookingDraft.isofixRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairRequirementLabel")} </span><span className={formStyles.formP}>{getWheelchairRequirementLabel(bookingDraft.wheelchairRequirement)}</span></div>
 
-                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("mobilityAidStorageLabel")} </span><span className={formStyles.formP}>{bookingDraft.mobilityAidStorageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
-                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("extraLargeLuggageLabel")} </span><span className={formStyles.formP}>{bookingDraft.extraLargeLuggageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                                    {bookingDraft.wheelchairRequirement === "remain_in_wheelchair" && (
+                                        <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairPassengerCountLabel")} </span><span className={formStyles.formP}>{bookingDraft.wheelchairPassengerCount}</span></div>
+                                    )}
+
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("mobilityAidStorageLabel")} </span><span className={formStyles.formP}>{bookingDraft.mobilityAidStorageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("extraLargeLuggageLabel")} </span><span className={formStyles.formP}>{bookingDraft.extraLargeLuggageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                                </div>
                             </div>
-                        </div>
+                        )}
+
+                        {/*====Review booking. Notes.====*/}
                         {bookingDraft.notes && (
                             <div className="md:col-span-2">
                                 <span className={formStyles.formPCyan}> {getBookingFormText("summaryExtraNotesLabel")} </span>
@@ -436,9 +439,29 @@ export default function BookingForm() {
                         )}
                     </div>
 
+                    {/*====Review booking. show EstimatedDuration and price.====*/}
+                    <div className="mt-5 rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-4 md:col-span-2">
+                        <div>
+                            <span className="font-semibold text-cyan-300"> {getBookingFormText("summaryEstimatedDurationLabel")} </span>
+                            <span className={`${formStyles.formP} font-bold`}> {bookingDraft.estimatedDurationMinutes} {getBookingFormText("minutesUnit")} </span>
+                        </div>
+                        {journeyQuote && (
+                            <div >
+                                <span className="font-semibold text-cyan-300">
+                                    {getBookingFormText("journeyPriceLabel")}{" "}
+                                </span>
+                                <span className={`${formStyles.formP} font-bold`}>
+                                    {journeyQuote.currencyCode}{" "}
+                                    {journeyQuote.fareCalculation.finalTotalIncludingVat.toFixed(2)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
                     {errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
 
-                    <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                    {/*====Review booking. Edit button and confirm button.====*/}
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                         <button type="button" onClick={handleBackToEdit} className={formStyles.submitSmallButtonUserPage}>
                             {getBookingFormText("backToEditButton")}
                         </button>
@@ -449,6 +472,7 @@ export default function BookingForm() {
                     </div>
                 </div>
             ) : (
+                // =======****Main section client input booking form****===========
                 <form onSubmit={handleReviewBooking} className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
                     <div className="grid gap-5 sm:gap-6 md:grid-cols-2">
                         <MapboxLocationSearchInput
@@ -466,7 +490,7 @@ export default function BookingForm() {
                             selectedLocation={destinationLocation}
                             onSelectedLocationChange={handleDestinationLocationChange}
                         />
-                        {/* Shows the automatically calculated Mapbox route estimate. */}
+                        {/*==== Shows the automatically calculated Mapbox route estimate.==== */}
                         {(isCalculatingRoute || routeEstimate || routeEstimateError) && (
                             <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-4 md:col-span-2">
                                 <h3 className="font-semibold text-yellow-300 text-start">{getBookingFormText("routeEstimateTitle")}</h3>
@@ -483,13 +507,6 @@ export default function BookingForm() {
                                             <span className="font-semibold text-cyan-300">{getBookingFormText("routeDurationLabel")} </span>
                                             <span className="technical-value">{routeEstimate.durationMinutes} {getBookingFormText("routeMinutesUnit")}</span>
                                         </p>
-
-                                        {journeyQuote && (
-                                            <p className="text-start">
-                                                <span className="font-semibold text-cyan-300">{getBookingFormText("journeyPriceLabel")} </span>
-                                                <span className="technical-value">{journeyQuote.currencyCode} {journeyQuote.fareCalculation.finalTotalIncludingVat.toFixed(2)}</span>
-                                            </p>
-                                        )}
                                     </div>
                                         <p className="mt-3 text-sm text-slate-400 text-start">{getBookingFormText("routeEstimateNotice")}</p>
                                     </>
@@ -644,107 +661,132 @@ export default function BookingForm() {
             {!isReviewing && errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
             {submitted && (<div className={pageStyles.successMsgPage}> {getBookingFormText("bookingReceivedMessage")} </div>) }
 
+            {/*====Confirm bookings.====*/}
             {submittedBooking && (
-            <div ref={bookingResultRef}>
-                <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950 p-6">
-                    <h5 className={formStyles.formH3SemiBold}> {getBookingFormText("bookingSummaryTitle")} </h5>
-                    <div className="mt-6">                       
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryNameLabel")} </span>
-                            <span className={formStyles.formP}>{submittedBooking.name}</span>
+                <div ref={bookingResultRef}>
+                    <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950 p-6">
+                        <h5 className={formStyles.formH3SemiBold}> {getBookingFormText("bookingSummaryTitle")} </h5>
+                        <div className="mt-6">
+                            <div>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryNameLabel")} </span>
+                                <span className={formStyles.formP}>{submittedBooking.name}</span>
+                            </div>
+                            <div className="grid grid-cols-2">
+                                <div>
+                                    <span className={formStyles.formPCyan}> {getBookingFormText("summaryEmailLabel")} </span>
+                                    <span className={formStyles.formP}> {submittedBooking.email} </span>
+                                </div>
+                                <div>
+                                    <span className={formStyles.formPCyan}> {getBookingFormText("summaryPhoneLabel")} </span>
+                                    <span className={formStyles.formP}> {submittedBooking.phone} </span>
+                                </div>
+                            </div>
+                            <div>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryPickupLabel")} </span>
+                                <span className= {formStyles.formP} >{submittedBooking.pickup}</span>
+                            </div>
+                            <div>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryDestinationLabel")} </span>
+                                <span className= {formStyles.formP} >{submittedBooking.destination}</span>
+                            </div>
                         </div>
+
                         <div className="grid grid-cols-2">
                             <div>
-                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryEmailLabel")} </span>
-                                <span className={formStyles.formP}> {submittedBooking.email} </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryDateLabel")} </span>
+                                <span className={formStyles.formP}>{formatShortDate(submittedBooking.date)}</span>
                             </div>
                             <div>
-                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryPhoneLabel")} </span>
-                                <span className={formStyles.formP}> {submittedBooking.phone} </span>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryTimeLabel")} </span>
+                                <span className={formStyles.formP}>{formatShortTime(submittedBooking.time)}</span>
                             </div>
-                        </div>
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryPickupLabel")} </span>
-                            <span className= {formStyles.formP} >{submittedBooking.pickup}</span>
-                        </div>
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryDestinationLabel")} </span>
-                            <span className= {formStyles.formP} >{submittedBooking.destination}</span>
-                        </div>
-                    </div>
 
-                    <div className="grid grid-cols-2">
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryDateLabel")} </span>
-                            <span className={formStyles.formP}>{formatShortDate(submittedBooking.date)}</span>
-                        </div>
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryTimeLabel")} </span>
-                            <span className={formStyles.formP}>{formatShortTime(submittedBooking.time)}</span>
-                        </div>
+                            <div>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryPassengersLabel")} </span>
+                                <span className={formStyles.formP}>{submittedBooking.passengers}</span>
+                            </div>
+                            <div>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryLuggageLabel")} </span>
+                                <span className={formStyles.formP}>{submittedBooking.luggage}</span>
+                            </div>
+                            <div>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryTripTypeLabel")} </span>
+                                <span className={formStyles.formP}> {getTripTypeLabel(submittedBooking.tripType)} </span>
+                            </div>
 
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryPassengersLabel")} </span>
-                            <span className={formStyles.formP}>{submittedBooking.passengers}</span>
-                        </div>
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryLuggageLabel")} </span>
-                            <span className={formStyles.formP}>{submittedBooking.luggage}</span>
-                        </div>
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryTripTypeLabel")} </span>
-                            <span className={formStyles.formP}> {getTripTypeLabel(submittedBooking.tripType)} </span>
-                        </div>
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryEstimatedDurationLabel")} </span>
-                            <span className={formStyles.formP}> {submittedBooking.estimatedDurationMinutes} {getBookingFormText("minutesUnit")} </span>
+
+                            <div>
+                                <span className={formStyles.formPCyan}> {getBookingFormText("summaryStatusLabel")} </span>
+                                <span className={formStyles.formP}>  {getBookingStatusLabel(submittedBooking.status)}</span>
+                            </div>
+                            <div className= "mt-1">
+                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryHasPetsLabel")} </span>
+                                <span  className={ submittedBooking.hasPets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
+                                        {submittedBooking.hasPets ? "✓" : "X"}
+                                </span>
+                            </div>
+
                         </div>
 
-                        <div>
-                            <span className={formStyles.formPCyan}> {getBookingFormText("summaryStatusLabel")} </span>
-                            <span className={formStyles.formP}>  {getBookingStatusLabel(submittedBooking.status)}</span>
-                        </div>
-                        <div className= "mt-1">
-                           <span className={formStyles.formPCyan}> {getBookingFormText("summaryHasPetsLabel")} </span>
-                            <span  className={ submittedBooking.hasPets ? tableStyles.cellCheckBoxTextGreen : tableStyles.cellCheckBoxTextRed  } >
-                                    {submittedBooking.hasPets ? "✓" : "X"}
-                            </span>
-                        </div>
+                        {/*====Confirm bookings. Show PassengerSupport if the checkbox is checked.====*/}
+                        {needsPassengerSupport && (
+                            <div className="mt-5 rounded-xl border border-cyan-400/20 p-4">
+                                <p className="font-semibold text-white">
+                                    {getPassengerSupportText("passengerSupportTitle")}
+                                </p>
+                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("infantSeatsLabel")} </span><span className={formStyles.formP}>{submittedBooking.infantSeatCountRequired}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("childSeatsLabel")} </span><span className={formStyles.formP}>{submittedBooking.childSeatCountRequired}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("boosterSeatsLabel")} </span><span className={formStyles.formP}>{submittedBooking.boosterSeatCountRequired}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("isofixLabel")} </span><span className={formStyles.formP}>{submittedBooking.isofixRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairRequirementLabel")} </span><span className={formStyles.formP}>{getWheelchairRequirementLabel(submittedBooking.wheelchairRequirement)}</span></div>
+                                    {submittedBooking.wheelchairRequirement === "remain_in_wheelchair" && (
+                                        <div>
+                                            <span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairPassengerCountLabel")} </span>
+                                            <span className={formStyles.formP}>{submittedBooking.wheelchairPassengerCount}</span>
+                                        </div>
+                                    )}
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("mobilityAidStorageLabel")} </span><span className={formStyles.formP}>{submittedBooking.mobilityAidStorageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                                    <div><span className={formStyles.formPCyan}>{getPassengerSupportText("extraLargeLuggageLabel")} </span><span className={formStyles.formP}>{submittedBooking.extraLargeLuggageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
+                                </div>
+                            </div>
+                        )}
 
-                    </div>
-                    <div className="mt-5 rounded-xl border border-cyan-400/20 p-4">
-                        <p className="font-semibold text-white">
-                            {getPassengerSupportText("passengerSupportTitle")}
-                        </p>
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("infantSeatsLabel")} </span><span className={formStyles.formP}>{submittedBooking.infantSeatCountRequired}</span></div>
-                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("childSeatsLabel")} </span><span className={formStyles.formP}>{submittedBooking.childSeatCountRequired}</span></div>
-                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("boosterSeatsLabel")} </span><span className={formStyles.formP}>{submittedBooking.boosterSeatCountRequired}</span></div>
-                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("isofixLabel")} </span><span className={formStyles.formP}>{submittedBooking.isofixRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
-                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairRequirementLabel")} </span><span className={formStyles.formP}>{getWheelchairRequirementLabel(submittedBooking.wheelchairRequirement)}</span></div>
-
-                            {submittedBooking.wheelchairRequirement === "remain_in_wheelchair" && (
-                                <div><span className={formStyles.formPCyan}>{getPassengerSupportText("wheelchairPassengerCountLabel")} </span><span className={formStyles.formP}>{submittedBooking.wheelchairPassengerCount}</span></div>
+                        {/*====Confirm bookings. Show Estimated Duration and price.====*/}
+                        <div className="mt-5 rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-4 md:col-span-2">
+                            <div>
+                                <span className="font-semibold text-cyan-300"> {getBookingFormText("summaryEstimatedDurationLabel")} </span>
+                                <span className={`${formStyles.formP} font-bold`}> {submittedBooking.estimatedDurationMinutes} {getBookingFormText("minutesUnit")} </span>
+                            </div>
+                            {journeyQuote && (
+                                <div >
+                                    <span className="font-semibold text-cyan-300">
+                                        {getBookingFormText("journeyPriceLabel")}{" "}
+                                    </span>
+                                    <span className={`${formStyles.formP} font-bold`}>
+                                        {journeyQuote.currencyCode}{" "}
+                                        {journeyQuote.fareCalculation.finalTotalIncludingVat.toFixed(2)}
+                                    </span>
+                                </div>
                             )}
-
-                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("mobilityAidStorageLabel")} </span><span className={formStyles.formP}>{submittedBooking.mobilityAidStorageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
-                            <div><span className={formStyles.formPCyan}>{getPassengerSupportText("extraLargeLuggageLabel")} </span><span className={formStyles.formP}>{submittedBooking.extraLargeLuggageRequired ? getPassengerSupportText("yes") : getPassengerSupportText("no")}</span></div>
                         </div>
-                    </div>
-                    <div className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
-                        <p className={formStyles.formH5MediumSemiBold}> {getBookingFormText("bookingReferenceTitle")} </p>
-                        {/* explanation: This is important because booking IDs are long. On mobile, break-all allows the ID to wrap safely instead of pushing the layout wider. */}
-                        <p className={`${formStyles.formPYellow} break-all`}> {submittedBooking.id} </p>
-                        <p className={formStyles.formP}> {getBookingFormText("bookingReferenceDescription")} </p>
-                        {/* explanation: Now the booking ID goes to the status page through the URL. */}
-                        <div className= "mt-8">
-                            <Link href={`/status?bookingId=${submittedBooking.id}`} className={formStyles.submitSmallButtonUserPage} >
-                                {getBookingFormText("checkBookingStatusButton")}
-                            </Link>
+
+                        {/*====Confirm bookings. Show reference number.====*/}
+                        <div className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
+                            <p className={formStyles.formH5MediumSemiBold}> {getBookingFormText("bookingReferenceTitle")} </p>
+                            {/* explanation: This is important because booking IDs are long. On mobile, break-all allows the ID to wrap safely instead of pushing the layout wider. */}
+                            <p className={`${formStyles.formPYellow} break-all`}> {submittedBooking.id} </p>
+                            <p className={formStyles.formP}> {getBookingFormText("bookingReferenceDescription")} </p>
+                            {/* explanation: Now the booking ID goes to the status page through the URL. */}
+                            <div className= "mt-8">
+                                <Link href={`/status?bookingId=${submittedBooking.id}`} className={formStyles.submitSmallButtonUserPage} >
+                                    {getBookingFormText("checkBookingStatusButton")}
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>) }
+            )}
         </div>
 
     </section> );
