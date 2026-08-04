@@ -9,11 +9,12 @@ import type { JourneyFareCalculation } from "./journeyFareCalculationType";
  * that were used at the moment the quote was created.
  *
  * Important fields:
-    quoteId: uniquely identifies the quote.
-    pricingProfileCode: and pricingProfileVersion record which pricing configuration was used.
-    taxRatePercentage: records the VAT rate applied to this quote.
-    fareCalculation: contains all four calculated amounts.
-    expiresAt: prevents the customer from confirming an outdated quote.
+ * - quoteId: uniquely identifies the quote.
+ * - pricingProfileCode and pricingProfileVersion:
+ *   record which pricing configuration was used.
+ * - taxRatePercentage: records the VAT rate applied.
+ * - fareCalculation: contains the calculated amounts.
+ * - expiresAt: prevents confirmation of an outdated quote.
  */
 export type TemporaryJourneyQuote = {
     quoteId: string;

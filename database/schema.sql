@@ -282,6 +282,382 @@ CREATE TYPE public.wheelchair_requirement_type AS ENUM (
     'remain_in_wheelchair'
 );
 
+/* ============================================================
+   FINANCIAL STATUS TYPES
+============================================================ */
+
+CREATE TYPE public.financial_configuration_status AS ENUM (
+    'draft',
+    'active',
+    'archived'
+);
+
+CREATE TYPE public.journey_quote_status AS ENUM (
+    'active',
+    'accepted',
+    'voided'
+);
+
+/* ============================================================
+   PRICING PROFILES
+
+   Stores the identity, version and lifecycle of a pricing
+   configuration.
+
+   Monetary rates are stored separately in pricing_rates.
+============================================================ */
+
+CREATE TABLE IF NOT EXISTS public.pricing_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    pricing_profile_code TEXT NOT NULL,
+    pricing_profile_name TEXT NOT NULL,
+    pricing_profile_version INTEGER NOT NULL,
+
+    country_code TEXT NOT NULL,
+    currency_code TEXT NOT NULL,
+
+    quote_validity_minutes INTEGER NOT NULL DEFAULT 15,
+
+    status public.financial_configuration_status
+        NOT NULL DEFAULT 'draft',
+
+    effective_from TIMESTAMPTZ NOT NULL,
+    effective_until TIMESTAMPTZ,
+
+    created_by_user_id UUID
+        REFERENCES auth.users(id)
+        ON DELETE SET NULL,
+
+    activated_by_user_id UUID
+        REFERENCES auth.users(id)
+        ON DELETE SET NULL,
+
+    archived_by_user_id UUID
+        REFERENCES auth.users(id)
+        ON DELETE SET NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    activated_at TIMESTAMPTZ,
+    archived_at TIMESTAMPTZ,
+
+    CONSTRAINT pricing_profiles_code_version_unique
+        UNIQUE (
+            pricing_profile_code,
+            pricing_profile_version
+        ),
+
+    CONSTRAINT pricing_profiles_code_valid
+        CHECK (
+            pricing_profile_code ~ '^[A-Z0-9_]+$'
+        ),
+
+    CONSTRAINT pricing_profiles_name_not_empty
+        CHECK (
+            LENGTH(TRIM(pricing_profile_name)) > 0
+        ),
+
+    CONSTRAINT pricing_profiles_version_valid
+        CHECK (
+            pricing_profile_version >= 1
+        ),
+
+    CONSTRAINT pricing_profiles_country_code_valid
+        CHECK (
+            LENGTH(country_code) = 2
+            AND country_code = UPPER(country_code)
+        ),
+
+    CONSTRAINT pricing_profiles_currency_code_valid
+        CHECK (
+            LENGTH(currency_code) = 3
+            AND currency_code = UPPER(currency_code)
+        ),
+
+    CONSTRAINT pricing_profiles_quote_validity_valid
+        CHECK (
+            quote_validity_minutes >= 1
+            AND quote_validity_minutes <= 1440
+        ),
+
+    CONSTRAINT pricing_profiles_effective_period_valid
+        CHECK (
+            effective_until IS NULL
+            OR effective_until > effective_from
+        ),
+
+    CONSTRAINT pricing_profiles_lifecycle_consistent
+        CHECK (
+            (
+                status = 'draft'
+                AND activated_at IS NULL
+                AND archived_at IS NULL
+            )
+            OR
+            (
+                status = 'active'
+                AND activated_at IS NOT NULL
+                AND archived_at IS NULL
+                AND activated_at >= created_at
+            )
+            OR
+            (
+                status = 'archived'
+                AND activated_at IS NOT NULL
+                AND archived_at IS NOT NULL
+                AND activated_at >= created_at
+                AND archived_at >= activated_at
+            )
+        )
+);
+
+/* ============================================================
+   PRICING RATES
+
+   Stores the monetary rates belonging to one pricing-profile
+   version.
+
+   A draft pricing profile may temporarily exist without rates.
+   Trusted activation logic must verify that a complete rates
+   record exists before activating the profile.
+============================================================ */
+
+CREATE TABLE IF NOT EXISTS public.pricing_rates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    pricing_profile_id UUID NOT NULL
+        REFERENCES public.pricing_profiles(id)
+        ON DELETE CASCADE,
+
+    base_fare_excluding_vat NUMERIC(12, 4) NOT NULL,
+    distance_rate_per_km_excluding_vat NUMERIC(12, 4) NOT NULL,
+    duration_rate_per_minute_excluding_vat NUMERIC(12, 4) NOT NULL,
+    minimum_fare_excluding_vat NUMERIC(12, 4) NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pricing_rates_profile_unique
+        UNIQUE (pricing_profile_id),
+
+    CONSTRAINT pricing_rates_base_fare_valid
+        CHECK (
+            base_fare_excluding_vat >= 0
+        ),
+
+    CONSTRAINT pricing_rates_distance_rate_valid
+        CHECK (
+            distance_rate_per_km_excluding_vat >= 0
+        ),
+
+    CONSTRAINT pricing_rates_duration_rate_valid
+        CHECK (
+            duration_rate_per_minute_excluding_vat >= 0
+        ),
+
+    CONSTRAINT pricing_rates_minimum_fare_valid
+        CHECK (
+            minimum_fare_excluding_vat >= 0
+        )
+);
+
+/* ============================================================
+   TAX RULES
+
+   Stores tax configuration separately from commercial pricing.
+
+   Historical tax rules remain available so existing quotes can
+   retain the exact rule and percentage used during calculation.
+============================================================ */
+
+CREATE TABLE IF NOT EXISTS public.tax_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    country_code TEXT NOT NULL,
+    tax_name TEXT NOT NULL,
+    service_category TEXT NOT NULL,
+
+    tax_rate_percentage NUMERIC(5, 2) NOT NULL,
+
+    status public.financial_configuration_status
+        NOT NULL DEFAULT 'draft',
+
+    effective_from TIMESTAMPTZ NOT NULL,
+    effective_until TIMESTAMPTZ,
+
+    created_by_user_id UUID
+        REFERENCES auth.users(id)
+        ON DELETE SET NULL,
+
+    activated_by_user_id UUID
+        REFERENCES auth.users(id)
+        ON DELETE SET NULL,
+
+    archived_by_user_id UUID
+        REFERENCES auth.users(id)
+        ON DELETE SET NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    activated_at TIMESTAMPTZ,
+    archived_at TIMESTAMPTZ,
+
+    CONSTRAINT tax_rules_country_code_valid
+        CHECK (
+            LENGTH(country_code) = 2
+            AND country_code = UPPER(country_code)
+        ),
+
+    CONSTRAINT tax_rules_name_not_empty
+        CHECK (
+            LENGTH(TRIM(tax_name)) > 0
+        ),
+
+    CONSTRAINT tax_rules_service_category_valid
+        CHECK (
+            service_category ~ '^[a-z0-9_]+$'
+        ),
+
+    CONSTRAINT tax_rules_rate_valid
+        CHECK (
+            tax_rate_percentage >= 0
+            AND tax_rate_percentage <= 100
+        ),
+
+    CONSTRAINT tax_rules_effective_period_valid
+        CHECK (
+            effective_until IS NULL
+            OR effective_until > effective_from
+        ),
+
+    CONSTRAINT tax_rules_lifecycle_consistent
+        CHECK (
+            (
+                status = 'draft'
+                AND activated_at IS NULL
+                AND archived_at IS NULL
+            )
+            OR
+            (
+                status = 'active'
+                AND activated_at IS NOT NULL
+                AND archived_at IS NULL
+                AND activated_at >= created_at
+            )
+            OR
+            (
+                status = 'archived'
+                AND activated_at IS NOT NULL
+                AND archived_at IS NOT NULL
+                AND activated_at >= created_at
+                AND archived_at >= activated_at
+            )
+        )
+);
+
+/* ============================================================
+   CURRENCY ROUNDING RULES
+
+   Stores the rounding method used for final customer-facing
+   monetary amounts.
+
+   Historical rules remain available so existing quotes can
+   retain the exact rule used during calculation.
+============================================================ */
+
+CREATE TABLE IF NOT EXISTS public.currency_rounding_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    country_code TEXT NOT NULL,
+    currency_code TEXT NOT NULL,
+
+    rounding_increment NUMERIC(12, 4) NOT NULL,
+    rounding_mode TEXT NOT NULL,
+
+    status public.financial_configuration_status
+        NOT NULL DEFAULT 'draft',
+
+    effective_from TIMESTAMPTZ NOT NULL,
+    effective_until TIMESTAMPTZ,
+
+    created_by_user_id UUID
+        REFERENCES auth.users(id)
+        ON DELETE SET NULL,
+
+    activated_by_user_id UUID
+        REFERENCES auth.users(id)
+        ON DELETE SET NULL,
+
+    archived_by_user_id UUID
+        REFERENCES auth.users(id)
+        ON DELETE SET NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    activated_at TIMESTAMPTZ,
+    archived_at TIMESTAMPTZ,
+
+    CONSTRAINT currency_rounding_rules_country_code_valid
+        CHECK (
+            LENGTH(country_code) = 2
+            AND country_code = UPPER(country_code)
+        ),
+
+    CONSTRAINT currency_rounding_rules_currency_code_valid
+        CHECK (
+            LENGTH(currency_code) = 3
+            AND currency_code = UPPER(currency_code)
+        ),
+
+    CONSTRAINT currency_rounding_rules_increment_valid
+        CHECK (
+            rounding_increment > 0
+        ),
+
+    CONSTRAINT currency_rounding_rules_mode_valid
+        CHECK (
+            rounding_mode IN (
+                'nearest',
+                'up',
+                'down'
+            )
+        ),
+
+    CONSTRAINT currency_rounding_rules_effective_period_valid
+        CHECK (
+            effective_until IS NULL
+            OR effective_until > effective_from
+        ),
+
+    CONSTRAINT currency_rounding_rules_lifecycle_consistent
+        CHECK (
+            (
+                status = 'draft'
+                AND activated_at IS NULL
+                AND archived_at IS NULL
+            )
+            OR
+            (
+                status = 'active'
+                AND activated_at IS NOT NULL
+                AND archived_at IS NULL
+                AND activated_at >= created_at
+            )
+            OR
+            (
+                status = 'archived'
+                AND activated_at IS NOT NULL
+                AND archived_at IS NOT NULL
+                AND activated_at >= created_at
+                AND archived_at >= activated_at
+            )
+        )
+);
+
 -- =========================================================
 -- JOURNEY QUOTES
 -- Stores temporary server-calculated prices before booking.
@@ -289,23 +665,127 @@ CREATE TYPE public.wheelchair_requirement_type AS ENUM (
 
 CREATE TABLE IF NOT EXISTS public.journey_quotes (
     quote_id UUID PRIMARY KEY,
+
+    /*
+       Historical pricing identity stored directly on the quote.
+       These snapshot values remain unchanged even if the source
+       configuration is later archived.
+    */
     pricing_profile_code TEXT NOT NULL,
     pricing_profile_version INTEGER NOT NULL,
+
+    /*
+       References to the exact configuration records used during
+       calculation.
+
+       These fields remain nullable temporarily for compatibility
+       with existing quotes and the current quote API.
+    */
+    pricing_profile_id UUID
+        REFERENCES public.pricing_profiles(id)
+        ON DELETE RESTRICT,
+
+    tax_rule_id UUID
+        REFERENCES public.tax_rules(id)
+        ON DELETE RESTRICT,
+
+    rounding_rule_id UUID
+        REFERENCES public.currency_rounding_rules(id)
+        ON DELETE RESTRICT,
+
+    pricing_calculation_version INTEGER NOT NULL DEFAULT 1,
+
     country_code TEXT NOT NULL,
     currency_code TEXT NOT NULL,
+
     distance_km NUMERIC(10, 3) NOT NULL,
     estimated_duration_minutes NUMERIC(10, 2) NOT NULL,
+
     tax_rate_percentage NUMERIC(5, 2) NOT NULL,
+
+    /*
+       Kept under its current name for compatibility with the
+       published TypeScript and API implementation.
+
+       It may later be renamed to subtotal_excluding_vat together
+       with all related application fields.
+    */
     basic_fare_excluding_vat NUMERIC(12, 4) NOT NULL,
+
     vat_amount NUMERIC(12, 4) NOT NULL,
     total_including_vat_before_rounding NUMERIC(12, 4) NOT NULL,
     final_total_including_vat NUMERIC(12, 2) NOT NULL,
+
+    /*
+       Future secure quote confirmation will store a fingerprint
+       of normalized pricing-relevant booking information.
+
+       It is currently nullable because existing quote requests
+       contain only route distance and duration.
+    */
+    booking_data_fingerprint TEXT,
+
+    status public.journey_quote_status
+        NOT NULL DEFAULT 'active',
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
+
     used_at TIMESTAMPTZ,
+    accepted_at TIMESTAMPTZ,
+    voided_at TIMESTAMPTZ,
 
     CONSTRAINT journey_quotes_expiration_after_creation
-        CHECK (expires_at > created_at)
+        CHECK (
+            expires_at > created_at
+        ),
+
+    CONSTRAINT journey_quotes_calculation_version_valid
+        CHECK (
+            pricing_calculation_version >= 1
+        ),
+
+    CONSTRAINT journey_quotes_fingerprint_valid
+        CHECK (
+            booking_data_fingerprint IS NULL
+            OR LENGTH(TRIM(booking_data_fingerprint)) > 0
+        ),
+
+    CONSTRAINT journey_quotes_accepted_time_valid
+        CHECK (
+            accepted_at IS NULL
+            OR accepted_at >= created_at
+        ),
+
+    CONSTRAINT journey_quotes_voided_time_valid
+        CHECK (
+            voided_at IS NULL
+            OR voided_at >= created_at
+        ),
+
+    CONSTRAINT journey_quotes_lifecycle_consistent
+        CHECK (
+            (
+                status = 'active'
+                AND used_at IS NULL
+                AND accepted_at IS NULL
+                AND voided_at IS NULL
+            )
+            OR
+            (
+                status = 'accepted'
+                AND used_at IS NOT NULL
+                AND accepted_at IS NOT NULL
+                AND voided_at IS NULL
+            )
+            OR
+            (
+                status = 'voided'
+                AND used_at IS NULL
+                AND accepted_at IS NULL
+                AND voided_at IS NOT NULL
+            )
+        )
 );
 
 -- Helps the application efficiently find expired quotes.
@@ -316,7 +796,238 @@ CREATE INDEX IF NOT EXISTS journey_quotes_expires_at_idx
 ALTER TABLE public.journey_quotes
     ENABLE ROW LEVEL SECURITY;
 
+/* ============================================================
+   JOURNEY QUOTE ITEMS
+
+   Stores the detailed calculation breakdown belonging to one
+   journey quote.
+
+   Signed monetary amounts are allowed so future discounts and
+   price corrections can use negative values.
+============================================================ */
+
+CREATE TABLE IF NOT EXISTS public.journey_quote_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    quote_id UUID NOT NULL
+        REFERENCES public.journey_quotes(quote_id)
+        ON DELETE CASCADE,
+
+    item_code TEXT NOT NULL,
+    description TEXT NOT NULL,
+
+    quantity NUMERIC(12, 4) NOT NULL,
+    unit TEXT NOT NULL,
+
+    unit_amount_excluding_vat NUMERIC(12, 4) NOT NULL,
+    amount_excluding_vat NUMERIC(12, 4) NOT NULL,
+
+    vat_rate_percentage NUMERIC(5, 2) NOT NULL,
+    vat_amount NUMERIC(12, 4) NOT NULL,
+
+    amount_including_vat NUMERIC(12, 4) NOT NULL,
+
+    calculation_order INTEGER NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT journey_quote_items_code_valid
+        CHECK (
+            item_code ~ '^[A-Z0-9_]+$'
+        ),
+
+    CONSTRAINT journey_quote_items_description_not_empty
+        CHECK (
+            LENGTH(TRIM(description)) > 0
+        ),
+
+    CONSTRAINT journey_quote_items_quantity_valid
+        CHECK (
+            quantity > 0
+        ),
+
+    CONSTRAINT journey_quote_items_unit_valid
+        CHECK (
+            unit ~ '^[a-z0-9_]+$'
+        ),
+
+    CONSTRAINT journey_quote_items_vat_rate_valid
+        CHECK (
+            vat_rate_percentage >= 0
+            AND vat_rate_percentage <= 100
+        ),
+
+    CONSTRAINT journey_quote_items_calculation_order_valid
+        CHECK (
+            calculation_order >= 0
+        ),
+
+    CONSTRAINT journey_quote_items_order_unique
+        UNIQUE (
+            quote_id,
+            calculation_order
+        )
+);
+
+/* ============================================================
+Quote items are accessed only through trusted server routes.
+============================================================ */
+ALTER TABLE public.journey_quote_items
+    ENABLE ROW LEVEL SECURITY;
+
+/* ============================================================
+   FINANCIAL TABLE SECURITY
+
+   Financial configuration and quote-calculation records are
+   accessed only through trusted server-side API routes.
+
+   No direct anonymous or authenticated browser policies are
+   created for these tables.
+============================================================ */
+
+/* Enable Row Level Security on financial configuration tables. */
+ALTER TABLE public.pricing_profiles
+    ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.pricing_rates
+    ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.tax_rules
+    ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.currency_rounding_rules
+    ENABLE ROW LEVEL SECURITY;
+
+
+/*
+   Prevent direct table access from browser roles.
+
+   Protected Next.js routes verify authentication and roles,
+   then use the Supabase service role for trusted operations.
+*/
+REVOKE ALL
+ON TABLE
+    public.pricing_profiles,
+    public.pricing_rates,
+    public.tax_rules,
+    public.currency_rounding_rules,
+    public.journey_quotes,
+    public.journey_quote_items
+FROM anon, authenticated;
+
+
+/* Preserve trusted server-side service-role access. */
+GRANT ALL
+ON TABLE
+    public.pricing_profiles,
+    public.pricing_rates,
+    public.tax_rules,
+    public.currency_rounding_rules,
+    public.journey_quotes,
+    public.journey_quote_items
+TO service_role;
+
+
+/* ============================================================
+   INITIAL VERSION 1 FINANCIAL CONFIGURATION
+
+   Mirrors the financial values currently used by the
+   TypeScript pricing configuration.
+============================================================ */
+
+
+/* Create the pricing profile and connect its exact rates. */
+WITH created_pricing_profile AS (
+    INSERT INTO public.pricing_profiles (
+        pricing_profile_code,
+        pricing_profile_name,
+        pricing_profile_version,
+        country_code,
+        currency_code,
+        quote_validity_minutes,
+        status,
+        effective_from,
+        effective_until,
+        activated_at
+    )
+    VALUES (
+        'NL_DAYTIME_STANDARD',
+        'Netherlands Daytime Standard',
+        1,
+        'NL',
+        'EUR',
+        15,
+        'active',
+        TIMESTAMPTZ '2026-01-01 00:00:00+00',
+        NULL,
+        NOW()
+    )
+    RETURNING id
+)
+INSERT INTO public.pricing_rates (
+    pricing_profile_id,
+    base_fare_excluding_vat,
+    distance_rate_per_km_excluding_vat,
+    duration_rate_per_minute_excluding_vat,
+    minimum_fare_excluding_vat
+)
+SELECT
+    created_pricing_profile.id,
+    4.0000,
+    2.5000,
+    0.4000,
+    15.0000
+FROM created_pricing_profile;
+
+
+/* Dutch passenger-transport VAT. */
+INSERT INTO public.tax_rules (
+    country_code,
+    tax_name,
+    service_category,
+    tax_rate_percentage,
+    status,
+    effective_from,
+    effective_until,
+    activated_at
+)
+VALUES (
+    'NL',
+    'VAT',
+    'passenger_transport',
+    9.00,
+    'active',
+    TIMESTAMPTZ '2026-01-01 00:00:00+00',
+    NULL,
+    NOW()
+);
+
+
+/* Dutch EUR rounding rule. */
+INSERT INTO public.currency_rounding_rules (
+    country_code,
+    currency_code,
+    rounding_increment,
+    rounding_mode,
+    status,
+    effective_from,
+    effective_until,
+    activated_at
+)
+VALUES (
+    'NL',
+    'EUR',
+    0.0100,
+    'nearest',
+    'active',
+    TIMESTAMPTZ '2026-01-01 00:00:00+00',
+    NULL,
+    NOW()
+);
+
+/* ============================================================
 -- Taxi trip booking requests
+============================================================ */
 CREATE TABLE public.bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -329,6 +1040,20 @@ CREATE TABLE public.bookings (
       ON DELETE SET NULL preserves the booking when a vehicle is deleted.
     */
     vehicle_id UUID NULL REFERENCES public.vehicles(id) ON DELETE SET NULL,
+    /*
+      Stores the exact journey quote accepted when this booking
+      was created.
+
+      NULL supports historical bookings and administrator-created
+      bookings that do not use the public quote workflow.
+
+      ON DELETE RESTRICT prevents deletion of an accepted quote
+      while a booking still refers to it.
+    */
+    journey_quote_id UUID
+        REFERENCES public.journey_quotes(quote_id)
+        ON DELETE RESTRICT,
+
     pickup_location TEXT NOT NULL,
     pickup_city TEXT,
     destination_city TEXT,
@@ -396,7 +1121,11 @@ CREATE TABLE public.bookings (
                 chauffeur_id IS NOT NULL
                 AND vehicle_id IS NOT NULL
             )
-        )
+        ),
+
+    /*One quote can create no more than one booking.*/
+    CONSTRAINT bookings_journey_quote_unique
+        UNIQUE (journey_quote_id),
 );
 
 /* This tells PostgreSQL: Store this explanation as documentation for bookings.pickup_city.*/
@@ -405,6 +1134,103 @@ COMMENT ON COLUMN public.bookings.pickup_city IS
 
 COMMENT ON COLUMN public.bookings.destination_city IS
 'Privacy-safe destination city derived from the selected Mapbox location.';
+
+/* ============================================================
+   FINANCIAL CONFIGURATION AND QUOTE INDEXES
+
+   Supports active-configuration selection, historical tracing
+   and journey-quote lifecycle checks.
+============================================================ */
+
+/* Only one active version of each pricing-profile family. */
+CREATE UNIQUE INDEX IF NOT EXISTS
+    pricing_profiles_one_active_version_idx
+ON public.pricing_profiles (
+    pricing_profile_code
+)
+WHERE status = 'active';
+
+
+/* Supports pricing-profile lookup by country and currency. */
+CREATE INDEX IF NOT EXISTS
+    pricing_profiles_lookup_idx
+ON public.pricing_profiles (
+    country_code,
+    currency_code,
+    status,
+    effective_from
+);
+
+
+/* Only one active tax rule in the same business scope. */
+CREATE UNIQUE INDEX IF NOT EXISTS
+    tax_rules_one_active_rule_idx
+ON public.tax_rules (
+    country_code,
+    service_category
+)
+WHERE status = 'active';
+
+
+/* Supports selection of the applicable tax rule. */
+CREATE INDEX IF NOT EXISTS
+    tax_rules_lookup_idx
+ON public.tax_rules (
+    country_code,
+    service_category,
+    status,
+    effective_from
+);
+
+
+/* Only one active rounding rule per country and currency. */
+CREATE UNIQUE INDEX IF NOT EXISTS
+    currency_rounding_rules_one_active_rule_idx
+ON public.currency_rounding_rules (
+    country_code,
+    currency_code
+)
+WHERE status = 'active';
+
+
+/* Supports selection of the applicable rounding rule. */
+CREATE INDEX IF NOT EXISTS
+    currency_rounding_rules_lookup_idx
+ON public.currency_rounding_rules (
+    country_code,
+    currency_code,
+    status,
+    effective_from
+);
+
+
+/* Supports quote lifecycle and expiration checks. */
+CREATE INDEX IF NOT EXISTS
+    journey_quotes_status_expires_at_idx
+ON public.journey_quotes (
+    status,
+    expires_at
+);
+
+
+/* Supports historical configuration tracing. */
+CREATE INDEX IF NOT EXISTS
+    journey_quotes_pricing_profile_id_idx
+ON public.journey_quotes (
+    pricing_profile_id
+);
+
+CREATE INDEX IF NOT EXISTS
+    journey_quotes_tax_rule_id_idx
+ON public.journey_quotes (
+    tax_rule_id
+);
+
+CREATE INDEX IF NOT EXISTS
+    journey_quotes_rounding_rule_id_idx
+ON public.journey_quotes (
+    rounding_rule_id
+);
 
 /* ============================================================
    ASSIGNMENT ALERTS
@@ -683,6 +1509,34 @@ CREATE TRIGGER update_assignment_alerts_updated_at
 BEFORE UPDATE ON public.assignment_alerts
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
+
+/* Automatically updates pricing_profiles.updated_at. */
+CREATE TRIGGER update_pricing_profiles_updated_at
+BEFORE UPDATE ON public.pricing_profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+
+/* Automatically updates pricing_rates.updated_at. */
+CREATE TRIGGER update_pricing_rates_updated_at
+BEFORE UPDATE ON public.pricing_rates
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+
+/* Automatically updates tax_rules.updated_at. */
+CREATE TRIGGER update_tax_rules_updated_at
+BEFORE UPDATE ON public.tax_rules
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+
+/* Automatically updates currency_rounding_rules.updated_at. */
+CREATE TRIGGER update_currency_rounding_rules_updated_at
+BEFORE UPDATE ON public.currency_rounding_rules
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
 --============================Default vehicle management=========================================
 /* ============================================================
    SET DEFAULT VEHICLE
