@@ -5,6 +5,7 @@ import { createTemporaryJourneyQuote } from "@/lib/pricing/createTemporaryJourne
 import { isCreateJourneyQuoteRequest } from "@/lib/pricing/isCreateJourneyQuoteRequest";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import type { CreateJourneyQuoteResponse } from "@/types/createJourneyQuoteResponseType";
+import { createJourneyQuoteItems } from "@/lib/pricing/createJourneyQuoteItems";
 
 /*
  * Temporary default pricing market.
@@ -12,6 +13,9 @@ import type { CreateJourneyQuoteResponse } from "@/types/createJourneyQuoteRespo
  * This must later be resolved from the journey pickup location
  * and operating market. It must never be selected from the
  * website language.
+ * 
+ * journey_quotes = one summary row for the complete quote
+ * journey_quote_items = multiple detailed rows explaining the quote
  */
 const defaultPricingMarket = {
     pricingProfileCode: "NL_DAYTIME_STANDARD",
@@ -62,6 +66,39 @@ export async function POST(request: Request) {
         pricingConfiguration.quoteValidityMinutes
     );
 
+    const quoteItems = createJourneyQuoteItems(
+        pricingConfiguration.pricingProfile,
+        journeyQuote
+    );
+
+    /*
+        This asigns and converts the TypeScript property names, into the Supabase column names:
+        quote_id → newly added from journeyQuote.quoteId
+        all other fields → copied from quoteItem and, where necessary, renamed from TypeScript camelCase to database snake_case
+        it becomes:
+        {
+            quote_id: "ABC-123",
+            item_code: "BASE_FARE",
+            description: "Base fare",
+            ...
+            calculation_order: 10
+        }
+    */
+    const quoteItemRows = quoteItems.map((quoteItem) => ({
+        quote_id: journeyQuote.quoteId,
+        item_code: quoteItem.itemCode,
+        description: quoteItem.description,
+        quantity: quoteItem.quantity,
+        unit: quoteItem.unit,
+        unit_amount_excluding_vat: quoteItem.unitAmountExcludingVat,
+        amount_excluding_vat: quoteItem.amountExcludingVat,
+        vat_rate_percentage: quoteItem.vatRatePercentage,
+        vat_amount: quoteItem.vatAmount,
+        amount_including_vat: quoteItem.amountIncludingVat,
+        calculation_order: quoteItem.calculationOrder,
+    }));
+
+    // insert journey_quotes header. one summary row for the complete quote
     const { error: insertError } = await supabaseAdmin
         .from("journey_quotes")
         .insert({
@@ -84,11 +121,33 @@ export async function POST(request: Request) {
             created_at: journeyQuote.createdAt,
             expires_at: journeyQuote.expiresAt,
         });
-
+    
+    //stop if header insert fails
     if (insertError) {
         console.error("Could not store temporary journey quote:", insertError);
         return NextResponse.json(
             { error: "The temporary quote could not be created." },
+            { status: 500 }
+        );
+    }
+
+    // insert journey_quote_items. multiple detailed rows explaining the quote
+    const { error: itemInsertError } = await supabaseAdmin
+    .from("journey_quote_items")
+    .insert(quoteItemRows);
+
+    if (itemInsertError) {
+        console.error("Could not store journey quote items:", itemInsertError);
+
+        // delete the header if item insertion fails
+        const { error: cleanupError } = await supabaseAdmin
+            .from("journey_quotes")
+            .delete()
+            .eq("quote_id", journeyQuote.quoteId);
+        if (cleanupError) {console.error("Could not remove incomplete journey quote:", cleanupError);}
+
+        return NextResponse.json(
+            { error: "The temporary quote calculation details could not be stored." },
             { status: 500 }
         );
     }

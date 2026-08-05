@@ -16,5 +16,5 @@ export function calculateVatAmount(fareExcludingVat: number, taxRule: CountryTax
     const vatAmount = fareExcludingVat * vatRate;
 
     // Return the calculated VAT amount before final currency rounding.
-    return vatAmount;
+    return Number(vatAmount.toFixed(4));
 }
