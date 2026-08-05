@@ -8,10 +8,12 @@ import { calculateJourneyFare } from "./calculateJourneyFare";
 /**
  * Purpose:
  * Creates a temporary journey quote using the applicable
- * pricing, tax, and rounding rules.
+ * pricing, tax and rounding rules.
  *
  * The quote remains valid for the supplied number of minutes.
- * It is not saved to the database yet.
+ *
+ * This function builds and returns the quote object.
+ * The API route is responsible for saving it to the database.
  */
 export function createTemporaryJourneyQuote(
     pricingProfile: PricingProfile, taxRule: CountryTaxRule, roundingRule: CountryRoundingRule, 

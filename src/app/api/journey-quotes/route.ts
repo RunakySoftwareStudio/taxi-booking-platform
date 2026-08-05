@@ -1,15 +1,24 @@
 import { NextResponse } from "next/server";
 
-import { dutchEuroRoundingRule } from "@/data/countryRoundingRuleData";
-import { dutchPassengerTransportTaxRule } from "@/data/countryTaxRuleData";
-import { dutchDaytimePricingProfile } from "@/data/pricingProfileData";
+import { loadActiveJourneyPricingConfiguration } from "@/lib/pricing/loadActiveJourneyPricingConfiguration";
 import { createTemporaryJourneyQuote } from "@/lib/pricing/createTemporaryJourneyQuote";
 import { isCreateJourneyQuoteRequest } from "@/lib/pricing/isCreateJourneyQuoteRequest";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import type { CreateJourneyQuoteResponse } from "@/types/createJourneyQuoteResponseType";
 
-
-const quoteValidityMinutes = 15;
+/*
+ * Temporary default pricing market.
+ *
+ * This must later be resolved from the journey pickup location
+ * and operating market. It must never be selected from the
+ * website language.
+ */
+const defaultPricingMarket = {
+    pricingProfileCode: "NL_DAYTIME_STANDARD",
+    countryCode: "NL",
+    currencyCode: "EUR",
+    serviceCategory: "passenger_transport",
+} as const;
 
 /**
  * Purpose:
@@ -36,19 +45,31 @@ export async function POST(request: Request) {
         );
     }
 
+    const pricingConfiguration =
+        await loadActiveJourneyPricingConfiguration({
+            pricingProfileCode: defaultPricingMarket.pricingProfileCode,
+            countryCode: defaultPricingMarket.countryCode,
+            currencyCode: defaultPricingMarket.currencyCode,
+            serviceCategory: defaultPricingMarket.serviceCategory,
+        });
+
     const journeyQuote = createTemporaryJourneyQuote(
-        dutchDaytimePricingProfile,
-        dutchPassengerTransportTaxRule,
-        dutchEuroRoundingRule,
+        pricingConfiguration.pricingProfile,
+        pricingConfiguration.taxRule,
+        pricingConfiguration.roundingRule,
         requestBody.distanceKm,
         requestBody.estimatedDurationMinutes,
-        quoteValidityMinutes
+        pricingConfiguration.quoteValidityMinutes
     );
 
     const { error: insertError } = await supabaseAdmin
         .from("journey_quotes")
         .insert({
             quote_id: journeyQuote.quoteId,
+            pricing_profile_id: pricingConfiguration.pricingProfileId,
+            tax_rule_id: pricingConfiguration.taxRuleId,
+            rounding_rule_id: pricingConfiguration.roundingRuleId,
+            pricing_calculation_version: 1,
             pricing_profile_code: journeyQuote.pricingProfileCode,
             pricing_profile_version: journeyQuote.pricingProfileVersion,
             country_code: journeyQuote.countryCode,
