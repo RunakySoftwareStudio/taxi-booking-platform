@@ -134,6 +134,11 @@ export default async function AdminDashboardPage() {
             description: "View when chauffeurs are available, busy, offline, or on holiday.",
             href: "/admin/availability",
         },
+        {
+            title: "Pricing management",
+            description: "View pricing profiles, rates, VAT rules, rounding rules, and version history.",
+            href: "/admin/pricing",
+        },
     ];
 
     return (
