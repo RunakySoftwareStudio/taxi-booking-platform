@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { formStyles, mobileStyle, pageStyles, tableStyles } from "@/styles/classNames";
+import { formStyles, pageStyles, tableStyles } from "@/styles/classNames";
 
 type PricingProfileRow = {
     id: string;
@@ -136,7 +136,9 @@ export default async function AdminPricingPage() {
                                         return (
                                             <tr key={pricingProfile.id} className={tableStyles.rowCyan}>
                                                 <td className={tableStyles.cell}>
-                                                    <strong>{pricingProfile.pricing_profile_name}</strong>
+                                                    <Link href={`/admin/pricing/${pricingProfile.id}`} className={formStyles.link}>
+                                                        {pricingProfile.pricing_profile_name}
+                                                    </Link>
                                                     <div>
                                                         {pricingProfile.pricing_profile_code}
                                                         {" - V"}
@@ -189,54 +191,68 @@ export default async function AdminPricingPage() {
                         </div>
 
                         {/* Mobile list. */}
-                        <div className="lg:hidden">
+                        <div className="space-y-4 lg:hidden">
                             {pricingProfiles.map((pricingProfile) => {
                                 const pricingRate = rateByProfileId.get(pricingProfile.id);
 
                                 return (
                                     <div key={pricingProfile.id} className={tableStyles.DivCyanList}>
-                                        <p className={mobileStyle.inforCaption}>Profile</p>
-                                        <p className={mobileStyle.infoValue}>
-                                            {pricingProfile.pricing_profile_name}
-                                            {" - V"}
-                                            {pricingProfile.pricing_profile_version}
-                                        </p>
+                                        <div className="space-y-2">
+                                            <p>
+                                                <span className="font-medium text-cyan-300">Profile: </span>
+                                                <Link href={`/admin/pricing/${pricingProfile.id}`} className={formStyles.link}>
+                                                    {pricingProfile.pricing_profile_name} - V{pricingProfile.pricing_profile_version}
+                                                </Link>
+                                            </p>
 
-                                        <p className={mobileStyle.inforCaption}>Code</p>
-                                        <p className={mobileStyle.infoValue}>
-                                            {pricingProfile.pricing_profile_code}
-                                        </p>
+                                            <p>
+                                                <span className="font-medium text-cyan-300">Code: </span>
+                                                <span className="text-white">{pricingProfile.pricing_profile_code}</span>
+                                            </p>
 
-                                        <p className={mobileStyle.inforCaption}>Market</p>
-                                        <p className={mobileStyle.infoValue}>
-                                            {pricingProfile.country_code}
-                                            {" / "}
-                                            {pricingProfile.currency_code}
-                                        </p>
+                                            <p>
+                                                <span className="font-medium text-cyan-300">Market: </span>
+                                                <span className="text-white">{pricingProfile.country_code} / {pricingProfile.currency_code}</span>
+                                            </p>
 
-                                        <p className={mobileStyle.inforCaption}>Status</p>
-                                        <p className={mobileStyle.infoValue}>
-                                            {formatStatus(pricingProfile.status)}
-                                        </p>
+                                            <p>
+                                                <span className="font-medium text-cyan-300">Status: </span>
+                                                <span className="text-white">{formatStatus(pricingProfile.status)}</span>
+                                            </p>
 
-                                        <p className={mobileStyle.inforCaption}>Rates excluding VAT</p>
-                                        <p className={mobileStyle.infoValue}>
-                                            {pricingRate
-                                                ? `Base ${formatMoney(pricingRate.base_fare_excluding_vat, pricingProfile.currency_code)}, ${formatMoney(pricingRate.distance_rate_per_km_excluding_vat, pricingProfile.currency_code)}/km, ${formatMoney(pricingRate.duration_rate_per_minute_excluding_vat, pricingProfile.currency_code)}/minute`
-                                                : "Pricing rates are missing."}
-                                        </p>
+                                            <p>
+                                                <span className="font-medium text-cyan-300">Base fare: </span>
+                                                <span className="text-white">
+                                                    {pricingRate ? formatMoney(pricingRate.base_fare_excluding_vat, pricingProfile.currency_code) : "Missing"}
+                                                </span>
+                                            </p>
 
-                                        <p className={mobileStyle.inforCaption}>Minimum fare</p>
-                                        <p className={mobileStyle.infoValue}>
-                                            {pricingRate
-                                                ? formatMoney(pricingRate.minimum_fare_excluding_vat, pricingProfile.currency_code)
-                                                : "Missing"}
-                                        </p>
+                                            <p>
+                                                <span className="font-medium text-cyan-300">Per kilometre: </span>
+                                                <span className="text-white">
+                                                    {pricingRate ? `${formatMoney(pricingRate.distance_rate_per_km_excluding_vat, pricingProfile.currency_code)}/km` : "Missing"}
+                                                </span>
+                                            </p>
 
-                                        <p className={mobileStyle.inforCaption}>Quote validity</p>
-                                        <p className={mobileStyle.infoValue}>
-                                            {pricingProfile.quote_validity_minutes} minutes
-                                        </p>
+                                            <p>
+                                                <span className="font-medium text-cyan-300">Per minute: </span>
+                                                <span className="text-white">
+                                                    {pricingRate ? `${formatMoney(pricingRate.duration_rate_per_minute_excluding_vat, pricingProfile.currency_code)}/minute` : "Missing"}
+                                                </span>
+                                            </p>
+
+                                            <p>
+                                                <span className="font-medium text-cyan-300">Minimum fare: </span>
+                                                <span className="text-white">
+                                                    {pricingRate ? formatMoney(pricingRate.minimum_fare_excluding_vat, pricingProfile.currency_code) : "Missing"}
+                                                </span>
+                                            </p>
+
+                                            <p>
+                                                <span className="font-medium text-cyan-300">Quote validity: </span>
+                                                <span className="text-white">{pricingProfile.quote_validity_minutes} minutes</span>
+                                            </p>
+                                        </div>
                                     </div>
                                 );
                             })}
