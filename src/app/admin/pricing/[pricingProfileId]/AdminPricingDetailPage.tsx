@@ -2,6 +2,10 @@ import Link from "next/link";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles } from "@/styles/classNames";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import { requireAdminUser } from "@/lib/auth/requireAdminUser";
 
 type AdminPricingDetailPageProps = {
     params: Promise<{ pricingProfileId: string }>;
@@ -67,6 +71,46 @@ function formatDateTime(dateValue: string | null): string {
 
 function formatText(textValue: string): string {
     return textValue.replaceAll("_", " ");
+}
+
+/*=========================================================
+    PURPOSE: CREATE A NEW DRAFT PRICING VERSION
+
+    The admin page is protected by admin/layout.tsx.
+    This action checks the admin role again before using
+    supabaseAdmin for the financial database operation.
+
+    PostgreSQL performs the profile and rate inserts together
+    inside create_pricing_profile_draft().
+=========================================================*/
+async function createDraftPricingVersion(formData: FormData) {
+    "use server";
+
+    const adminUser = await requireAdminUser();
+    const sourcePricingProfileId = String(formData.get("sourcePricingProfileId") || "");
+
+    if (!sourcePricingProfileId) {redirect("/admin/pricing?error=missing-source-profile");}
+
+    const { data: newDraftProfileId, error } = await supabaseAdmin.rpc(
+        "create_pricing_profile_draft",
+        {
+            p_source_pricing_profile_id: sourcePricingProfileId,
+            p_created_by_user_id: adminUser.id,
+        }
+    );
+
+    if (error) {
+        console.error("Could not create pricing-profile draft:", error);
+        redirect(`/admin/pricing/${sourcePricingProfileId}?error=create-draft-failed`);
+    }
+
+    if (!newDraftProfileId || typeof newDraftProfileId !== "string") {
+        console.error("Draft function did not return a valid profile ID.");
+        redirect(`/admin/pricing/${sourcePricingProfileId}?error=invalid-draft-result`);
+    }
+
+    revalidatePath("/admin/pricing");
+    redirect(`/admin/pricing/${newDraftProfileId}`);
 }
 
 /**
@@ -193,7 +237,23 @@ export default async function AdminPricingDetailPage({ params }: AdminPricingDet
                 <p className={pageStyles.pageDescription}>
                     Read-only configuration for version {pricingProfile.pricing_profile_version}.
                 </p>
-
+                {/*
+                    Button is clicked
+                            ↓
+                    Form calls createDraftPricingVersion
+                            ↓
+                    requireAdminUser verifies the administrator
+                            ↓
+                    PostgreSQL creates the profile and rates atomically
+                            ↓
+                    Page redirects to the new draft
+                */}
+                {pricingProfile.status === "active" ? (
+                    <form action={createDraftPricingVersion} className="mb-6">
+                        <input type="hidden" name="sourcePricingProfileId" value={pricingProfile.id} />
+                        <button type="submit" className={formStyles.smallButton}>Create draft version</button>
+                    </form>
+                ) : null}
                 {loadError ? (<p className={pageStyles.errorMsg}>Some related pricing configuration could not be loaded.</p>) : null}
 
                 <div className="grid gap-6 lg:grid-cols-2">
