@@ -90,27 +90,125 @@ export type GeocodedLocation = {
     coordinate: MapboxCoordinate;
 };
 
+export type ReverseGeocodedLocation = {
+    countryCode: string;
+};
+
 // Represents optional filters for an address search.
 export type GeocodeAddressOptions = {
     countryCode?: string;
 };
+
+/*
+    PURPOSE: DETERMINE THE COUNTRY OF A COORDINATE
+
+    This function:
+    - receives longitude and latitude;
+    - validates the coordinate;
+    - asks Mapbox which country contains that coordinate;
+    - returns the ISO two-letter country code such as NL or BE.
+
+    This runs only on the server.
+    The browser does not decide the pricing country.
+*/
+
 
 // Represents only the Mapbox response fields required by this service.
 type MapboxGeocodingResponse = {
     features?: Array<{
         id?: string;
         geometry?: { coordinates?: [number, number]; };
-        properties?: { full_address?: string; name?: string; place_formatted?: string; };
+        properties?: {
+            full_address?: string;
+            name?: string;
+            place_formatted?: string;
+            feature_type?: string;
+            country_code?: string;
+            context?: {country?: {country_code?: string;};};
+        };
     }>;
 };
 
+/**
+ * const geocodingBaseUrl = "https://api.mapbox.com/search/geocode/v6/forward"; (FORWARD )
+    * Address → Coordinates
+    * "Damrak 1, Amsterdam"
+    *         ↓
+    * 4.89, 52.3
+*
+* const reverseGeocodingBaseUrl = "https://api.mapbox.com/search/geocode/v6/reverse"; (REVERSE)
+    Coordinates → Location information
+    4.89, 52.37
+        ↓
+    Netherlands / NL
+ */
+
+//“I have a written address. Tell me where it is.” does not send a request. It only saves the Mapbox destination address in a constant.
 const geocodingBaseUrl = "https://api.mapbox.com/search/geocode/v6/forward";
 
+//"The internet address of Mapbox's reverse-geocoding service". only stores the Mapbox endpoint address in a variable.
+const reverseGeocodingBaseUrl = "https://api.mapbox.com/search/geocode/v6/reverse";
+
+/*
+    PURPOSE: DETERMINE THE COUNTRY OF A COORDINATE
+
+    Coordinate → Mapbox reverse geocoding → country code
+
+    Example:
+    { longitude: 4.9041, latitude: 52.3676 }
+        ↓
+    { countryCode: "NL" }
+*/
+export async function reverseGeocodeCoordinate(coordinateValue: MapboxCoordinate): Promise<ReverseGeocodedLocation> {
+
+    const { longitude, latitude } = coordinateValue;
+
+    if (
+        !Number.isFinite(longitude) ||
+        !Number.isFinite(latitude) ||
+        longitude < -180 ||
+        longitude > 180 ||
+        latitude < -90 ||
+        latitude > 90
+    ) {
+        throw new Error("The coordinate is invalid.");
+    }
+
+    const accessToken = process.env.MAPBOX_ACCESS_TOKEN;
+    if (!accessToken) { throw new Error("MAPBOX_ACCESS_TOKEN is missing."); }
+
+    const requestUrl = new URL(reverseGeocodingBaseUrl);
+
+    requestUrl.searchParams.set("longitude", String(longitude));
+    requestUrl.searchParams.set("latitude", String(latitude));
+    requestUrl.searchParams.set("access_token", accessToken);
+
+    const response = await fetch(requestUrl, { cache: "no-store" });
+    const result = await response.json() as MapboxGeocodingResponse;
+
+    if (!response.ok) {
+        throw new Error("Mapbox reverse geocoding failed.");
+    }
+
+    const countryCode = result.features
+        ?.map((feature) =>
+            feature.properties?.context?.country?.country_code ||
+            (feature.properties?.feature_type === "country"
+                ? feature.properties?.country_code
+                : undefined)
+        )
+        .find(Boolean);
+
+    if (!countryCode) {
+        throw new Error("The pickup country could not be determined.");
+    }
+
+    return {
+        countryCode: countryCode.toUpperCase(),
+    };
+}
 // Converts written address text into coordinates.
-export async function geocodeAddress(
-    addressText: string,
-    options: GeocodeAddressOptions = {},
-): Promise<GeocodedLocation> {
+export async function geocodeAddress( addressText: string, options: GeocodeAddressOptions = {}): Promise<GeocodedLocation> {
     // Cleans and validates the provided search text.
     const cleanedAddress = addressText.trim();
     if (cleanedAddress.length < 3) { throw new Error("The address is too short."); }

@@ -207,16 +207,15 @@ export default function BookingForm() {
         };
     }
 
-    /**
-     * Requests a temporary server-calculated quote for the current route.
-     * Returns null when the quote cannot be created.
-     * This function:
-        Sends only distance and duration to the server.
+    /*
+        This function:
+        Sends the selected pickup and destination coordinates to the server.
+        The server calculates the trusted distance, duration and price.
         Receives the server-calculated quote.
         Stores it in journeyQuote.
         Returns null if anything fails.
         Always resets isCreatingQuote.
-     */
+    */
     async function createJourneyQuoteForReview(): Promise<TemporaryJourneyQuote | null> {
         if (!routeEstimate) { return null; }
         setIsCreatingQuote(true);
@@ -226,8 +225,8 @@ export default function BookingForm() {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
-                    distanceKm: routeEstimate.distanceKilometers,
-                    estimatedDurationMinutes: routeEstimate.durationMinutes,
+                    pickupCoordinate: pickupLocation?.coordinate,
+                    destinationCoordinate: destinationLocation?.coordinate,
                 }),
             });
 

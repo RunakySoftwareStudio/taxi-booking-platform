@@ -1,33 +1,111 @@
 import { describe, expect, it } from "vitest";
-import { isCreateJourneyQuoteRequest } from "../../../src/lib/pricing/isCreateJourneyQuoteRequest";
+
+import { isCreateJourneyQuoteRequest } from "@/lib/pricing/isCreateJourneyQuoteRequest";
 
 /**
  * Purpose:
- * Tests whether journey-quote request data received from the browser
- * is accepted only when both required values are valid.
+ * Tests the journey-quote request validator.
+ *
+ * The browser now sends only:
+ * - pickup coordinates;
+ * - destination coordinates.
+ *
+ * Distance and duration are no longer trusted browser inputs.
+ * They are calculated later by the server using Mapbox.
  */
 describe("isCreateJourneyQuoteRequest", () => {
-    it("returns true for a valid journey quote request", () => {
-        const requestData: unknown = {distanceKm: 10, estimatedDurationMinutes: 20};
+
+    it("returns true for valid pickup and destination coordinates", () => {
+        const requestData: unknown = {
+            pickupCoordinate: {
+                longitude: 4.9041,
+                latitude: 52.3676,
+            },
+            destinationCoordinate: {
+                longitude: 4.4777,
+                latitude: 51.9244,
+            },
+        };
+
         const isValidRequest = isCreateJourneyQuoteRequest(requestData);
+
         expect(isValidRequest).toBe(true);
     });
 
-    it("returns false when a required value is not a number", () => {
-        const requestData: unknown = {distanceKm: "10", estimatedDurationMinutes: 20};
+
+    it("returns false when a coordinate value is not a number", () => {
+        const requestData: unknown = {
+            pickupCoordinate: {
+                longitude: "4.9041",
+                latitude: 52.3676,
+            },
+            destinationCoordinate: {
+                longitude: 4.4777,
+                latitude: 51.9244,
+            },
+        };
+
         const isValidRequest = isCreateJourneyQuoteRequest(requestData);
+
         expect(isValidRequest).toBe(false);
     });
 
-    it("returns false when a required number is zero or negative", () => {
-        const requestData: unknown = {distanceKm: 0, estimatedDurationMinutes: -5};
+
+    it("returns false when longitude is outside the valid range", () => {
+        const requestData: unknown = {
+            pickupCoordinate: {
+                longitude: 181,
+                latitude: 52.3676,
+            },
+            destinationCoordinate: {
+                longitude: 4.4777,
+                latitude: 51.9244,
+            },
+        };
+
         const isValidRequest = isCreateJourneyQuoteRequest(requestData);
+
         expect(isValidRequest).toBe(false);
     });
+
+
+    it("returns false when latitude is outside the valid range", () => {
+        const requestData: unknown = {
+            pickupCoordinate: {
+                longitude: 4.9041,
+                latitude: 91,
+            },
+            destinationCoordinate: {
+                longitude: 4.4777,
+                latitude: 51.9244,
+            },
+        };
+
+        const isValidRequest = isCreateJourneyQuoteRequest(requestData);
+
+        expect(isValidRequest).toBe(false);
+    });
+
+
+    it("returns false when one required coordinate is missing", () => {
+        const requestData: unknown = {
+            pickupCoordinate: {
+                longitude: 4.9041,
+                latitude: 52.3676,
+            },
+        };
+
+        const isValidRequest = isCreateJourneyQuoteRequest(requestData);
+
+        expect(isValidRequest).toBe(false);
+    });
+
 
     it("returns false when the input is not an object", () => {
-        const requestData: unknown = null;
+        const requestData: unknown = "invalid request";
+
         const isValidRequest = isCreateJourneyQuoteRequest(requestData);
+
         expect(isValidRequest).toBe(false);
     });
 });

@@ -1,39 +1,61 @@
+/**
+ * Current validation flow:
+ *
+ * Valid pickup coordinates?
+ *      ↓
+ * Valid destination coordinates?
+ *      ↓
+ * true
+ *
+ * Distance and duration are NOT accepted from the browser.
+ * They are calculated by the server from these coordinates.
+ */
 import type { CreateJourneyQuoteRequest } from "@/types/createJourneyQuoteRequestType";
+import type { MapboxCoordinate } from "@/types/mapboxType";
 
 /**
  * Purpose:
- * Checks whether data received from the browser contains a valid journey distance and estimated duration.
- * Important:
-    unknown: means we do not trust the browser data yet.
-    Number.isFinite(...): rejects invalid values such as Infinity and NaN.
-    inputValue is CreateJourneyQuoteRequest: tells TypeScript that successfully validated data has the correct request structure.
+ * Checks whether one value contains a valid longitude and latitude.
+ *
+ * Longitude must be between -180 and 180.
+ * Latitude must be between -90 and 90.
+ */
+function isValidCoordinate(inputValue: unknown): inputValue is MapboxCoordinate {
+    if (typeof inputValue !== "object" || inputValue === null) { return false; }
 
-    If all those runtime checks passed and the function returned true, treat inputValue as a CreateJourneyQuoteRequest.
-    Is it an object?
-       ↓
-    Does it contain the required numeric properties?
-        ↓
-    Are those numbers finite and greater than zero?
-        ↓
-    Return true
-    Then this type predicate:
-        inputValue is CreateJourneyQuoteRequest
-        does not perform another check. It only tells TypeScript: If all those runtime checks passed and returned true, treat inputValue as a CreateJourneyQuoteRequest.
+    const coordinateData = inputValue as Record<string, unknown>;
+
+    return (
+        typeof coordinateData.longitude === "number" &&
+        Number.isFinite(coordinateData.longitude) &&
+        coordinateData.longitude >= -180 &&
+        coordinateData.longitude <= 180 &&
+        typeof coordinateData.latitude === "number" &&
+        Number.isFinite(coordinateData.latitude) &&
+        coordinateData.latitude >= -90 &&
+        coordinateData.latitude <= 90
+    );
+}
+
+/**
+ * Purpose:
+ * Checks whether data received from the browser is a valid
+ * temporary journey-quote request.
+ *
+ * The browser only needs to provide:
+ * - pickup coordinates;
+ * - destination coordinates.
+ *
+ * Distance and duration are calculated later on the server.
  */
 export function isCreateJourneyQuoteRequest(inputValue: unknown): inputValue is CreateJourneyQuoteRequest {
-    if (typeof inputValue !== "object" || inputValue === null) {
-        return false;
-    }
+
+    if (typeof inputValue !== "object" || inputValue === null) { return false; }
 
     const requestData = inputValue as Record<string, unknown>;
 
-    // Return true only when both values are finite positive numbers.
     return (
-        typeof requestData.distanceKm === "number" &&
-        Number.isFinite(requestData.distanceKm) &&
-        requestData.distanceKm > 0 &&
-        typeof requestData.estimatedDurationMinutes === "number" &&
-        Number.isFinite(requestData.estimatedDurationMinutes) &&
-        requestData.estimatedDurationMinutes > 0
+        isValidCoordinate(requestData.pickupCoordinate) &&
+        isValidCoordinate(requestData.destinationCoordinate)
     );
 }

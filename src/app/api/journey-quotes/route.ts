@@ -6,23 +6,11 @@ import { isCreateJourneyQuoteRequest } from "@/lib/pricing/isCreateJourneyQuoteR
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import type { CreateJourneyQuoteResponse } from "@/types/createJourneyQuoteResponseType";
 import { createJourneyQuoteItems } from "@/lib/pricing/createJourneyQuoteItems";
+import { calculateRouteEstimate } from "@/lib/mapbox/mapboxRouteService";
+import { reverseGeocodeCoordinate } from "@/lib/mapbox/mapboxGeocodingService";
+import { resolvePricingMarket } from "@/lib/pricing/resolvePricingMarket";
 
-/*
- * Temporary default pricing market.
- *
- * This must later be resolved from the journey pickup location
- * and operating market. It must never be selected from the
- * website language.
- * 
- * journey_quotes = one summary row for the complete quote
- * journey_quote_items = multiple detailed rows explaining the quote
- */
-const defaultPricingMarket = {
-    pricingProfileCode: "NL_DAYTIME_STANDARD",
-    countryCode: "NL",
-    currencyCode: "EUR",
-    serviceCategory: "passenger_transport",
-} as const;
+
 
 /**
  * Purpose:
@@ -44,25 +32,105 @@ export async function POST(request: Request) {
 
     if (!isCreateJourneyQuoteRequest(requestBody)) {
         return NextResponse.json(
-            {error:"Distance and estimated duration must be positive numbers."},
+            {error:"Valid pickup and destination coordinates are required."},
+            { status: 400 }
+        );
+    }
+    /*
+        PURPOSE: CALCULATE THE TRUSTED ROUTE ON THE SERVER
+        The browser also currently sends distance and duration, but we no longer use those values for the price calculation.
+        Instead:
+        pickup + destination coordinates
+            ↓
+        server calls Mapbox
+            ↓
+        trusted distance + duration
+            ↓
+        pricing calculation
+
+        This prevents somebody from manually changing the browser
+        request to make a journey appear shorter or cheaper.
+    */
+    let routeEstimate;
+
+    try {
+        routeEstimate = await calculateRouteEstimate(
+            requestBody.pickupCoordinate,
+            requestBody.destinationCoordinate
+        );
+    }
+    catch (error) {
+        console.error("Could not calculate trusted journey route:", error);
+
+        return NextResponse.json(
+            { error: "The journey route could not be calculated." },
+            { status: 500 }
+        );
+    }
+
+    /*
+        PURPOSE: DETERMINE THE PRICING COUNTRY FROM THE PICKUP
+        The browser does not send or choose the pricing country.
+        pickup coordinate
+            ↓
+        Mapbox reverse geocoding on the server
+            ↓
+        country code such as NL
+    */
+    let pickupCountry;
+
+    try {
+        pickupCountry = await reverseGeocodeCoordinate(
+            requestBody.pickupCoordinate
+        );
+    }
+    catch (error) {
+        console.error("Could not determine pickup country:", error);
+
+        return NextResponse.json(
+            { error: "The pickup country could not be determined." },
+            { status: 500 }
+        );
+    }
+
+    /*
+        PURPOSE: RESOLVE THE FINANCIAL PRICING MARKET
+
+        The country was already verified by Mapbox on the server.
+
+        Example:
+        pickup country = NL
+            ↓
+        resolvePricingMarket("NL")
+            ↓
+        NL_DAYTIME_STANDARD
+        EUR
+        passenger_transport
+
+        Website language is not involved.
+    */
+    const pricingMarket = resolvePricingMarket(pickupCountry.countryCode);
+    if (!pricingMarket) {
+        return NextResponse.json(
+            { error: "Pricing is not yet available for this pickup country." },
             { status: 400 }
         );
     }
 
     const pricingConfiguration =
         await loadActiveJourneyPricingConfiguration({
-            pricingProfileCode: defaultPricingMarket.pricingProfileCode,
-            countryCode: defaultPricingMarket.countryCode,
-            currencyCode: defaultPricingMarket.currencyCode,
-            serviceCategory: defaultPricingMarket.serviceCategory,
+            pricingProfileCode: pricingMarket.pricingProfileCode,
+            countryCode: pricingMarket.countryCode,
+            currencyCode: pricingMarket.currencyCode,
+            serviceCategory: pricingMarket.serviceCategory,
         });
 
     const journeyQuote = createTemporaryJourneyQuote(
         pricingConfiguration.pricingProfile,
         pricingConfiguration.taxRule,
         pricingConfiguration.roundingRule,
-        requestBody.distanceKm,
-        requestBody.estimatedDurationMinutes,
+        routeEstimate.distanceKilometers,
+        routeEstimate.durationMinutes,
         pricingConfiguration.quoteValidityMinutes
     );
 
