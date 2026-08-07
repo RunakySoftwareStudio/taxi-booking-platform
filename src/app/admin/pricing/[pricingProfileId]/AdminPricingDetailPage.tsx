@@ -113,6 +113,86 @@ async function createDraftPricingVersion(formData: FormData) {
     redirect(`/admin/pricing/${newDraftProfileId}`);
 }
 
+/*=========================================================
+    PURPOSE: UPDATE A DRAFT PRICING VERSION
+
+    Only draft profiles may be edited.
+
+    Protection:
+    1. requireAdminUser() verifies the administrator.
+    2. Server-side validation checks submitted values.
+    3. PostgreSQL verifies that the profile is still a draft.
+    4. PostgreSQL updates profile + rates atomically.
+=========================================================*/
+async function updateDraftPricingVersion(formData: FormData) {
+    "use server";
+
+    await requireAdminUser();
+
+    const pricingProfileId = String(formData.get("pricingProfileId") || "");
+    const pricingProfileName = String(formData.get("pricingProfileName") || "").trim();
+    const quoteValidityText = String(formData.get("quoteValidityMinutes") || "").trim();
+    const baseFareText = String(formData.get("baseFareExcludingVat") || "").trim();
+    const distanceRateText = String(formData.get("distanceRatePerKmExcludingVat") || "").trim();
+    const durationRateText = String(formData.get("durationRatePerMinuteExcludingVat") || "").trim();
+    const minimumFareText = String(formData.get("minimumFareExcludingVat") || "").trim();
+
+    if (!pricingProfileId || !pricingProfileName || !quoteValidityText ||
+        !baseFareText || !distanceRateText || !durationRateText || !minimumFareText) {
+        redirect(`/admin/pricing/${pricingProfileId}?error=missing-fields`);
+    }
+
+    const quoteValidityMinutes = Number(quoteValidityText);
+    const baseFareExcludingVat = Number(baseFareText);
+    const distanceRatePerKmExcludingVat = Number(distanceRateText);
+    const durationRatePerMinuteExcludingVat = Number(durationRateText);
+    const minimumFareExcludingVat = Number(minimumFareText);
+
+    if (!Number.isInteger(quoteValidityMinutes) || quoteValidityMinutes < 1 || quoteValidityMinutes > 1440) {
+        redirect(`/admin/pricing/${pricingProfileId}?error=invalid-quote-validity`);
+    }
+
+    const pricingValues = [
+        baseFareExcludingVat,
+        distanceRatePerKmExcludingVat,
+        durationRatePerMinuteExcludingVat,
+        minimumFareExcludingVat,
+    ];
+
+    //if any value is not a valid number or is negative, reject the request.
+    if (pricingValues.some((pricingValue) => !Number.isFinite(pricingValue) || pricingValue < 0)) {
+        redirect(`/admin/pricing/${pricingProfileId}?error=invalid-pricing-value`);
+    }
+
+    const { data: updatedPricingProfileId, error } = await supabaseAdmin.rpc(
+        "update_pricing_profile_draft",
+        {
+            p_pricing_profile_id: pricingProfileId,
+            p_pricing_profile_name: pricingProfileName,
+            p_quote_validity_minutes: quoteValidityMinutes,
+            p_base_fare_excluding_vat: baseFareExcludingVat,
+            p_distance_rate_per_km_excluding_vat: distanceRatePerKmExcludingVat,
+            p_duration_rate_per_minute_excluding_vat: durationRatePerMinuteExcludingVat,
+            p_minimum_fare_excluding_vat: minimumFareExcludingVat,
+        }
+    );
+
+    if (error) {
+        console.error("Could not update pricing-profile draft:", error);
+        redirect(`/admin/pricing/${pricingProfileId}?error=update-draft-failed`);
+    }
+
+    if (!updatedPricingProfileId || typeof updatedPricingProfileId !== "string") {
+        console.error("Draft update function did not return a valid profile ID.");
+        redirect(`/admin/pricing/${pricingProfileId}?error=invalid-update-result`);
+    }
+
+    revalidatePath("/admin/pricing");
+    revalidatePath(`/admin/pricing/${pricingProfileId}`);
+
+    redirect(`/admin/pricing/${updatedPricingProfileId}`);
+}
+
 /**
  * Purpose:
  * Displays the complete read-only configuration of one
@@ -237,6 +317,101 @@ export default async function AdminPricingDetailPage({ params }: AdminPricingDet
                 <p className={pageStyles.pageDescription}>
                     Read-only configuration for version {pricingProfile.pricing_profile_version}.
                 </p>
+                {/*=========================================================
+                    PURPOSE: EDIT DRAFT PRICING
+
+                    This form is shown only when the selected pricing profile
+                    has status = "draft" and a pricing_rates record exists.
+
+                    The administrator may edit:
+                    - pricing profile name;
+                    - quote validity in minutes;
+                    - base fare excluding VAT;
+                    - distance rate per kilometre excluding VAT;
+                    - duration rate per minute excluding VAT;
+                    - minimum fare excluding VAT.
+
+                    The following values remain read-only because they define
+                    the pricing family, market, lifecycle, or shared rules:
+                    - pricing profile code;
+                    - version;
+                    - country;
+                    - currency;
+                    - status;
+                    - VAT rule;
+                    - currency rounding rule.
+
+                    When Save draft pricing is clicked:
+                        form values
+                            ↓
+                        updateDraftPricingVersion()
+                            ↓
+                        requireAdminUser() verifies the administrator
+                            ↓
+                        server-side validation checks submitted values
+                            ↓
+                        PostgreSQL update_pricing_profile_draft()
+                            ↓
+                        PostgreSQL verifies status = draft
+                            ↓
+                        pricing_profiles + pricing_rates are updated atomically
+                            ↓
+                        page reloads with the saved draft values
+
+                    Active and archived pricing versions never show this form
+                    and PostgreSQL also rejects attempts to edit them.
+                =========================================================*/}
+                {pricingProfile.status === "draft" && pricingRate ? (
+                    <form action={updateDraftPricingVersion} className={formStyles.form}>
+                        <input type="hidden" name="pricingProfileId" value={pricingProfile.id} />
+
+                        <h2 className="mb-4 text-lg font-semibold text-cyan-300">Edit draft pricing</h2>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <label>
+                                <span className={formStyles.span}>Profile name</span>
+                                <input type="text" name="pricingProfileName" defaultValue={pricingProfile.pricing_profile_name}
+                                    className={formStyles.inputWFullCyan} required />
+                            </label>
+
+                            <label>
+                                <span className={formStyles.span}>Quote validity (minutes)</span>
+                                <input type="number" name="quoteValidityMinutes" defaultValue={pricingProfile.quote_validity_minutes}
+                                    min="1" max="1440" step="1" className={formStyles.inputWFullCyan} required />
+                            </label>
+
+                            {/*step="0.0001" matches our database precision: NUMERIC(12,4)*/}
+                            <label>
+                                <span className={formStyles.span}>Base fare excluding VAT</span>
+                                <input type="number" name="baseFareExcludingVat" defaultValue={pricingRate.base_fare_excluding_vat}
+                                    min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
+                            </label>
+
+                            <label>
+                                <span className={formStyles.span}>Rate per kilometre excluding VAT</span>
+                                <input type="number" name="distanceRatePerKmExcludingVat" defaultValue={pricingRate.distance_rate_per_km_excluding_vat}
+                                    min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
+                            </label>
+
+                            <label>
+                                <span className={formStyles.span}>Rate per minute excluding VAT</span>
+                                <input type="number" name="durationRatePerMinuteExcludingVat" defaultValue={pricingRate.duration_rate_per_minute_excluding_vat}
+                                    min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
+                            </label>
+
+                            <label>
+                                <span className={formStyles.span}>Minimum fare excluding VAT</span>
+                                <input type="number" name="minimumFareExcludingVat" defaultValue={pricingRate.minimum_fare_excluding_vat}
+                                    min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
+                            </label>
+                        </div>
+
+                        <button type="submit" className={`${formStyles.smallButton} mt-5`}>
+                            Save draft pricing
+                        </button>
+                    </form>
+                ) : null}
+
                 {/*
                     Button is clicked
                             ↓
