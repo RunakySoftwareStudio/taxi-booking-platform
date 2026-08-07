@@ -193,6 +193,60 @@ async function updateDraftPricingVersion(formData: FormData) {
     redirect(`/admin/pricing/${updatedPricingProfileId}`);
 }
 
+/*=========================================================
+    PURPOSE: ACTIVATE A DRAFT PRICING VERSION
+
+    This changes which pricing version customers will use.
+
+    Flow:
+        draft profile
+            ↓
+        requireAdminUser() verifies the administrator
+            ↓
+        PostgreSQL locks the pricing family
+            ↓
+        current active version becomes archived
+            ↓
+        draft becomes active
+            ↓
+        both versions receive the same transition timestamp
+            ↓
+        new customer quotes use the newly active version
+
+    The PostgreSQL function performs the complete transition
+    atomically. If any part fails, neither version is changed.
+=========================================================*/
+async function activateDraftPricingVersion(formData: FormData) {
+    "use server";
+
+    const adminUser = await requireAdminUser();
+    const pricingProfileId = String(formData.get("pricingProfileId") || "");
+    if (!pricingProfileId) { redirect("/admin/pricing?error=missing-profile"); }
+
+    const { data: activatedPricingProfileId, error } = await supabaseAdmin.rpc(
+        "activate_pricing_profile_draft",
+        {
+            p_pricing_profile_id: pricingProfileId,
+            p_activated_by_user_id: adminUser.id,
+        }
+    );
+
+    if (error) {
+        console.error("Could not activate pricing-profile draft:", error);
+        redirect(`/admin/pricing/${pricingProfileId}?error=activate-draft-failed`);
+    }
+
+    if (!activatedPricingProfileId || typeof activatedPricingProfileId !== "string") {
+        console.error("Activation function did not return a valid profile ID.");
+        redirect(`/admin/pricing/${pricingProfileId}?error=invalid-activation-result`);
+    }
+
+    revalidatePath("/admin/pricing");
+    revalidatePath(`/admin/pricing/${pricingProfileId}`);
+
+    redirect(`/admin/pricing/${activatedPricingProfileId}`);
+}
+
 /**
  * Purpose:
  * Displays the complete read-only configuration of one
@@ -410,6 +464,39 @@ export default async function AdminPricingDetailPage({ params }: AdminPricingDet
                             Save draft pricing
                         </button>
                     </form>
+                ) : null}
+
+                {/*=========================================================
+                    PURPOSE: ACTIVATE DRAFT PRICING
+
+                    Activation makes this draft the official pricing version
+                    used for new customer quotes.
+
+                    PostgreSQL performs both changes together:
+                    - current active version → archived;
+                    - this draft version → active.
+
+                    The old version receives effective_until and the new
+                    version receives effective_from at exactly the same time.
+
+                    After activation this version becomes read-only.
+                =========================================================*/}
+                {pricingProfile.status === "draft" ? (
+                    <section className="mt-6 rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-4">
+                        <h2 className="text-lg font-semibold text-yellow-200">Activate pricing version</h2>
+
+                        <p className="mt-2 text-sm text-slate-300">
+                            Activating Version {pricingProfile.pricing_profile_version} will make these prices active for new customer quotes.
+                            The current active version will automatically be archived.
+                        </p>
+
+                        <form action={activateDraftPricingVersion} className="mt-4">
+                            <input type="hidden" name="pricingProfileId" value={pricingProfile.id} />
+                            <button type="submit" className={formStyles.smallButton}>
+                                Activate Version {pricingProfile.pricing_profile_version}
+                            </button>
+                        </form>
+                    </section>
                 ) : null}
 
                 {/*
