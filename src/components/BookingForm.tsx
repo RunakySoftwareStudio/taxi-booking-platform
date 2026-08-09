@@ -66,6 +66,7 @@ export default function BookingForm() {
     const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
     const [routeEstimateError, setRouteEstimateError] = useState("");
     const [needsPassengerSupport, setNeedsPassengerSupport] = useState(false);
+    const [bookingSessionId, setBookingSessionId] = useState(() => crypto.randomUUID());
 
     // When submittedBooking changes from null to a real booking, scroll smoothly to the result area.
     useEffect(() => {
@@ -77,8 +78,55 @@ export default function BookingForm() {
         }
     }, [submittedBooking]);
 
+    /*
+    * Voids the current temporary journey quote.
+    *
+    * Returns:
+    * true  = there was no quote, or the quote was successfully voided;
+    * false = the server could not void the quote.
+
+        Pickup changes       ─┐
+        Destination changes  ─┼─→ voidCurrentJourneyQuote()
+        Cancel booking       ─┘
+    */
+    async function voidCurrentJourneyQuote(): Promise<boolean> {
+
+        // Nothing to void.
+        if (!journeyQuote) { return true; }
+
+        try {
+            const response = await fetch("/api/journey-quotes/void", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    quoteId: journeyQuote.quoteId,
+                    bookingSessionId,
+                }),
+            });
+
+            if (!response.ok) {
+                setErrorMessage("The current temporary quote could not be cancelled. Please try again.");
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error("Could not void the current journey quote:", error);
+            setErrorMessage("The current temporary quote could not be cancelled. Please try again.");
+            return false;
+        }
+    }
+
     // Updates pickup and invalidates the old route price.
-    function handlePickupLocationChange(locationValue: RetrievedLocation | null) {
+    async function handlePickupLocationChange(locationValue: RetrievedLocation | null) {
+
+        /*
+        * The old quote belongs to the previous journey.
+        * Void it before forgetting its quote ID.
+        */
+        const quoteWasReleased = await voidCurrentJourneyQuote();
+        if (!quoteWasReleased) { return; }
+
         setPickupLocation(locationValue);
 
         /*
@@ -95,7 +143,15 @@ export default function BookingForm() {
 
 
     // Updates destination and invalidates the old route price.
-    function handleDestinationLocationChange(locationValue: RetrievedLocation | null) {
+    async function handleDestinationLocationChange(locationValue: RetrievedLocation | null) {
+
+        /*
+        * The old quote belongs to the previous journey.
+        * Void it before forgetting its quote ID.
+        */
+        const quoteWasReleased = await voidCurrentJourneyQuote();
+        if (!quoteWasReleased) { return; }
+
         setDestinationLocation(locationValue);
 
         /*
@@ -246,6 +302,7 @@ export default function BookingForm() {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
+                    bookingSessionId,
                     pickupCoordinate: pickupLocation?.coordinate,
                     destinationCoordinate: destinationLocation?.coordinate,
                 }),
@@ -377,7 +434,16 @@ export default function BookingForm() {
     }
 
     // Cancels the current unfinished booking and returns to a completely fresh form.
-    function handleResetBooking() {
+    async function handleResetBooking() {
+
+        /*
+        * If an active temporary quote exists, void it first.
+        * If voiding fails, keep the current form so we do not lose
+        * track of an active financial quote.
+        */
+        const quoteWasReleased = await voidCurrentJourneyQuote();
+        if (!quoteWasReleased) { return; }
+
         setPickupLocation(null);
         setDestinationLocation(null);
 
@@ -400,11 +466,15 @@ export default function BookingForm() {
         /*
         * Remounts the form and all child inputs.
         *
-        * This is especially useful for MapboxLocationSearchInput, because that component has its own internal searchText state.
-        * Changing the React key tells React: This is a new form. Remove the old form and create a fresh one.
-        * That resets the internal Mapbox component state too.
+        * This also resets internal state inside MapboxLocationSearchInput.
         */
         setFormResetKey((currentKey) => currentKey + 1);
+
+        /*
+        * The previous unfinished booking attempt is finished.
+        * The next booking starts with a completely new session ID.
+        */
+        setBookingSessionId(crypto.randomUUID());
     }
 
   return (

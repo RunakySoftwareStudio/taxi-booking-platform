@@ -55,6 +55,8 @@ export function isCreateJourneyQuoteRequest(inputValue: unknown): inputValue is 
     const requestData = inputValue as Record<string, unknown>;
 
     return (
+        typeof requestData.bookingSessionId === "string" &&
+        requestData.bookingSessionId.trim() !== "" &&
         isValidCoordinate(requestData.pickupCoordinate) &&
         isValidCoordinate(requestData.destinationCoordinate)
     );

@@ -717,18 +717,30 @@ CREATE TABLE IF NOT EXISTS public.journey_quotes (
     final_total_including_vat NUMERIC(12, 2) NOT NULL,
 
     /*
-    Stores a fingerprint of the normalized pricing-relevant
-    journey information used to create this quote.
+        Identifies the unfinished public booking session that created
+        this temporary quote.
 
-    The fingerprint currently represents:
-    - pickup coordinates;
-    - destination coordinates.
+        Multiple temporary quotes may belong to the same booking session
+        when the customer changes the journey and requests a replacement.
 
-    During booking confirmation, the server creates the
-    fingerprint again and compares it with this stored value.
+        NULL is allowed for older quotes created before booking-session
+        tracking was introduced.
+    */
+    booking_session_id UUID,
 
-    NULL is allowed only for compatibility with older quotes
-    created before fingerprint protection was introduced.
+    /*
+        Stores a fingerprint of the normalized pricing-relevant
+        journey information used to create this quote.
+
+        The fingerprint currently represents:
+        - pickup coordinates;
+        - destination coordinates.
+
+        During booking confirmation, the server creates the
+        fingerprint again and compares it with this stored value.
+
+        NULL is allowed only for compatibility with older quotes
+        created before fingerprint protection was introduced.
     */
     booking_data_fingerprint TEXT,
 
@@ -798,6 +810,13 @@ CREATE TABLE IF NOT EXISTS public.journey_quotes (
 -- Helps the application efficiently find expired quotes.
 CREATE INDEX IF NOT EXISTS journey_quotes_expires_at_idx
     ON public.journey_quotes (expires_at);
+
+/*
+    Helps the server find temporary quotes that belong to the
+    same unfinished booking session.
+*/
+CREATE INDEX IF NOT EXISTS journey_quotes_booking_session_id_idx
+    ON public.journey_quotes (booking_session_id);
 
 -- Quotes are created and accessed only through secure server routes.
 ALTER TABLE public.journey_quotes
@@ -1140,6 +1159,264 @@ TO service_role;
 END: ATOMIC BOOKING + JOURNEY QUOTE ACCEPTANCE
 ================================================================
 */
+
+/*
+================================================================
+START: VOID REPLACED JOURNEY QUOTES
+
+Purpose:
+When a new quote has successfully been created for an unfinished
+booking session, older active quotes from that same session are
+marked as voided.
+
+Important:
+- the new quote is kept active;
+- accepted quotes are never changed;
+- quotes from another booking session are never changed;
+- only the secure service role may execute this function.
+
+pg_temp is PostgreSQL's temporary workspace.
+PostgreSQL database
+│
+├── public
+│   ├── bookings
+│   ├── journey_quotes
+│   ├── clients
+│   └── ...
+│
+└── pg_temp
+    └── temporary objects
+
+================================================================
+*/
+
+CREATE OR REPLACE FUNCTION public.void_replaced_journey_quotes_for_session(
+    p_booking_session_id UUID,
+    p_keep_quote_id UUID
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+-- is essentially telling this protected function: “Use our trusted application schema first; temporary objects come only afterward.”
+-- pg_temp is PostgreSQL's temporary workspace.
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_voided_at TIMESTAMPTZ := clock_timestamp();
+    v_voided_count INTEGER;
+    v_keep_quote_created_at TIMESTAMPTZ;
+
+BEGIN
+    /*
+        Lock this booking session for the duration of the transaction.
+        Only one quote-replacement operation for the same booking session may run at a time.
+        Without that lock, two nearly simultaneous replacement operations could overlap.
+
+        Session AAA
+        Q2 replacement request ─┐
+                            ├─ only one may modify session AAA at a time
+        Q3 replacement request ─┘
+    */
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(p_booking_session_id::TEXT, 0)
+    );
+
+    /*
+        STEP 1: VERIFY THE NEW QUOTE
+
+        Load the creation time of the quote that must remain active.
+
+        The quote must:
+        - exist;
+        - belong to this booking session;
+        - still be active.
+    */
+
+    SELECT created_at
+    INTO v_keep_quote_created_at -- this particular SELECT ... INTO is PL/pgSQL syntax for putting query results (created_at) into variables (v_keep_quote_created_at).
+    FROM public.journey_quotes
+    WHERE quote_id = p_keep_quote_id
+    AND booking_session_id = p_booking_session_id
+    AND status = 'active';
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'The active journey quote does not belong to this booking session.';
+    END IF;
+
+    /*
+        STEP 2: VOID OLDER ACTIVE QUOTES
+        Only active quotes from the same unfinished booking session are changed.
+        The newly created quote identified by p_keep_quote_id remains active.
+    */
+    UPDATE public.journey_quotes
+    SET
+        status = 'voided', voided_at = v_voided_at
+    WHERE
+        booking_session_id = p_booking_session_id
+        AND quote_id <> p_keep_quote_id
+        AND status = 'active'
+        AND created_at < v_keep_quote_created_at;
+    /*
+        Store how many old quotes were actually voided.
+    */
+    GET DIAGNOSTICS v_voided_count = ROW_COUNT;
+    RETURN v_voided_count;
+
+END;
+$$;
+
+
+/*
+================================================================
+SECURITY
+================================================================
+*/
+
+REVOKE ALL
+ON FUNCTION public.void_replaced_journey_quotes_for_session(UUID, UUID)
+FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE
+ON FUNCTION public.void_replaced_journey_quotes_for_session(UUID, UUID)
+TO service_role;
+
+/*
+================================================================
+END: VOID REPLACED JOURNEY QUOTES
+================================================================
+*/
+
+/*
+================================================================
+START: VOID ABANDONED JOURNEY QUOTE
+
+Purpose:
+Voids one exact active journey quote when the customer abandons
+or cancels an unfinished booking.
+
+Security rules:
+- the quote ID must match;
+- the booking session ID must match;
+- accepted or used quotes can never be voided;
+- only the secure service role may execute this function.
+
+exact quote_id + exact booking_session_id + still active + not accepted/used → void this one quote
+================================================================
+*/
+
+CREATE OR REPLACE FUNCTION public.void_abandoned_journey_quote(
+    p_quote_id UUID,
+    p_booking_session_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_quote public.journey_quotes%ROWTYPE;
+
+BEGIN
+
+    /*
+        STEP 1: LOCK THIS BOOKING SESSION
+
+        This uses the same session-level lock as the replacement
+        quote function, so cancellation and quote replacement cannot
+        modify the same unfinished booking session simultaneously.
+    */
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(p_booking_session_id::TEXT, 0)
+    );
+
+    /*
+        STEP 2: LOAD AND LOCK THE EXACT QUOTE
+
+        FOR UPDATE prevents another transaction from changing this
+        quote while we decide whether it may be voided.
+    */
+    SELECT *
+    INTO v_quote
+    FROM public.journey_quotes
+    WHERE quote_id = p_quote_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Journey quote was not found.';
+    END IF;
+
+    /*
+        STEP 3: VERIFY BOOKING SESSION OWNERSHIP
+
+        The browser must provide both:
+        - the exact quote ID;
+        - the booking session ID belonging to that quote.
+    */
+    IF v_quote.booking_session_id IS NULL
+        OR v_quote.booking_session_id IS DISTINCT FROM p_booking_session_id THEN
+            RAISE EXCEPTION 'Journey quote does not belong to this booking session.';
+    END IF;
+
+    /*
+        STEP 4: NEVER VOID AN ACCEPTED OR USED QUOTE
+
+        Once a quote has been accepted by a booking, cancellation
+        belongs to the future booking/refund workflow instead.
+    */
+    IF v_quote.status = 'accepted'
+       OR v_quote.used_at IS NOT NULL
+       OR v_quote.accepted_at IS NOT NULL THEN
+            RAISE EXCEPTION 'Accepted journey quotes cannot be voided.';
+    END IF;
+
+    /*
+        If the quote was already voided, there is nothing more to do.
+
+        Returning FALSE makes this operation safe if the cancel action
+        accidentally reaches the server more than once.
+    */
+    IF v_quote.status = 'voided' THEN
+        RETURN FALSE;
+    END IF;
+
+    /*
+        STEP 5: VOID THE ACTIVE QUOTE
+    */
+    IF v_quote.status <> 'active' THEN
+        RAISE EXCEPTION 'Journey quote is not active.';
+    END IF;
+
+    UPDATE public.journey_quotes
+    SET
+        status = 'voided',
+        voided_at = clock_timestamp()
+    WHERE quote_id = p_quote_id;
+
+    RETURN TRUE;
+
+END;
+$$;
+
+/*
+================================================================
+SECURITY
+================================================================
+*/
+
+REVOKE ALL
+ON FUNCTION public.void_abandoned_journey_quote(UUID, UUID)
+FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE
+ON FUNCTION public.void_abandoned_journey_quote(UUID, UUID)
+TO service_role;
+
+/*
+================================================================
+END: VOID ABANDONED JOURNEY QUOTE
+================================================================
+*/
+
 
 /* ============================================================
    JOURNEY QUOTE ITEMS

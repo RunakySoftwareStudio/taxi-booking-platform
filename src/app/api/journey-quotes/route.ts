@@ -183,6 +183,7 @@ export async function POST(request: Request) {
         .from("journey_quotes")
         .insert({
             quote_id: journeyQuote.quoteId,
+            booking_session_id: requestBody.bookingSessionId,
             pricing_profile_id: pricingConfiguration.pricingProfileId,
             tax_rule_id: pricingConfiguration.taxRuleId,
             rounding_rule_id: pricingConfiguration.roundingRuleId,
@@ -232,6 +233,50 @@ export async function POST(request: Request) {
             { status: 500 }
         );
     }
+
+    /*
+    Void older active journey quotes from the same booking session.
+
+        This runs only after:
+        - the new journey quote header was stored successfully;
+        - all journey quote items were stored successfully.
+
+        The new quote stays active.
+    */
+    const { data: voidedQuoteCount, error: voidReplacedQuoteError } = await supabaseAdmin
+        .rpc("void_replaced_journey_quotes_for_session", {
+            p_booking_session_id: requestBody.bookingSessionId,
+            p_keep_quote_id: journeyQuote.quoteId,
+        });
+
+    if (voidReplacedQuoteError) {
+        console.error("Could not void replaced journey quotes:", voidReplacedQuoteError);
+
+        /*
+            The replacement lifecycle failed.
+            Remove the newly created quote so we do not return a quote
+            while an older quote from the same session may still be active.
+        */
+        const { error: cleanupError } = await supabaseAdmin
+            .from("journey_quotes")
+            .delete()
+            .eq("quote_id", journeyQuote.quoteId);
+
+        if (cleanupError) {console.error("Could not remove journey quote after voiding failure:", cleanupError);}
+
+        return NextResponse.json(
+            { error: "The temporary quote could not replace the previous quote." },
+            { status: 500 }
+        );
+    }
+
+    /*
+        In sql function void_replaced_journey_quotes_for_session: GET DIAGNOSTICS v_voided_count = ROW_COUNT;
+        So if this is the first quote for a booking session: voidedQuoteCount = 0
+        If there was one older active quote: voidedQuoteCount = 1
+        This is useful for testing.
+     */
+    console.log("Replaced journey quotes voided:", voidedQuoteCount);
 
     /*
         Build a response that must match the successful API response type.
