@@ -31,3 +31,21 @@ export type BookingRequest = {
     mobilityAidStorageRequired: boolean;
     extraLargeLuggageRequired: boolean;
 };
+
+/**
+ * Purpose:
+ * Represents the final request sent when the customer
+ * confirms the reviewed booking.
+ *
+ * At this stage a temporary journey quote already exists,
+ * so its quote ID becomes a required part of confirmation.
+ *
+ * BookingRequest
+ *      +
+ * journeyQuoteId
+ *      ↓
+ * BookingConfirmationRequest
+ */
+export type BookingConfirmationRequest = BookingRequest & {
+    journeyQuoteId: string;
+};

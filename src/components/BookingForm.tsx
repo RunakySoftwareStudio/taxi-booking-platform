@@ -1,7 +1,6 @@
 "use client";
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { type BookingRequest } from "@/types/bookingType";
 import { type BookingSummary } from "@/types/bookingSummaryType";
 import { tripTypes } from "@/data/tripTypeData";
 import { formStyles, pageStyles, tableStyles } from "@/styles/classNames";
@@ -14,6 +13,10 @@ import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import { type WheelchairRequirement } from "@/types/wheelchairRequirementType";
 import type { TemporaryJourneyQuote } from "@/types/temporaryJourneyQuoteType";
 import type { CreateJourneyQuoteResponse } from "@/types/createJourneyQuoteResponseType";
+import {
+    type BookingRequest,
+    type BookingConfirmationRequest,
+} from "@/types/bookingType";
 
 function getTodayDateInputValue() {
   const today = new Date();
@@ -45,6 +48,7 @@ export default function BookingForm() {
     const [wheelchairRequirement, setWheelchairRequirement] = useState<WheelchairRequirement>("none");
     const [mobilityAidStorageRequired, setMobilityAidStorageRequired] = useState(false);
     const [extraLargeLuggageRequired, setExtraLargeLuggageRequired] = useState(false);
+    const [formResetKey, setFormResetKey] = useState(0);
 
     // Stores the exact Mapbox locations selected by the client.
     const [pickupLocation, setPickupLocation] = useState<RetrievedLocation | null>(null);
@@ -73,18 +77,35 @@ export default function BookingForm() {
         }
     }, [submittedBooking]);
 
-    // Updates pickup and prepares a new route calculation.
+    // Updates pickup and invalidates the old route price.
     function handlePickupLocationChange(locationValue: RetrievedLocation | null) {
         setPickupLocation(locationValue);
+
+        /*
+        * Changing the pickup means the existing route and quote
+        * no longer belong to the current journey.
+        */
         setRouteEstimate(null);
+        setJourneyQuote(null);
+        setBookingDraft(null);
+
         setRouteEstimateError("");
         setIsCalculatingRoute(Boolean(locationValue && destinationLocation));
     }
 
-    // Updates destination and prepares a new route calculation.
+
+    // Updates destination and invalidates the old route price.
     function handleDestinationLocationChange(locationValue: RetrievedLocation | null) {
         setDestinationLocation(locationValue);
+
+        /*
+        * Changing the destination means the existing route and quote
+        * no longer belong to the current journey.
+        */
         setRouteEstimate(null);
+        setJourneyQuote(null);
+        setBookingDraft(null);
+
         setRouteEstimateError("");
         setIsCalculatingRoute(Boolean(pickupLocation && locationValue));
     }
@@ -261,13 +282,22 @@ export default function BookingForm() {
         setErrorMessage("");
         setSubmitted(false);
         setSubmittedBooking(null);
-        setJourneyQuote(null);
         setRouteEstimateError("");
 
-        // Create the temporary price before opening the review screen.
-        const createdJourneyQuote = await createJourneyQuoteForReview();
-        //The temporary price could not be created. Please try again.
-        if (!createdJourneyQuote) { setErrorMessage(getBookingFormText("journeyQuoteFailedText")); return; }
+        /*
+        * Reuse the existing quote when the journey has not changed.
+        *
+        * A new quote is needed when:
+        * - no quote exists;
+        * - the previous quote has expired;
+        * - pickup/destination changed and the handlers cleared it.
+        */
+        const journeyQuoteIsStillValid =journeyQuote && new Date(journeyQuote.expiresAt).getTime() > Date.now();
+        const reviewedJourneyQuote = journeyQuoteIsStillValid ? journeyQuote : await createJourneyQuoteForReview();
+        if (!reviewedJourneyQuote) {
+            setErrorMessage(getBookingFormText("journeyQuoteFailedText"));
+            return;
+        }
 
         setBookingDraft(bookingRequest);
         setIsReviewing(true);
@@ -279,15 +309,21 @@ export default function BookingForm() {
     }
 
     async function handleConfirmBooking() {
-        if (!bookingDraft) {return;  }
+        if (!bookingDraft || !journeyQuote) { return; }
+
         setErrorMessage("");
         setIsSending(true);
+
+        const confirmationRequest: BookingConfirmationRequest = {
+            ...bookingDraft,
+            journeyQuoteId: journeyQuote.quoteId,
+        };
 
         try {
             const response = await fetch("/api/bookings", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(bookingDraft), });
+                body: JSON.stringify(confirmationRequest) });
 
             if (!response.ok) { throw new Error("Booking request failed"); }
 
@@ -338,6 +374,37 @@ export default function BookingForm() {
             setMobilityAidStorageRequired(false);
             setExtraLargeLuggageRequired(false);
         }
+    }
+
+    // Cancels the current unfinished booking and returns to a completely fresh form.
+    function handleResetBooking() {
+        setPickupLocation(null);
+        setDestinationLocation(null);
+
+        setRouteEstimate(null);
+        setRouteEstimateError("");
+        setIsCalculatingRoute(false);
+
+        setJourneyQuote(null);
+        setBookingDraft(null);
+
+        setSubmitted(false);
+        setSubmittedBooking(null);
+        setIsReviewing(false);
+
+        setErrorMessage("");
+
+        // Restores all controlled passenger-support options to safe defaults.
+        handlePassengerSupportChange(false);
+
+        /*
+        * Remounts the form and all child inputs.
+        *
+        * This is especially useful for MapboxLocationSearchInput, because that component has its own internal searchText state.
+        * Changing the React key tells React: This is a new form. Remove the old form and create a fresh one.
+        * That resets the internal Mapbox component state too.
+        */
+        setFormResetKey((currentKey) => currentKey + 1);
     }
 
   return (
@@ -472,22 +539,15 @@ export default function BookingForm() {
                 </div>
             ) : (
                 // =======****Main section client input booking form****===========
-                <form onSubmit={handleReviewBooking} className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
+                <form key={formResetKey} onSubmit={handleReviewBooking} className="mt-8 rounded-2xl border-2 border-white/10 bg-white/5 p-4 sm:mt-12 sm:p-6">
                     <div className="grid gap-5 sm:gap-6 md:grid-cols-2">
                         <MapboxLocationSearchInput
-                            id="pickup"
-                            name="pickup"
-                            label={getBookingFormText("pickupLabel")}
-                            selectedLocation={pickupLocation}
-                            onSelectedLocationChange={handlePickupLocationChange}
+                            id="pickup" name="pickup" label={getBookingFormText("pickupLabel")}
+                            selectedLocation={pickupLocation} onSelectedLocationChange={handlePickupLocationChange}
                         />
-
                         <MapboxLocationSearchInput
-                            id="destination"
-                            name="destination"
-                            label={getBookingFormText("destinationLabel")}
-                            selectedLocation={destinationLocation}
-                            onSelectedLocationChange={handleDestinationLocationChange}
+                            id="destination" name="destination" label={getBookingFormText("destinationLabel")}
+                            selectedLocation={destinationLocation} onSelectedLocationChange={handleDestinationLocationChange}
                         />
                         {/*==== Shows the automatically calculated Mapbox route estimate.==== */}
                         {(isCalculatingRoute || routeEstimate || routeEstimateError) && (
@@ -651,9 +711,15 @@ export default function BookingForm() {
                         The button is disabled. Repeated clicks are prevented.
                         The text changes to Calculating price....
                     */}
-                    <button type="submit" disabled={isCreatingQuote} className={formStyles.submitSmallButtonUserPage}>
-                        {isCreatingQuote ? getBookingFormText("calculatingPriceButton") : getBookingFormText("reviewBookingButton")}
-                    </button>
+
+                    <div className="mt-5 flex flex-wrap gap-3 sm:mt-6">
+                        <button type="button" onClick={handleResetBooking} disabled={isCreatingQuote} className={formStyles.submitSmallButtonUserPage}>
+                            Cancel booking
+                        </button>
+                        <button type="submit" disabled={isCreatingQuote} className={formStyles.submitSmallButtonUserPage}>
+                            {isCreatingQuote ? getBookingFormText("calculatingPriceButton") : getBookingFormText("reviewBookingButton")}
+                        </button>
+                    </div>
                 </form>
             )}
 

@@ -2929,8 +2929,8 @@ export const translations = {
     locationSelectResultText: { en: "Select a location from the list.", nl: "Selecteer een locatie uit de lijst.", ar: "اختر موقعًا من القائمة.", tr: "Listeden bir konum seçin.", fa: "یک مکان را از فهرست انتخاب کنید." },
     locationSearchFailedText: { en: "Locations could not be loaded.", nl: "Locaties konden niet worden geladen.", ar: "تعذر تحميل المواقع.", tr: "Konumlar yüklenemedi.", fa: "مکان‌ها بارگذاری نشدند." },
     locationSelectedText: { en: "Selected location", nl: "Geselecteerde locatie", ar: "الموقع المحدد", tr: "Seçilen konum", fa: "مکان انتخاب‌شده" },
-    changeLocationButton: { en: "Change location", nl: "Locatie wijzigen", ar: "تغيير الموقع", tr: "Konumu değiştir", fa: "تغییر مکان" },
-
+    changeLocationButton: { en: "Change", nl: "Wijzigen", ar: "تغيير", tr: "Değiştir", fa: "تغییر" },
+    removeButton: { en: "Clear location", nl: "Locatie wissen", ar: "مسح الموقع", tr: "Konumu temizle", fa: "مکان انتخاب‌ شده را پاک کنید" },
     // Text shown while calculating and displaying the Mapbox route estimate.
     routeEstimateTitle: { en: "Estimated journey", nl: "Geschatte rit", ar: "الرحلة المقدرة", tr: "Tahmini yolculuk", fa: "سفر تخمینی" },
     routeCalculatingText: { en: "Calculating distance and travel time...", nl: "Afstand en reistijd berekenen...", ar: "جارٍ حساب المسافة ووقت السفر...", tr: "Mesafe ve yolculuk süresi hesaplanıyor...", fa: "در حال محاسبه فاصله و زمان سفر..." },

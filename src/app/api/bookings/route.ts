@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { type BookingRequest } from "@/types/bookingType";
+import { type BookingConfirmationRequest } from "@/types/bookingType";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { validateBookingRequest } from "@/lib/bookings/validateBooking";
 import type { BookingSummary } from "@/types/bookingSummaryType";
 import { sendBookingCreatedEmails } from "@/lib/email/bookingEmailNotifications";
 import { calculateRouteEstimate } from "@/lib/mapbox/mapboxRouteService";
 import type { MapboxCoordinate } from "@/types/mapboxType";
+import { createBookingDataFingerprint } from "@/lib/pricing/createBookingDataFingerprint";
 
 // Validates coordinates received from the browser before sending them to Mapbox.
 function isValidMapboxCoordinate(value: unknown): value is MapboxCoordinate {
@@ -56,8 +57,26 @@ function getValidatedCity(value: unknown): string | null {
 export async function POST(request: Request) {
   try 
    {
-        const bookingRequest = (await request.json()) as BookingRequest;
+        const bookingRequest = (await request.json()) as BookingConfirmationRequest;
         const validationResult = validateBookingRequest(bookingRequest);
+        /*============================================================
+            PURPOSE: REQUIRE A TEMPORARY JOURNEY QUOTE
+
+            A booking can only be confirmed after a temporary quote
+            has already been created.
+
+            The browser sends only the quote ID.
+            The server will later load and verify the real financial
+            quote directly from Supabase.
+        */
+        if (typeof bookingRequest.journeyQuoteId !== "string" || bookingRequest.journeyQuoteId.trim() === "" )
+        {
+            return NextResponse.json(
+                { message: "A valid journey quote is required." },
+                { status: 400 }
+            );
+        }
+
         /*=============================================================
             Receive booking request
             Check if booking data is valid using from "@/lib/bookings/validateBooking";
@@ -86,6 +105,87 @@ export async function POST(request: Request) {
         // Validates the selected Mapbox coordinates received from the booking form.
         if ( !isValidMapboxCoordinate(bookingRequest.pickupCoordinate) || !isValidMapboxCoordinate(bookingRequest.destinationCoordinate)) 
             {return NextResponse.json({ message: "The selected route coordinates are invalid." }, { status: 400 } );}
+
+        /*
+            PURPOSE: VERIFY THAT THE QUOTE BELONGS TO THIS JOURNEY
+            The browser sends only journeyQuoteId.
+
+            We:
+            1. calculate the fingerprint again from the booking coordinates;
+            2. load the real quote from Supabase;
+            3. compare the stored quote fingerprint with the booking fingerprint.
+
+            The browser cannot decide whether the quote matches.
+        */
+        const bookingDataFingerprint = createBookingDataFingerprint(bookingRequest.pickupCoordinate, bookingRequest.destinationCoordinate );
+        const { data: journeyQuote, error: journeyQuoteError } = await supabaseAdmin
+            .from("journey_quotes")
+            .select(`
+                quote_id,
+                booking_data_fingerprint,
+                status,
+                expires_at,
+                used_at,
+                accepted_at
+            `)
+            .eq("quote_id", bookingRequest.journeyQuoteId)
+            .maybeSingle();
+
+        if (journeyQuoteError) {
+            console.error("Journey quote lookup error:", journeyQuoteError);
+
+            return NextResponse.json(
+                { message: "Could not verify the journey quote." },
+                { status: 500 }
+            );
+        }
+
+        if (!journeyQuote) {
+            return NextResponse.json(
+                { message: "The journey quote does not exist." },
+                { status: 400 }
+            );
+        }
+
+        if (journeyQuote.booking_data_fingerprint !== bookingDataFingerprint) {
+            return NextResponse.json(
+                { message: "The journey quote does not match this booking." },
+                { status: 400 }
+            );
+        }
+
+        /*
+            PURPOSE: CHECK WHETHER THE QUOTE CAN STILL BE USED
+
+            A quote is usable only when:
+            - status is active;
+            - it has not expired;
+            - it has not already been used;
+            - it has not already been accepted.
+        */
+
+        if (journeyQuote.status !== "active") {
+            return NextResponse.json(
+                { message: "The journey quote is no longer active." },
+                { status: 400 }
+            );
+        }
+
+        // Convert the database expiry time and the current server time to comparable numbers.
+        // If expiry time is already at or before “now”, reject the quote.
+        if (new Date(journeyQuote.expires_at).getTime() <= Date.now()) {
+            return NextResponse.json(
+                { message: "The journey quote has expired. Please calculate a new price." },
+                { status: 400 }
+            );
+        }
+
+        if (journeyQuote.used_at !== null || journeyQuote.accepted_at !== null) {
+            return NextResponse.json(
+                { message: "The journey quote has already been used." },
+                { status: 400 }
+            );
+        }
 
         // Recalculates the route on the server instead of trusting the browser duration.
         let verifiedRouteEstimate;
@@ -203,40 +303,85 @@ export async function POST(request: Request) {
             else  { client = newClient; }
         }
 
-        const { data: savedBooking, error: bookingError } = await supabaseAdmin
+        /*
+            PURPOSE: CREATE THE BOOKING AND ACCEPT THE QUOTE ATOMICALLY
+
+            PostgreSQL now performs the financially sensitive work.
+
+            Inside one database transaction it:
+            - locks the quote;
+            - verifies the quote again;
+            - creates the booking;
+            - links the exact journey quote;
+            - marks the quote as accepted.
+
+            If any step fails, PostgreSQL rolls everything back.
+        */
+        const { data: bookingId, error: bookingTransactionError } = await supabaseAdmin
+            .rpc("create_booking_with_accepted_journey_quote", {
+                p_client_id: client.id,
+                p_journey_quote_id: bookingRequest.journeyQuoteId,
+                p_booking_data_fingerprint: bookingDataFingerprint,
+
+                p_pickup_location: bookingRequest.pickup,
+                p_pickup_city: pickupCity,
+                p_destination: bookingRequest.destination,
+                p_destination_city: destinationCity,
+                p_pickup_date: bookingRequest.date,
+                p_pickup_time: bookingRequest.time,
+                p_estimated_duration_minutes: estimatedDurationMinutes,
+
+                p_passengers: Number(bookingRequest.passengers),
+                p_luggage: Number(bookingRequest.luggage || 0),
+                p_trip_type: bookingRequest.tripType,
+                p_notes: bookingRequest.notes,
+                p_has_pets: bookingRequest.hasPets,
+
+                p_infant_seat_count_required: infantSeatCountRequired,
+                p_child_seat_count_required: childSeatCountRequired,
+                p_booster_seat_count_required: boosterSeatCountRequired,
+                p_isofix_required: bookingRequest.isofixRequired === true,
+
+                p_wheelchair_requirement: wheelchairRequirement,
+                p_wheelchair_passenger_count: wheelchairPassengerCount,
+                p_mobility_aid_storage_required: bookingRequest.mobilityAidStorageRequired === true,
+                p_extra_large_luggage_required: bookingRequest.extraLargeLuggageRequired === true,
+            });
+
+        if (bookingTransactionError || !bookingId) {
+            console.error(
+                "Atomic booking/quote transaction error:",
+                bookingTransactionError
+            );
+
+            return NextResponse.json(
+                { message: bookingTransactionError?.message || "Could not create booking." },
+                { status: 400 }
+            );
+        }
+        /*
+            PURPOSE: LOAD THE BOOKING THAT WAS JUST CREATED
+
+            The PostgreSQL transaction returns only the new booking ID.
+
+            The existing API response below needs the complete booking row,
+            so we load that booking using the returned UUID.
+        */
+        const { data: savedBooking, error: bookingLookupError } = await supabaseAdmin
             .from("bookings")
-            .insert({
-                client_id: client.id,
-                chauffeur_id: null,
-                pickup_location: bookingRequest.pickup,
-                pickup_city: pickupCity,
-                destination: bookingRequest.destination,
-                destination_city: destinationCity,
-                pickup_date: bookingRequest.date,
-                pickup_time: bookingRequest.time,
-                estimated_duration_minutes: estimatedDurationMinutes,
-                passengers: Number(bookingRequest.passengers),
-                luggage: Number(bookingRequest.luggage || 0),
-                trip_type: bookingRequest.tripType,
-                notes: bookingRequest.notes,
-                status: "pending",
-                has_pets: bookingRequest.hasPets,
-                infant_seat_count_required: infantSeatCountRequired,
-                child_seat_count_required: childSeatCountRequired,
-                booster_seat_count_required: boosterSeatCountRequired,
-                isofix_required: bookingRequest.isofixRequired === true,
-                wheelchair_requirement: wheelchairRequirement,
-                wheelchair_passenger_count: wheelchairPassengerCount,
-                mobility_aid_storage_required: bookingRequest.mobilityAidStorageRequired === true,
-                extra_large_luggage_required: bookingRequest.extraLargeLuggageRequired === true,
-            })
-            .select()
+            .select("*")
+            .eq("id", bookingId)
             .single();
 
-        if (bookingError || !savedBooking) {
-            console.error("Booking insert error:", bookingError);
-            return NextResponse.json( { message: "Could not create booking", }, { status: 500 } );
+        if (bookingLookupError || !savedBooking) {
+            console.error("Created booking lookup error:", bookingLookupError);
+
+            return NextResponse.json(
+                { message: "Booking was created, but its details could not be loaded." },
+                { status: 500 }
+            );
         }
+
         console.log("Booking created:", savedBooking.id);
 
         // Create an object that matches the frontend field names

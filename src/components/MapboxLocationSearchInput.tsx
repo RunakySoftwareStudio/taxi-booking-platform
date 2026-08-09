@@ -16,6 +16,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { getTranslation } from "@/lib/i18n/translations";
 import { formStyles } from "@/styles/classNames";
 import type { LocationSuggestion, LocationSuggestionsResponse, RetrievedLocation, RetrievedLocationResponse } from "@/types/mapboxType";
+import { Trash2 } from "lucide-react";
 
 type MapboxLocationSearchInputProps = {
     id: string;
@@ -163,24 +164,49 @@ export default function MapboxLocationSearchInput({ id, name, label, selectedLoc
         setErrorMessage("");
         sessionTokenRef.current = "";
     }
+    // Completely clears the selected location and search field.
+    function handleClearLocation() {
+        onSelectedLocationChange(null);
+        setSearchText("");
+        setSuggestions([]);
+        setHasSearched(false);
+        setErrorMessage("");
+        sessionTokenRef.current = "";
+    }
 
     // Displays the selected location or an interactive suggestion field.
     return (
         <div className="relative">
-            <label htmlFor={id} className="mb-2 block text-sm font-medium">{label}</label>
+            <div className="mb-2">
+                {!selectedLocation && (
+                    <label htmlFor={id} className="text-sm font-medium">
+                        {label}
+                    </label>
+                )}
 
+                {selectedLocation && (
+                    <button type="button"
+                        onClick={handleChangeLocation}
+                        className="rounded-lg border border-cyan-400/40 bg-cyan-400/10 px-3 py-1 text-md font-semibold text-cyan-200 transition hover:border-cyan-300 hover:bg-cyan-400/20 hover:text-white"
+                    >
+                        {getLocationText("changeLocationButton")} {label}
+                    </button>
+                )}
+            </div>
             {/* Stores only a location that was selected from Mapbox. */}
             <input type="hidden" name={name} value={selectedLocation?.fullAddress || ""} />
 
             {selectedLocation ? (
-                <div className="rounded-xl border border-green-400/40 bg-green-400/5 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-green-300">{getLocationText("locationSelectedText")}</p>
+                 <div className="relative rounded-xl border border-green-400/40 bg-green-400/5 p-3 pr-10">
+                    <button type="button" onClick={handleClearLocation}
+                        aria-label= {getLocationText("removeButton")}
+                        title= {getLocationText("removeButton")}
+                        className="absolute right-3 top-2 text-xl font-bold text-slate-400 transition hover:text-red-300"
+                    >
+                        <Trash2 size={17} />
+                    </button>
                     <p className="mt-1 font-medium text-white" dir="auto">{selectedLocation.name}</p>
                     <p className="mt-1 text-sm text-slate-300" dir="auto">{selectedLocation.fullAddress}</p>
-
-                    <button type="button" onClick={handleChangeLocation} className="mt-3 text-sm font-semibold text-cyan-300 hover:text-cyan-200">
-                        {getLocationText("changeLocationButton")}
-                    </button>
                 </div>
             ) : (
                 <>

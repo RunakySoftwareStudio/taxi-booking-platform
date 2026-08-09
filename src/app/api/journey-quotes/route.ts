@@ -9,8 +9,7 @@ import { createJourneyQuoteItems } from "@/lib/pricing/createJourneyQuoteItems";
 import { calculateRouteEstimate } from "@/lib/mapbox/mapboxRouteService";
 import { reverseGeocodeCoordinate } from "@/lib/mapbox/mapboxGeocodingService";
 import { resolvePricingMarket } from "@/lib/pricing/resolvePricingMarket";
-
-
+import { createBookingDataFingerprint } from "@/lib/pricing/createBookingDataFingerprint";
 
 /**
  * Purpose:
@@ -165,6 +164,19 @@ export async function POST(request: Request) {
         amount_including_vat: quoteItem.amountIncludingVat,
         calculation_order: quoteItem.calculationOrder,
     }));
+    /*
+        PURPOSE: CREATE THE JOURNEY FINGERPRINT
+
+        This fingerprint represents the pickup and destination
+        coordinates used to calculate this quote.
+
+        Later, booking confirmation will create the same fingerprint
+        again and compare it with this stored value.
+    */
+    const bookingDataFingerprint = createBookingDataFingerprint(
+        requestBody.pickupCoordinate,
+        requestBody.destinationCoordinate
+    );
 
     // insert journey_quotes header. one summary row for the complete quote
     const { error: insertError } = await supabaseAdmin
@@ -175,6 +187,7 @@ export async function POST(request: Request) {
             tax_rule_id: pricingConfiguration.taxRuleId,
             rounding_rule_id: pricingConfiguration.roundingRuleId,
             pricing_calculation_version: 1,
+            booking_data_fingerprint: bookingDataFingerprint,
             pricing_profile_code: journeyQuote.pricingProfileCode,
             pricing_profile_version: journeyQuote.pricingProfileVersion,
             country_code: journeyQuote.countryCode,
