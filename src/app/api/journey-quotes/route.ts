@@ -151,8 +151,8 @@ export async function POST(request: Request) {
             calculation_order: 10
         }
     */
-    const quoteItemRows = quoteItems.map((quoteItem) => ({
-        quote_id: journeyQuote.quoteId,
+
+    const quoteItemsForStorage = quoteItems.map((quoteItem) => ({
         item_code: quoteItem.itemCode,
         description: quoteItem.description,
         quantity: quoteItem.quantity,
@@ -178,105 +178,69 @@ export async function POST(request: Request) {
         requestBody.destinationCoordinate
     );
 
-    // insert journey_quotes header. one summary row for the complete quote
-    const { error: insertError } = await supabaseAdmin
-        .from("journey_quotes")
-        .insert({
-            quote_id: journeyQuote.quoteId,
-            booking_session_id: requestBody.bookingSessionId,
-            pricing_profile_id: pricingConfiguration.pricingProfileId,
-            tax_rule_id: pricingConfiguration.taxRuleId,
-            rounding_rule_id: pricingConfiguration.roundingRuleId,
-            pricing_calculation_version: 1,
-            booking_data_fingerprint: bookingDataFingerprint,
-            pricing_profile_code: journeyQuote.pricingProfileCode,
-            pricing_profile_version: journeyQuote.pricingProfileVersion,
-            country_code: journeyQuote.countryCode,
-            currency_code: journeyQuote.currencyCode,
-            distance_km: journeyQuote.distanceKm,
-            estimated_duration_minutes: journeyQuote.estimatedDurationMinutes,
-            tax_rate_percentage: journeyQuote.taxRatePercentage,
-            basic_fare_excluding_vat: journeyQuote.fareCalculation.basicFareExcludingVat,
-            vat_amount: journeyQuote.fareCalculation.vatAmount,
-            total_including_vat_before_rounding: journeyQuote.fareCalculation.totalIncludingVatBeforeRounding,
-            final_total_including_vat: journeyQuote.fareCalculation.finalTotalIncludingVat,
-            created_at: journeyQuote.createdAt,
-            expires_at: journeyQuote.expiresAt,
+    /*
+        Create the complete journey quote atomically.
+        PostgreSQL will:
+        - lock this booking session;
+        - insert the journey_quotes header;
+        - insert all journey_quote_items;
+        - void other active quotes from the same booking session.
+
+        If any step fails, PostgreSQL rolls back the complete operation.
+        TypeScript
+                ↓
+        ONE RPC
+                ↓
+        PostgreSQL transaction
+        ├── insert header
+        ├── insert items
+        └── void old quote
+
+        anything fails
+        → automatic rollback
+    */
+    const { error: createQuoteError } = await supabaseAdmin
+        .rpc("create_journey_quote_with_items", {
+            p_quote_id: journeyQuote.quoteId,
+            p_booking_session_id: requestBody.bookingSessionId,
+
+            p_pricing_profile_id: pricingConfiguration.pricingProfileId,
+            p_tax_rule_id: pricingConfiguration.taxRuleId,
+            p_rounding_rule_id: pricingConfiguration.roundingRuleId,
+
+            p_pricing_calculation_version: 1,
+            p_booking_data_fingerprint: bookingDataFingerprint,
+
+            p_pricing_profile_code: journeyQuote.pricingProfileCode,
+            p_pricing_profile_version: journeyQuote.pricingProfileVersion,
+
+            p_country_code: journeyQuote.countryCode,
+            p_currency_code: journeyQuote.currencyCode,
+
+            p_distance_km: journeyQuote.distanceKm,
+            p_estimated_duration_minutes: journeyQuote.estimatedDurationMinutes,
+
+            p_tax_rate_percentage: journeyQuote.taxRatePercentage,
+
+            p_basic_fare_excluding_vat: journeyQuote.fareCalculation.basicFareExcludingVat,
+            p_vat_amount: journeyQuote.fareCalculation.vatAmount,
+            p_total_including_vat_before_rounding: journeyQuote.fareCalculation.totalIncludingVatBeforeRounding,
+            p_final_total_including_vat: journeyQuote.fareCalculation.finalTotalIncludingVat,
+
+            p_created_at: journeyQuote.createdAt,
+            p_expires_at: journeyQuote.expiresAt,
+
+            p_quote_items: quoteItemsForStorage,
         });
-    
-    //stop if header insert fails
-    if (insertError) {
-        console.error("Could not store temporary journey quote:", insertError);
+
+    if (createQuoteError) {
+        console.error("Could not create temporary journey quote:", createQuoteError);
+
         return NextResponse.json(
             { error: "The temporary quote could not be created." },
             { status: 500 }
         );
     }
-
-    // insert journey_quote_items. multiple detailed rows explaining the quote
-    const { error: itemInsertError } = await supabaseAdmin
-    .from("journey_quote_items")
-    .insert(quoteItemRows);
-
-    if (itemInsertError) {
-        console.error("Could not store journey quote items:", itemInsertError);
-
-        // delete the header if item insertion fails
-        const { error: cleanupError } = await supabaseAdmin
-            .from("journey_quotes")
-            .delete()
-            .eq("quote_id", journeyQuote.quoteId);
-        if (cleanupError) {console.error("Could not remove incomplete journey quote:", cleanupError);}
-
-        return NextResponse.json(
-            { error: "The temporary quote calculation details could not be stored." },
-            { status: 500 }
-        );
-    }
-
-    /*
-    Void older active journey quotes from the same booking session.
-
-        This runs only after:
-        - the new journey quote header was stored successfully;
-        - all journey quote items were stored successfully.
-
-        The new quote stays active.
-    */
-    const { data: voidedQuoteCount, error: voidReplacedQuoteError } = await supabaseAdmin
-        .rpc("void_replaced_journey_quotes_for_session", {
-            p_booking_session_id: requestBody.bookingSessionId,
-            p_keep_quote_id: journeyQuote.quoteId,
-        });
-
-    if (voidReplacedQuoteError) {
-        console.error("Could not void replaced journey quotes:", voidReplacedQuoteError);
-
-        /*
-            The replacement lifecycle failed.
-            Remove the newly created quote so we do not return a quote
-            while an older quote from the same session may still be active.
-        */
-        const { error: cleanupError } = await supabaseAdmin
-            .from("journey_quotes")
-            .delete()
-            .eq("quote_id", journeyQuote.quoteId);
-
-        if (cleanupError) {console.error("Could not remove journey quote after voiding failure:", cleanupError);}
-
-        return NextResponse.json(
-            { error: "The temporary quote could not replace the previous quote." },
-            { status: 500 }
-        );
-    }
-
-    /*
-        In sql function void_replaced_journey_quotes_for_session: GET DIAGNOSTICS v_voided_count = ROW_COUNT;
-        So if this is the first quote for a booking session: voidedQuoteCount = 0
-        If there was one older active quote: voidedQuoteCount = 1
-        This is useful for testing.
-     */
-    console.log("Replaced journey quotes voided:", voidedQuoteCount);
 
     /*
         Build a response that must match the successful API response type.
