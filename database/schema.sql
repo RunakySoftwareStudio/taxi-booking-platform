@@ -696,6 +696,7 @@ CREATE TABLE IF NOT EXISTS public.journey_quotes (
     pricing_calculation_version INTEGER NOT NULL DEFAULT 1,
 
     country_code TEXT NOT NULL,
+    destination_country_code TEXT,
     currency_code TEXT NOT NULL,
 
     distance_km NUMERIC(10, 3) NOT NULL,
@@ -806,6 +807,9 @@ CREATE TABLE IF NOT EXISTS public.journey_quotes (
             )
         )
 );
+
+COMMENT ON COLUMN public.journey_quotes.destination_country_code IS
+'Destination country code derived server-side from the destination coordinate. NULL is allowed for older quotes.';
 
 -- Helps the application efficiently find expired quotes.
 CREATE INDEX IF NOT EXISTS journey_quotes_expires_at_idx
@@ -1191,6 +1195,7 @@ CREATE OR REPLACE FUNCTION public.create_journey_quote_with_items(
     p_pricing_profile_version INTEGER,
 
     p_country_code TEXT,
+    p_destination_country_code TEXT,
     p_currency_code TEXT,
 
     p_distance_km NUMERIC,
@@ -1246,7 +1251,10 @@ BEGIN
             RAISE EXCEPTION 'Booking data fingerprint is required.';
     END IF;
 
-
+    IF p_destination_country_code IS NULL
+        OR LENGTH(TRIM(p_destination_country_code)) = 0 THEN
+            RAISE EXCEPTION 'Destination country code is required.';
+    END IF;
     /*
         STEP 2: REQUIRE CALCULATION ITEMS
 
@@ -1302,6 +1310,7 @@ BEGIN
         pricing_profile_version,
 
         country_code,
+        destination_country_code,
         currency_code,
 
         distance_km,
@@ -1331,7 +1340,8 @@ BEGIN
         p_pricing_profile_code,
         p_pricing_profile_version,
 
-        p_country_code,
+        UPPER(TRIM(p_country_code)),
+        UPPER(TRIM(p_destination_country_code)),
         p_currency_code,
 
         p_distance_km,
@@ -1446,6 +1456,7 @@ ON FUNCTION public.create_journey_quote_with_items(
     INTEGER,
     TEXT,
     TEXT,
+    TEXT,
     NUMERIC,
     NUMERIC,
     NUMERIC,
@@ -1459,7 +1470,6 @@ ON FUNCTION public.create_journey_quote_with_items(
 )
 FROM PUBLIC, anon, authenticated;
 
-
 GRANT EXECUTE
 ON FUNCTION public.create_journey_quote_with_items(
     UUID,
@@ -1471,6 +1481,7 @@ ON FUNCTION public.create_journey_quote_with_items(
     TEXT,
     TEXT,
     INTEGER,
+    TEXT,
     TEXT,
     TEXT,
     NUMERIC,

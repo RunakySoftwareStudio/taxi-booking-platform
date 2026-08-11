@@ -37,8 +37,11 @@ export async function GET(request: NextRequest) {
         // Uses English when the requested language is unsupported.
         const languageCode = supportedLanguageCodes.has(requestedLanguage) ? requestedLanguage : "en";
 
-        // Requests up to five Dutch location suggestions.
-        const suggestions = await suggestLocations(searchText, sessionToken, { countryCode: "nl", languageCode, limit: 5 });
+        // Searching filter for mapbox: Requests up to five location suggestions without restricting the country.
+        const suggestions = await suggestLocations(searchText, sessionToken, {
+            languageCode,
+            limit: 5
+        });
 
         return NextResponse.json({ suggestions });
     } catch (error) {

@@ -77,17 +77,17 @@ export async function POST(request: Request) {
         country code such as NL
     */
     let pickupCountry;
+    let destinationCountry;
 
     try {
-        pickupCountry = await reverseGeocodeCoordinate(
-            requestBody.pickupCoordinate
-        );
+        pickupCountry = await reverseGeocodeCoordinate(requestBody.pickupCoordinate);
+        destinationCountry = await reverseGeocodeCoordinate(requestBody.destinationCoordinate);
     }
     catch (error) {
-        console.error("Could not determine pickup country:", error);
+        console.error("Could not determine journey countries:", error);
 
         return NextResponse.json(
-            { error: "The pickup country could not be determined." },
+            { error: "Could not determine journey countries." },
             { status: 500 }
         );
     }
@@ -111,7 +111,10 @@ export async function POST(request: Request) {
     const pricingMarket = resolvePricingMarket(pickupCountry.countryCode);
     if (!pricingMarket) {
         return NextResponse.json(
-            { error: "Pricing is not yet available for this pickup country." },
+            {
+                errorCode: "UNSUPPORTED_PICKUP_COUNTRY",
+                error: "Pricing is not yet available for this pickup country.",
+            },
             { status: 400 }
         );
     }
@@ -215,6 +218,7 @@ export async function POST(request: Request) {
             p_pricing_profile_version: journeyQuote.pricingProfileVersion,
 
             p_country_code: journeyQuote.countryCode,
+            p_destination_country_code: destinationCountry.countryCode,
             p_currency_code: journeyQuote.currencyCode,
 
             p_distance_km: journeyQuote.distanceKm,

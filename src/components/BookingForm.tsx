@@ -294,7 +294,11 @@ export default function BookingForm() {
         Always resets isCreatingQuote.
     */
     async function createJourneyQuoteForReview(): Promise<TemporaryJourneyQuote | null> {
-        if (!routeEstimate) { return null; }
+        if (!routeEstimate) {
+            setErrorMessage(getBookingFormText("journeyQuoteFailedText"));
+            return null;
+        }
+
         setIsCreatingQuote(true);
 
         try {
@@ -308,16 +312,29 @@ export default function BookingForm() {
                 }),
             });
 
-            if (!response.ok) {throw new Error("The temporary journey quote could not be created."); }
+            if (!response.ok) {
+                const errorBody = (await response.json().catch(() => null)) as { errorCode?: string } | null;
+
+                if (errorBody?.errorCode === "UNSUPPORTED_PICKUP_COUNTRY") {
+                    setErrorMessage(getBookingFormText("unsupportedPickupCountryText"));
+                }
+                else {
+                    setErrorMessage(getBookingFormText("journeyQuoteFailedText"));
+                }
+
+                return null;
+            }
+
             const responseBody = (await response.json()) as CreateJourneyQuoteResponse;
             setJourneyQuote(responseBody.journeyQuote);
             return responseBody.journeyQuote;
-        } 
+        }
         catch (error) {
             console.error("Could not create journey quote:", error);
             setJourneyQuote(null);
+            setErrorMessage(getBookingFormText("journeyQuoteFailedText"));
             return null;
-        } 
+        }
         finally {
             setIsCreatingQuote(false);
         }
@@ -351,10 +368,7 @@ export default function BookingForm() {
         */
         const journeyQuoteIsStillValid =journeyQuote && new Date(journeyQuote.expiresAt).getTime() > Date.now();
         const reviewedJourneyQuote = journeyQuoteIsStillValid ? journeyQuote : await createJourneyQuoteForReview();
-        if (!reviewedJourneyQuote) {
-            setErrorMessage(getBookingFormText("journeyQuoteFailedText"));
-            return;
-        }
+        if (!reviewedJourneyQuote) { return; }
 
         setBookingDraft(bookingRequest);
         setIsReviewing(true);

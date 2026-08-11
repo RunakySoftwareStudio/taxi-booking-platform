@@ -73,16 +73,21 @@ If anything fails, everything rolls back.
 
 ## Process 2 — Cross-Border Pricing Rules
 
-Define what happens for journeys such as:
+Cross-border journeys are supported when the pickup country belongs to a supported Voya Taxi pricing market.
+
+The pickup country determines the pricing market and pricing profile for the complete journey.
+
+Example:
 
 ```text
-NL → BE
-BE → NL
-NL → DE
+Amsterdam, NL → Brussels, BE
+
+Pickup country:       NL
+Destination country:  BE
+Pricing profile:      NL_DAYTIME_STANDARD
+Currency:             EUR
+Result:                Allowed
 ```
-
-The pricing country must be determined server-side.
-
 ---
 
 ## Process 3 — Pricing Schedules / Time Rules

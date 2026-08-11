@@ -2746,6 +2746,13 @@ export const translations = {
         tr: "Geçici fiyat hesaplanamadı. Lütfen tekrar deneyin.",
         fa: "قیمت موقت محاسبه نشد. لطفاً دوباره تلاش کنید.",
     },
+    unsupportedPickupCountryText: {
+        en: "Pricing is not yet available for this pickup country.",
+        nl: "Prijzen zijn nog niet beschikbaar voor dit land van vertrek.",
+        ar: "التسعير غير متاح بعد لبلد الانطلاق هذا.",
+        tr: "Bu kalkış ülkesi için fiyatlandırma henüz mevcut değil.",
+        fa: "قیمت‌گذاری برای این کشور مبدأ هنوز در دسترس نیست.",
+    },
     journeyPriceLabel: {
         en: "Total price:",
         nl: "Totale prijs:",
