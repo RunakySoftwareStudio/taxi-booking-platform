@@ -92,18 +92,27 @@ Result:                Allowed
 
 ## Process 3 — Pricing Schedules / Time Rules
 
-Future pricing can support:
+Process 3 selects the correct pricing-profile family from the planned journey date and time.
+Pricing selection is based on the customer's planned pickup moment, not on the moment when the quote is created.
+The pricing market is resolved first from the pickup country.
+
+Example:
 
 ```text
-Daytime
-Night
-Weekend
-Holiday
-Special pricing periods
+Pickup country
+    ↓
+NL pricing market
+    ↓
+Journey date + time
+    ↓
+Pricing schedule
+    ↓
+Pricing-profile family
+    ↓
+Current active version
+    ↓
+Journey fare calculation
 ```
-
-The server must select the correct pricing profile for the journey date/time.
-
 ---
 
 ## Process 4 — Tax and Rounding Lifecycle
@@ -1229,34 +1238,114 @@ bookings.journey_quote_id
 
 # 31. Current Example Configuration
 
-The canonical schema includes an initial Netherlands example configuration:
+The canonical schema includes an initial Netherlands pricing configuration for passenger transport.
+
+The fresh-database foundation contains three active Version 1 pricing-profile families:
 
 ```text
-Pricing profile code: NL_DAYTIME_STANDARD
+NL_DAYTIME_STANDARD
+NL_NIGHT_STANDARD
+NL_WEEKEND_STANDARD
+```
+
+All three initially use:
+
+```text
 Country: NL
 Currency: EUR
 Service category: passenger_transport
+
+Base fare: €4.50
+Distance: €2.50/km
+Duration: €0.40/minute
+Minimum fare: €15.00 excluding VAT
+Quote validity: 20 minutes
+```
+
+The Netherlands financial rules currently include:
+
+```text
 VAT: 9%
 Rounding: nearest €0.01
 ```
 
-The schema's original seed creates Version 1 with:
+The recurring pricing schedule selects the appropriate family:
 
 ```text
-Base fare: €4.00
-Distance: €2.50/km
-Duration: €0.40/minute
-Minimum fare: €15.00 excluding VAT
-Quote validity: 15 minutes
+Monday-Friday
+
+00:00-06:00 → NL_NIGHT_STANDARD
+06:00-22:00 → NL_DAYTIME_STANDARD
+22:00-24:00 → NL_NIGHT_STANDARD
+
+Saturday-Sunday
+
+00:00-24:00 → NL_WEEKEND_STANDARD
 ```
+
+Holiday and Event pricing families are not seeded automatically.
+
+They can be created through the admin pricing workflow when required and connected to specific date/time periods through `pricing_schedule_overrides`.
 
 Important:
 
-> The live database can contain later pricing versions created through migrations/admin workflow. The seed block is the initial schema foundation, not necessarily the currently active live version.
+> The canonical seed provides the starting configuration for a fresh database. The live database can contain later profile versions, archived versions, drafts, and administrator-created Holiday or Event pricing families.
 
 ---
 
 # 32. Current Pricing Architecture Progress
+
+Already implemented:
+
+- versioned pricing profiles;
+- draft / active / archived lifecycle;
+- one-active-profile rule;
+- pricing rates;
+- tax rules;
+- currency rounding rules;
+- quote expiration;
+- server-side pricing-market resolution;
+- temporary quote creation;
+- detailed quote calculation items;
+- booking-session IDs;
+- journey fingerprints;
+- replacement quote voiding;
+- abandoned quote voiding;
+- accepted-quote protection;
+- atomic booking + quote acceptance;
+- service-role protected financial functions;
+- cross-border destination-country support;
+- pickup-country commercial pricing rules;
+- recurring Daytime / Night / Weekend pricing schedules;
+- Holiday / Event pricing overrides;
+- override priority handling;
+- duplicate override protection;
+- journey date/time included in pricing selection;
+- date/time included in pricing fingerprint;
+- admin creation of new pricing-profile families;
+- first-version activation for new pricing families;
+- automated pricing tests.
+
+Completed pricing processes:
+
+```text
+Process 1 → Atomic Quote Creation          ✅
+Process 2 → Cross-Border Pricing Rules    ✅
+Process 3 → Pricing Schedules / Time Rules ✅
+```
+
+Current status:
+
+> **Pricing Version — Process 3 is complete.**
+
+Next:
+
+```text
+Process 4 → Tax and Rounding Lifecycle
+Process 5 → Invoicing Version
+```
+
+---
 
 Already implemented:
 

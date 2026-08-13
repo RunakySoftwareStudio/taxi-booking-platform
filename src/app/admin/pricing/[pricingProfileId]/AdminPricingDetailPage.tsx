@@ -9,6 +9,7 @@ import { requireAdminUser } from "@/lib/auth/requireAdminUser";
 
 type AdminPricingDetailPageProps = {
     params: Promise<{ pricingProfileId: string }>;
+    searchParams: Promise<{ success?: string }>;
 };
 
 type PricingProfileRow = {
@@ -248,12 +249,90 @@ async function activateDraftPricingVersion(formData: FormData) {
 }
 
 /**
+ * Creates one special pricing period.
+ *
+ * Used for Holiday and Event pricing only.
+ *
+ * Lower priority number = higher priority.
+ */
+async function createPricingScheduleOverride(formData: FormData) {
+    "use server";
+
+    await requireAdminUser();
+
+    const pricingProfileId = String(formData.get("pricingProfileId") || "");
+    const overrideName = String(formData.get("overrideName") || "").trim();
+    const startDate = String(formData.get("startDate") || "").trim();
+    const startTime = String(formData.get("startTime") || "").trim();
+    const endDate = String(formData.get("endDate") || "").trim();
+    const endTime = String(formData.get("endTime") || "").trim();
+
+    const startLocalDateTime = `${startDate}T${startTime}`;
+    const endLocalDateTime = `${endDate}T${endTime}`;
+    const priorityText = String(formData.get("priority") || "").trim();
+
+    if (!pricingProfileId || !overrideName || !startDate || !startTime ||
+        !endDate || !endTime || !priorityText) {
+        redirect(`/admin/pricing/${pricingProfileId}?error=missing-override-fields`);
+    }
+
+    const priority = Number(priorityText);
+
+    if (!Number.isInteger(priority) || priority < 1) {
+        redirect(`/admin/pricing/${pricingProfileId}?error=invalid-override-priority`);
+    }
+
+    if (startLocalDateTime >= endLocalDateTime) {
+        redirect(`/admin/pricing/${pricingProfileId}?error=invalid-override-period`);
+    }
+
+    const { data: pricingProfile, error: profileError } = await supabaseAdmin
+        .from("pricing_profiles")
+        .select("pricing_profile_code, country_code, status")
+        .eq("id", pricingProfileId)
+        .maybeSingle();
+
+    if (profileError || !pricingProfile) {
+        redirect(`/admin/pricing/${pricingProfileId}?error=pricing-profile-not-found`);
+    }
+
+    if (
+        pricingProfile.status !== "active" ||
+        !["NL_HOLIDAY_STANDARD", "NL_EVENT_STANDARD"].includes(pricingProfile.pricing_profile_code)
+    ) {
+        redirect(`/admin/pricing/${pricingProfileId}?error=invalid-override-profile`);
+    }
+
+    const { error } = await supabaseAdmin
+        .from("pricing_schedule_overrides")
+        .insert({
+            country_code: pricingProfile.country_code,
+            service_category: "passenger_transport",
+            override_name: overrideName,
+            start_local_datetime: startLocalDateTime,
+            end_local_datetime: endLocalDateTime,
+            pricing_profile_code: pricingProfile.pricing_profile_code,
+            priority,
+        });
+
+    if (error) {
+        console.error("Could not create pricing schedule override:", error);
+        redirect(`/admin/pricing/${pricingProfileId}?error=create-override-failed`);
+    }
+
+    revalidatePath(`/admin/pricing/${pricingProfileId}`);
+    redirect(`/admin/pricing/${pricingProfileId}?success=override-created`);
+}
+
+/**
  * Purpose:
  * Displays the complete read-only configuration of one
  * versioned pricing profile.
  */
-export default async function AdminPricingDetailPage({ params }: AdminPricingDetailPageProps) {
+export default async function AdminPricingDetailPage({ params, searchParams}: AdminPricingDetailPageProps) {
+
     const { pricingProfileId } = await params;
+    const { success } = await searchParams;
     const { data: profileData, error: profileError } = await supabaseAdmin
         .from("pricing_profiles")
         .select(`
@@ -516,7 +595,99 @@ export default async function AdminPricingDetailPage({ params }: AdminPricingDet
                         <button type="submit" className={formStyles.smallButton}>Create draft version</button>
                     </form>
                 ) : null}
+
                 {loadError ? (<p className={pageStyles.errorMsg}>Some related pricing configuration could not be loaded.</p>) : null}
+                {success === "override-created" ? (
+                    <p className="mb-4 rounded-lg border border-green-400/30 bg-green-400/10 p-3 text-sm text-green-200">
+                        Special pricing period saved successfully.
+                    </p>
+                ) : null}
+                {/**
+                 * PURPOSE: SPECIAL PRICING PERIOD
+                 *
+                 * Shows this form only for active Holiday or Event pricing profiles.
+                 *
+                 * The administrator can define:
+                 * - override name;
+                 * - start date and time;
+                 * - end date and time;
+                 * - priority.
+                 *
+                 * The saved period is stored in pricing_schedule_overrides.
+                 * Lower priority number = higher priority.
+                 *
+                 * During quote creation:
+                 * special override → checked first
+                 * normal weekly schedule → used if no override matches
+                 */}
+                {pricingProfile.status === "active" &&
+                    ["NL_HOLIDAY_STANDARD", "NL_EVENT_STANDARD"].includes(pricingProfile.pricing_profile_code) ? (
+                    <section className="mt-6 rounded-xl border border-cyan-400/20 bg-slate-900 p-5">
+                        <h2 className="mb-4 text-lg font-semibold text-cyan-300">Special pricing period</h2>
+                        <form action={createPricingScheduleOverride} className={formStyles.form}>
+                            <input type="hidden" name="pricingProfileId" value={pricingProfile.id} />
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <label>
+                                    <span className={formStyles.span}>Override name</span>
+                                    <input type="text"  name="overrideName" className={formStyles.inputWFullCyan} placeholder="Christmas Day" required />
+                                </label>
+                                <label>
+                                    <span className={formStyles.span}>Priority</span>
+                                    <input type="number" name="priority" min="1" step="1" defaultValue="100" className={formStyles.inputWFullCyan} required/>
+                                </label>
+                                <label>
+                                    <span className={formStyles.span}>Start date</span>
+                                    <input
+                                        type="date"
+                                        name="startDate"
+                                        className={formStyles.inputWFullCyan}
+                                        required
+                                    />
+                                </label>
+
+                                <label>
+                                    <span className={formStyles.span}>Start time</span>
+                                    <input
+                                        type="time"
+                                        name="startTime"
+                                        step="60"
+                                        className={formStyles.inputWFullCyan}
+                                        required
+                                    />
+                                </label>
+
+                                <label>
+                                    <span className={formStyles.span}>End date</span>
+                                    <input
+                                        type="date"
+                                        name="endDate"
+                                        className={formStyles.inputWFullCyan}
+                                        required
+                                    />
+                                </label>
+
+                                <label>
+                                    <span className={formStyles.span}>End time</span>
+                                    <input
+                                        type="time"
+                                        name="endTime"
+                                        step="60"
+                                        className={formStyles.inputWFullCyan}
+                                        required
+                                    />
+                                </label>
+                            </div>
+
+                            <p className="mt-3 text-sm text-slate-400">
+                                Lower priority number means higher priority.
+                            </p>
+
+                            <button type="submit" className={`${formStyles.smallButton} mt-5`}>
+                                Add special pricing period
+                            </button>
+                        </form>
+                    </section>
+                ) : null}
 
                 <div className="grid gap-6 lg:grid-cols-2">
                     <section className={cardClass}>

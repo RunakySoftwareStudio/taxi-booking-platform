@@ -3,7 +3,8 @@
  * Defines the journey information that the browser sends
  * when requesting a temporary price quote.
  *
- * The browser sends only the selected pickup and destination coordinates.
+ * The browser sends the selected pickup and destination coordinates,
+ * together with the planned journey date and time.
  *
  * The server uses these coordinates to:
  * - calculate the trusted route distance;
@@ -20,4 +21,6 @@ export type CreateJourneyQuoteRequest = {
     bookingSessionId: string;
     pickupCoordinate: MapboxCoordinate;
     destinationCoordinate: MapboxCoordinate;
+    date: string;
+    time: string;
 };

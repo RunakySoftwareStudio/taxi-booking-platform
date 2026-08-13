@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles, tableStyles } from "@/styles/classNames";
+import { redirect } from "next/navigation";
+import { requireAdminUser } from "@/lib/auth/requireAdminUser";
 
 type PricingProfileRow = {
     id: string;
@@ -38,6 +40,75 @@ function formatMoney(amount: string, currencyCode: string): string {
 
 function formatStatus(status: string): string {
     return status.replaceAll("_", " ");
+}
+
+/**
+ * Creates Version 1 of a completely new pricing-profile family.
+ *
+ * The administrator selects a business purpose.
+ * The server translates that purpose into the stable profile code
+ * and name. The browser is therefore not trusted to choose the
+ * actual financial identity.
+ */
+async function createPricingProfileFamily(formData: FormData) {
+    "use server";
+
+    const adminUser = await requireAdminUser();
+    const pricingPurpose = String(formData.get("pricingPurpose") || "").trim();
+
+    let pricingProfileCode = "";
+    let pricingProfileName = "";
+
+    if (pricingPurpose === "daytime") {
+        pricingProfileCode = "NL_DAYTIME_STANDARD";
+        pricingProfileName = "Netherlands Daytime Standard";
+    }
+
+    if (pricingPurpose === "night") {
+        pricingProfileCode = "NL_NIGHT_STANDARD";
+        pricingProfileName = "Netherlands Night Standard";
+    }
+
+    if (pricingPurpose === "weekend") {
+        pricingProfileCode = "NL_WEEKEND_STANDARD";
+        pricingProfileName = "Netherlands Weekend Standard";
+    }
+
+    if (pricingPurpose === "holiday") {
+        pricingProfileCode = "NL_HOLIDAY_STANDARD";
+        pricingProfileName = "Netherlands Holiday Standard";
+    }
+
+    if (pricingPurpose === "event") {
+        pricingProfileCode = "NL_EVENT_STANDARD";
+        pricingProfileName = "Netherlands Event Standard";
+    }
+
+    if (!pricingProfileCode) {
+        redirect("/admin/pricing?error=invalid-pricing-purpose");
+    }
+
+    const { data: newPricingProfileId, error } = await supabaseAdmin.rpc(
+        "create_pricing_profile_family",
+        {
+            p_pricing_profile_code: pricingProfileCode,
+            p_pricing_profile_name: pricingProfileName,
+            p_country_code: "NL",
+            p_currency_code: "EUR",
+            p_created_by_user_id: adminUser.id,
+        }
+    );
+
+    if (error) {
+        console.error("Could not create pricing-profile family:", error);
+        redirect("/admin/pricing?error=create-family-failed");
+    }
+
+    if (!newPricingProfileId) {
+        redirect("/admin/pricing?error=create-family-failed");
+    }
+
+    redirect(`/admin/pricing/${newPricingProfileId}`);
 }
 
 /**
@@ -101,14 +172,30 @@ export default async function AdminPricingPage() {
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
                 <Link href="/admin" className={formStyles.link}>Back to admin</Link>
-
                 <p className={pageStyles.pageLabelUpper}>Financial configuration</p>
                 <h1 className={pageStyles.pageTitle}>Pricing management</h1>
-
                 <p className={pageStyles.pageDescription}>
                     Read-only overview of all pricing-profile versions and their configured rates.
                 </p>
+                <form action={createPricingProfileFamily} className="mb-8">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <label>
+                            <span className={formStyles.span}>Pricing purpose</span>
+                            <select name="pricingPurpose" defaultValue="" className={formStyles.inputWFullCyan} required>
+                                <option value="" disabled>Select pricing purpose</option>
+                                <option value="daytime">Daytime</option>
+                                <option value="night">Night</option>
+                                <option value="weekend">Weekend</option>
+                                <option value="holiday">Holiday</option>
+                                <option value="event">Special event</option>
+                            </select>
+                        </label>
 
+                        <button type="submit" className={formStyles.smallButton}>
+                            Create pricing profile
+                        </button>
+                    </div>
+                </form>
                 {pricingProfiles.length === 0 ? (
                     <p className={tableStyles.cellEmpty}>No pricing profiles were found.</p>
                 ) : (
@@ -132,7 +219,6 @@ export default async function AdminPricingPage() {
                                 <tbody>
                                     {pricingProfiles.map((pricingProfile) => {
                                         const pricingRate = rateByProfileId.get(pricingProfile.id);
-
                                         return (
                                             <tr key={pricingProfile.id} className={tableStyles.rowCyan}>
                                                 <td className={tableStyles.cell}>
@@ -140,46 +226,35 @@ export default async function AdminPricingPage() {
                                                         {pricingProfile.pricing_profile_name}
                                                     </Link>
                                                     <div>
-                                                        {pricingProfile.pricing_profile_code}
-                                                        {" - V"}
-                                                        {pricingProfile.pricing_profile_version}
+                                                        {pricingProfile.pricing_profile_code} {" - V"} {pricingProfile.pricing_profile_version}
                                                     </div>
                                                 </td>
-
                                                 <td className={tableStyles.cell}>
-                                                    {pricingProfile.country_code}
-                                                    {" / "}
-                                                    {pricingProfile.currency_code}
+                                                    {pricingProfile.country_code} {" / "} {pricingProfile.currency_code}
                                                 </td>
-
                                                 <td className={tableStyles.cell}>
                                                     {formatStatus(pricingProfile.status)}
                                                 </td>
-
                                                 <td className={tableStyles.cell}>
                                                     {pricingRate
                                                         ? formatMoney(pricingRate.base_fare_excluding_vat, pricingProfile.currency_code)
                                                         : "Missing"}
                                                 </td>
-
                                                 <td className={tableStyles.cell}>
                                                     {pricingRate
                                                         ? formatMoney(pricingRate.distance_rate_per_km_excluding_vat, pricingProfile.currency_code)
                                                         : "Missing"}
                                                 </td>
-
                                                 <td className={tableStyles.cell}>
                                                     {pricingRate
                                                         ? formatMoney(pricingRate.duration_rate_per_minute_excluding_vat, pricingProfile.currency_code)
                                                         : "Missing"}
                                                 </td>
-
                                                 <td className={tableStyles.cell}>
                                                     {pricingRate
                                                         ? formatMoney(pricingRate.minimum_fare_excluding_vat, pricingProfile.currency_code)
                                                         : "Missing"}
                                                 </td>
-
                                                 <td className={tableStyles.cell}>
                                                     {pricingProfile.quote_validity_minutes} minutes
                                                 </td>

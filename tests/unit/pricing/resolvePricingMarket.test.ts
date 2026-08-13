@@ -21,7 +21,6 @@ describe("resolvePricingMarket", () => {
         const pricingMarket = resolvePricingMarket("NL");
 
         expect(pricingMarket).toEqual({
-            pricingProfileCode: "NL_DAYTIME_STANDARD",
             countryCode: "NL",
             currencyCode: "EUR",
             serviceCategory: "passenger_transport",
@@ -33,7 +32,6 @@ describe("resolvePricingMarket", () => {
         const pricingMarket = resolvePricingMarket("nl");
 
         expect(pricingMarket?.countryCode).toBe("NL");
-        expect(pricingMarket?.pricingProfileCode).toBe("NL_DAYTIME_STANDARD");
     });
 
 

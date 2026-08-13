@@ -293,7 +293,7 @@ export default function BookingForm() {
         Returns null if anything fails.
         Always resets isCreatingQuote.
     */
-    async function createJourneyQuoteForReview(): Promise<TemporaryJourneyQuote | null> {
+   async function createJourneyQuoteForReview(journeyDate: string, journeyTime: string): Promise<TemporaryJourneyQuote | null> {
         if (!routeEstimate) {
             setErrorMessage(getBookingFormText("journeyQuoteFailedText"));
             return null;
@@ -309,6 +309,8 @@ export default function BookingForm() {
                     bookingSessionId,
                     pickupCoordinate: pickupLocation?.coordinate,
                     destinationCoordinate: destinationLocation?.coordinate,
+                    date: journeyDate,
+                    time: journeyTime,
                 }),
             });
 
@@ -367,7 +369,7 @@ export default function BookingForm() {
         * - pickup/destination changed and the handlers cleared it.
         */
         const journeyQuoteIsStillValid =journeyQuote && new Date(journeyQuote.expiresAt).getTime() > Date.now();
-        const reviewedJourneyQuote = journeyQuoteIsStillValid ? journeyQuote : await createJourneyQuoteForReview();
+        const reviewedJourneyQuote = journeyQuoteIsStillValid ? journeyQuote : await createJourneyQuoteForReview(bookingRequest.date, bookingRequest.time);
         if (!reviewedJourneyQuote) { return; }
 
         setBookingDraft(bookingRequest);
@@ -659,12 +661,14 @@ export default function BookingForm() {
                         )}
                         <div>
                             <label htmlFor="date" className="mb-2 block text-sm font-medium"> {getBookingFormText("dateLabel")} </label>
-                            <input id="date" name="date" type="date" min={todayDate} max="2099-12-31" required defaultValue={bookingDraft?.date || ""} className={formStyles.inputDateUserPage} />
+                            <input id="date" name="date" type="date" min={todayDate} max="2099-12-31" required className={formStyles.inputDateUserPage}
+                            onChange={() => setJourneyQuote(null)} defaultValue={bookingDraft?.date || ""} />
                         </div>
 
                         <div>
                             <label htmlFor="time" className="mb-2 block text-sm font-medium"> {getBookingFormText("timeLabel")} </label>
-                            <input id="time" name="time" type="time" required defaultValue={bookingDraft?.time || ""} className={formStyles.inputDateUserPage} />
+                            <input id="time" name="time" type="time" required className={formStyles.inputDateUserPage}
+                             onChange={() => setJourneyQuote(null)} defaultValue={bookingDraft?.time || ""} />
                         </div>
   
                         <div>

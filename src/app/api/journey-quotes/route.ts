@@ -10,6 +10,7 @@ import { calculateRouteEstimate } from "@/lib/mapbox/mapboxRouteService";
 import { reverseGeocodeCoordinate } from "@/lib/mapbox/mapboxGeocodingService";
 import { resolvePricingMarket } from "@/lib/pricing/resolvePricingMarket";
 import { createBookingDataFingerprint } from "@/lib/pricing/createBookingDataFingerprint";
+import { resolveScheduledPricingProfileCode } from "@/lib/pricing/resolveScheduledPricingProfileCode";
 
 /**
  * Purpose:
@@ -119,9 +120,16 @@ export async function POST(request: Request) {
         );
     }
 
+    const pricingProfileCode = await resolveScheduledPricingProfileCode(
+        pricingMarket.countryCode,
+        pricingMarket.serviceCategory,
+        requestBody.date,
+        requestBody.time
+    );
+
     const pricingConfiguration =
         await loadActiveJourneyPricingConfiguration({
-            pricingProfileCode: pricingMarket.pricingProfileCode,
+            pricingProfileCode,
             countryCode: pricingMarket.countryCode,
             currencyCode: pricingMarket.currencyCode,
             serviceCategory: pricingMarket.serviceCategory,
@@ -178,7 +186,9 @@ export async function POST(request: Request) {
     */
     const bookingDataFingerprint = createBookingDataFingerprint(
         requestBody.pickupCoordinate,
-        requestBody.destinationCoordinate
+        requestBody.destinationCoordinate,
+        requestBody.date,
+        requestBody.time
     );
 
     /*

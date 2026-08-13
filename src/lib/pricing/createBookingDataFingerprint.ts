@@ -8,12 +8,13 @@ import type { MapboxCoordinate } from "@/types/mapboxType";
  * The fingerprint connects a temporary quote to the journey
  * for which that quote was originally calculated.
  *
- * Current Version 1 uses:
+ * Current Version 2 uses::
  * - pickup longitude + latitude;
  * - destination longitude + latitude.
+ * - journey date;
+ * - journey time.
  *
  * Example:
- *
  * pickup + destination coordinates
  *          ↓
  * normalized text
@@ -36,7 +37,12 @@ import type { MapboxCoordinate } from "@/types/mapboxType";
  * those pricing inputs must also become part of a newer
  * fingerprint version.
  */
-export function createBookingDataFingerprint(pickupCoordinate: MapboxCoordinate, destinationCoordinate: MapboxCoordinate): string {
+export function createBookingDataFingerprint(
+    pickupCoordinate: MapboxCoordinate,
+    destinationCoordinate: MapboxCoordinate,
+    journeyDate: string,
+    journeyTime: string
+): string {
 
     /*
      * Six decimal places provide a stable representation of
@@ -44,11 +50,13 @@ export function createBookingDataFingerprint(pickupCoordinate: MapboxCoordinate,
      * point representation differences.
      */
     const fingerprintData = [
-        "booking-pricing-input-v1",
+        "booking-pricing-input-v2",
         pickupCoordinate.longitude.toFixed(6),
         pickupCoordinate.latitude.toFixed(6),
         destinationCoordinate.longitude.toFixed(6),
         destinationCoordinate.latitude.toFixed(6),
+        journeyDate,
+        journeyTime,
     ].join("|");
 
     return createHash("sha256")

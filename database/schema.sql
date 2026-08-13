@@ -463,6 +463,156 @@ CREATE TABLE IF NOT EXISTS public.pricing_rates (
         )
 );
 
+/*=============================================================
+Strat pricing-schedules
+==============================================================*/
+/*
+ * Pricing Version - Process 3
+ *
+ * Stores recurring local-time rules that select
+ * the pricing profile for a planned journey.
+ *
+ * day_of_week uses ISO numbering:
+ * 1 = Monday
+ * 2 = Tuesday
+ * ...
+ * 7 = Sunday
+ *
+ * country_code       = NL
+ * service_category   = example: passenger_transport or package transport
+ */
+
+CREATE TABLE IF NOT EXISTS public.pricing_schedules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    country_code TEXT NOT NULL,
+    service_category TEXT NOT NULL,
+    day_of_week SMALLINT NOT NULL,
+    start_local_time TIME NOT NULL,
+    end_local_time TIME NOT NULL,
+    pricing_profile_code TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pricing_schedules_country_code_valid
+        CHECK (LENGTH(country_code) = 2 AND country_code = UPPER(country_code)),
+
+    CONSTRAINT pricing_schedules_day_of_week_valid
+        CHECK (day_of_week >= 1 AND day_of_week <= 7),
+
+    CONSTRAINT pricing_schedules_time_period_valid
+        CHECK (end_local_time > start_local_time ),
+
+    CONSTRAINT pricing_schedules_service_category_not_empty
+        CHECK (LENGTH(TRIM(service_category)) > 0 ),
+
+    CONSTRAINT pricing_schedules_profile_code_valid
+        CHECK (pricing_profile_code ~ '^[A-Z0-9_]+$'),
+
+    CONSTRAINT pricing_schedules_period_unique
+        UNIQUE (
+            country_code,
+            service_category,
+            day_of_week,
+            start_local_time,
+        end_local_time
+    )
+);
+
+/* ============================================================
+   SPECIAL DATE / TIME PRICING OVERRIDES
+   ============================================================ */
+
+/*
+ * Stores temporary or exceptional pricing periods.
+ *
+ * Examples:
+ * - Christmas Day
+ * - New Year's Eve night
+ * - King's Day
+ * - special events
+ * - temporary seasonal pricing
+ *
+ * with priority, we have rules for priority over the normal recurring pricing_schedules table.
+ * Then later the resolver can use:
+        lower number = higher priority
+        For example:
+        priority 10  → New Year's Eve special
+        priority 50  → Christmas / holiday
+        priority 100 → general special period
+
+        That gives us a clear rule:
+        special overrides found
+                ↓
+        lowest priority number wins
+                ↓
+        if none found
+                ↓
+        normal weekly schedule
+
+ */
+
+CREATE TABLE IF NOT EXISTS public.pricing_schedule_overrides (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    country_code TEXT NOT NULL,
+    service_category TEXT NOT NULL,
+    override_name TEXT NOT NULL,
+    start_local_datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    end_local_datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    pricing_profile_code TEXT NOT NULL,
+    priority SMALLINT NOT NULL DEFAULT 100,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pricing_schedule_overrides_country_code_valid
+        CHECK (LENGTH(country_code) = 2 AND country_code = UPPER(country_code)),
+
+    CONSTRAINT pricing_schedule_overrides_name_not_empty
+        CHECK (LENGTH(TRIM(override_name)) > 0 ),
+
+    CONSTRAINT pricing_schedule_overrides_period_valid
+        CHECK (end_local_datetime > start_local_datetime),
+
+    CONSTRAINT pricing_schedule_overrides_service_category_not_empty
+        CHECK (LENGTH(TRIM(service_category)) > 0),
+
+    CONSTRAINT pricing_schedule_overrides_profile_code_valid
+        CHECK (pricing_profile_code ~ '^[A-Z0-9_]+$'),
+
+    CONSTRAINT pricing_schedule_overrides_priority_valid
+    CHECK (priority >= 1)
+);
+
+/*=============================================================
+End pricing-schedules
+==============================================================*/
+
+/*=============================================================
+Start prevent-duplicate-pricing-overrides
+==============================================================*/
+/*
+ * Pricing Version - Process 3
+ *
+ * Prevents the exact same special pricing override from being
+ * stored more than once.
+ *
+ * The override name is intentionally NOT part of the rule.
+ * Renaming an override must not allow duplicate financial rules.
+ */
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+    pricing_schedule_overrides_exact_unique
+ON public.pricing_schedule_overrides (
+    country_code,
+    service_category,
+    start_local_datetime,
+    end_local_datetime,
+    pricing_profile_code,
+    priority
+);
+/*=============================================================
+End prevent-duplicate-pricing-overrides
+==============================================================*/
+
 /* ============================================================
    TAX RULES
 
@@ -1864,23 +2014,35 @@ ALTER TABLE public.tax_rules
 ALTER TABLE public.currency_rounding_rules
     ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.pricing_schedules
+    ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.pricing_schedule_overrides
+    ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.pricing_schedules
+    ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.pricing_schedule_overrides
+    ENABLE ROW LEVEL SECURITY;
 /*
    Prevent direct table access from browser roles.
 
    Protected Next.js routes verify authentication and roles,
    then use the Supabase service role for trusted operations.
 */
+
 REVOKE ALL
 ON TABLE
     public.pricing_profiles,
     public.pricing_rates,
     public.tax_rules,
     public.currency_rounding_rules,
+    public.pricing_schedules,
+    public.pricing_schedule_overrides,
     public.journey_quotes,
     public.journey_quote_items
 FROM anon, authenticated;
-
 
 /* Preserve trusted server-side service-role access. */
 GRANT ALL
@@ -1889,19 +2051,18 @@ ON TABLE
     public.pricing_rates,
     public.tax_rules,
     public.currency_rounding_rules,
+    public.pricing_schedules,
+    public.pricing_schedule_overrides,
     public.journey_quotes,
     public.journey_quote_items
 TO service_role;
 
-
-/* ============================================================
+/* ================================================================================================================
    INITIAL VERSION 1 FINANCIAL CONFIGURATION
 
    Mirrors the financial values currently used by the
    TypeScript pricing configuration.
-============================================================ */
-
-
+==================================================================================================================== */
 /* Create the pricing profile and connect its exact rates. */
 WITH created_pricing_profile AS (
     INSERT INTO public.pricing_profiles (
@@ -1922,7 +2083,7 @@ WITH created_pricing_profile AS (
         1,
         'NL',
         'EUR',
-        15,
+        20,
         'active',
         TIMESTAMPTZ '2026-01-01 00:00:00+00',
         NULL,
@@ -1939,12 +2100,98 @@ INSERT INTO public.pricing_rates (
 )
 SELECT
     created_pricing_profile.id,
-    4.0000,
+    4.5000,
     2.5000,
     0.4000,
     15.0000
 FROM created_pricing_profile;
 
+/* Create the initial Night pricing profile and rates. */
+WITH created_pricing_profile AS (
+    INSERT INTO public.pricing_profiles (
+        pricing_profile_code,
+        pricing_profile_name,
+        pricing_profile_version,
+        country_code,
+        currency_code,
+        quote_validity_minutes,
+        status,
+        effective_from,
+        effective_until,
+        activated_at
+    )
+    VALUES (
+        'NL_NIGHT_STANDARD',
+        'Netherlands Night Standard',
+        1,
+        'NL',
+        'EUR',
+        20,
+        'active',
+        TIMESTAMPTZ '2026-01-01 00:00:00+00',
+        NULL,
+        NOW()
+    )
+    RETURNING id
+)
+INSERT INTO public.pricing_rates (
+    pricing_profile_id,
+    base_fare_excluding_vat,
+    distance_rate_per_km_excluding_vat,
+    duration_rate_per_minute_excluding_vat,
+    minimum_fare_excluding_vat
+)
+SELECT
+    created_pricing_profile.id,
+    4.5000,
+    2.5000,
+    0.4000,
+    15.0000
+FROM created_pricing_profile;
+
+
+/* Create the initial Weekend pricing profile and rates. */
+WITH created_pricing_profile AS (
+    INSERT INTO public.pricing_profiles (
+        pricing_profile_code,
+        pricing_profile_name,
+        pricing_profile_version,
+        country_code,
+        currency_code,
+        quote_validity_minutes,
+        status,
+        effective_from,
+        effective_until,
+        activated_at
+    )
+    VALUES (
+        'NL_WEEKEND_STANDARD',
+        'Netherlands Weekend Standard',
+        1,
+        'NL',
+        'EUR',
+        20,
+        'active',
+        TIMESTAMPTZ '2026-01-01 00:00:00+00',
+        NULL,
+        NOW()
+    )
+    RETURNING id
+)
+INSERT INTO public.pricing_rates (
+    pricing_profile_id,
+    base_fare_excluding_vat,
+    distance_rate_per_km_excluding_vat,
+    duration_rate_per_minute_excluding_vat,
+    minimum_fare_excluding_vat
+)
+SELECT
+    created_pricing_profile.id,
+    4.5000,
+    2.5000,
+    0.4000,
+    15.0000
+FROM created_pricing_profile;
 
 /* Dutch passenger-transport VAT. */
 INSERT INTO public.tax_rules (
@@ -1990,10 +2237,64 @@ VALUES (
     NULL,
     NOW()
 );
+/*====================================================================================================================*/
+/* ===================================================================================================================
+INITIAL NL PASSENGER TRANSPORT PRICING SCHEDULE
 
-/* ============================================================
--- Taxi trip booking requests
+Defines the normal recurring weekly pricing-profile selection.
+
+Monday-Friday:
+00:00-06:00 → Night
+06:00-22:00 → Daytime
+22:00-24:00 → Night
+
+Saturday-Sunday:
+00:00-24:00 → Weekend
 ============================================================ */
+
+INSERT INTO public.pricing_schedules (
+    country_code,
+    service_category,
+    day_of_week,
+    start_local_time,
+    end_local_time,
+    pricing_profile_code
+)
+VALUES
+    ('NL', 'passenger_transport', 1, '00:00', '06:00', 'NL_NIGHT_STANDARD'),
+    ('NL', 'passenger_transport', 1, '06:00', '22:00', 'NL_DAYTIME_STANDARD'),
+    ('NL', 'passenger_transport', 1, '22:00', '24:00', 'NL_NIGHT_STANDARD'),
+
+    ('NL', 'passenger_transport', 2, '00:00', '06:00', 'NL_NIGHT_STANDARD'),
+    ('NL', 'passenger_transport', 2, '06:00', '22:00', 'NL_DAYTIME_STANDARD'),
+    ('NL', 'passenger_transport', 2, '22:00', '24:00', 'NL_NIGHT_STANDARD'),
+
+    ('NL', 'passenger_transport', 3, '00:00', '06:00', 'NL_NIGHT_STANDARD'),
+    ('NL', 'passenger_transport', 3, '06:00', '22:00', 'NL_DAYTIME_STANDARD'),
+    ('NL', 'passenger_transport', 3, '22:00', '24:00', 'NL_NIGHT_STANDARD'),
+
+    ('NL', 'passenger_transport', 4, '00:00', '06:00', 'NL_NIGHT_STANDARD'),
+    ('NL', 'passenger_transport', 4, '06:00', '22:00', 'NL_DAYTIME_STANDARD'),
+    ('NL', 'passenger_transport', 4, '22:00', '24:00', 'NL_NIGHT_STANDARD'),
+
+    ('NL', 'passenger_transport', 5, '00:00', '06:00', 'NL_NIGHT_STANDARD'),
+    ('NL', 'passenger_transport', 5, '06:00', '22:00', 'NL_DAYTIME_STANDARD'),
+    ('NL', 'passenger_transport', 5, '22:00', '24:00', 'NL_NIGHT_STANDARD'),
+
+    ('NL', 'passenger_transport', 6, '00:00', '24:00', 'NL_WEEKEND_STANDARD'),
+    ('NL', 'passenger_transport', 7, '00:00', '24:00', 'NL_WEEKEND_STANDARD')
+ON CONFLICT (
+    country_code,
+    service_category,
+    day_of_week,
+    start_local_time,
+    end_local_time
+)
+DO NOTHING;
+
+/* =================================================================================================================================
+-- Taxi trip booking requests
+==================================================================================================================================== */
 CREATE TABLE public.bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -2503,8 +2804,246 @@ BEFORE UPDATE ON public.currency_rounding_rules
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
---============================Pricing profile draft management====================================
+/* Automatically updates pricing_schedules.updated_at. */
+CREATE TRIGGER update_pricing_schedules_updated_at
+BEFORE UPDATE ON public.pricing_schedules
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+
+/* Automatically updates pricing_schedule_overrides.updated_at. */
+CREATE TRIGGER update_pricing_schedule_overrides_updated_at
+BEFORE UPDATE ON public.pricing_schedule_overrides
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+--============================create_pricing_profile_family=====================================================================
+
+/*
+ * Pricing Version - Process 3
+ *
+ * Creates the first draft version of a completely new
+ * pricing-profile family.
+ *
+ * Example:
+ *
+ * NL_NIGHT_STANDARD does not exist
+ *          ↓
+ * create_pricing_profile_family(...)
+ *          ↓
+ * NL_NIGHT_STANDARD V1
+ * status = draft
+ * rates = 0
+ *
+ * The administrator can then edit the draft through the
+ * existing pricing-detail page before activating it.
+ */
+
+
+CREATE OR REPLACE FUNCTION public.create_pricing_profile_family(
+    p_pricing_profile_code TEXT,
+    p_pricing_profile_name TEXT,
+    p_country_code TEXT,
+    p_currency_code TEXT,
+    p_created_by_user_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    v_pricing_profile_code TEXT;
+    v_pricing_profile_name TEXT;
+    v_country_code TEXT;
+    v_currency_code TEXT;
+
+    v_new_pricing_profile_id UUID;
+
+BEGIN
+    /*
+     * Normalize values before validation and storage.
+     *
+     * Example:
+     *
+     * nl_night_standard → NL_NIGHT_STANDARD
+     * nl                → NL
+     * eur               → EUR
+     */
+    v_pricing_profile_code := UPPER(TRIM(p_pricing_profile_code));
+    v_pricing_profile_name := TRIM(p_pricing_profile_name);
+    v_country_code := UPPER(TRIM(p_country_code));
+    v_currency_code := UPPER(TRIM(p_currency_code));
+
+
+    /* All required values must be present. */
+    IF p_pricing_profile_code IS NULL
+        OR p_pricing_profile_name IS NULL
+        OR p_country_code IS NULL
+        OR p_currency_code IS NULL
+        OR p_created_by_user_id IS NULL
+        OR v_pricing_profile_code = ''
+        OR v_pricing_profile_name = ''
+        OR v_country_code = ''
+        OR v_currency_code = ''
+    THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Pricing profile family information is incomplete.';
+    END IF;
+
+    /* Validate the stable pricing-profile code. */
+    IF v_pricing_profile_code !~ '^[A-Z0-9_]+$' THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The pricing profile code is invalid.';
+    END IF;
+
+
+    /* Validate country and currency codes. */
+    IF v_country_code !~ '^[A-Z]{2}$'
+        OR v_currency_code !~ '^[A-Z]{3}$'
+    THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The country or currency code is invalid.';
+    END IF;
+
+
+    /*
+     * Lock creation for this pricing-profile family.
+     *
+     * This prevents two administrators from creating the
+     * same family at the same moment.
+     */
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(v_pricing_profile_code, 0)
+    );
+
+
+    /*
+     * A pricing-profile code identifies one complete family.
+     *
+     * If any version already exists, this is not a new family.
+     */
+    IF EXISTS (
+        SELECT 1
+        FROM public.pricing_profiles AS pricing_profile
+        WHERE pricing_profile.pricing_profile_code = v_pricing_profile_code
+    ) THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '23505',
+                MESSAGE = 'This pricing profile family already exists.';
+    END IF;
+
+    /*
+    * Create Version 1 as a draft.
+    *
+    * New pricing families start with a quote validity of
+    * 20 minutes. The administrator may edit this while
+    * the profile remains a draft.
+    */
+    INSERT INTO public.pricing_profiles (
+        pricing_profile_code,
+        pricing_profile_name,
+        pricing_profile_version,
+        country_code,
+        currency_code,
+        quote_validity_minutes,
+        status,
+        effective_from,
+        created_by_user_id
+    )
+    VALUES (
+        v_pricing_profile_code,
+        v_pricing_profile_name,
+        1,
+        v_country_code,
+        v_currency_code,
+        20,
+        'draft',
+        NOW(),
+        p_created_by_user_id
+    )
+    RETURNING id
+    INTO v_new_pricing_profile_id;
+
+    /*
+     * Create an editable rates record.
+     *
+     * New families begin with zero monetary values.
+     * The administrator must configure the real values
+     * before activation.
+     */
+    INSERT INTO public.pricing_rates (
+        pricing_profile_id,
+        base_fare_excluding_vat,
+        distance_rate_per_km_excluding_vat,
+        duration_rate_per_minute_excluding_vat,
+        minimum_fare_excluding_vat
+    )
+    VALUES (
+        v_new_pricing_profile_id,
+        0,
+        0,
+        0,
+        0
+    );
+
+
+    /* Return the UUID needed for redirecting to the draft page. */
+    RETURN v_new_pricing_profile_id;
+
+END;
+$$;
+
+
 /* ============================================================
+FUNCTION PERMISSIONS
+
+Browser roles cannot create financial configuration directly.
+
+The Next.js server action will first verify the administrator
+and then call this function through supabaseAdmin.
+============================================================ */
+
+REVOKE ALL
+ON FUNCTION public.create_pricing_profile_family(
+    TEXT,
+    TEXT,
+    TEXT,
+    TEXT,
+    UUID
+)
+FROM PUBLIC, anon, authenticated;
+
+
+GRANT EXECUTE
+ON FUNCTION public.create_pricing_profile_family(
+    TEXT,
+    TEXT,
+    TEXT,
+    TEXT,
+    UUID
+)
+TO service_role;
+
+
+COMMENT ON FUNCTION public.create_pricing_profile_family(
+    TEXT,
+    TEXT,
+    TEXT,
+    TEXT,
+    UUID
+)
+IS 'Creates Version 1 of a new pricing-profile family as an editable draft with zero initial rates.';
+
+--============================Pricing profile draft management====================================================================
+/* ===============================================================================================================================
    CREATE PRICING PROFILE DRAFT FUNCTION
 
    Parameters:
@@ -3020,65 +3559,50 @@ COMMENT ON FUNCTION public.update_pricing_profile_draft(
 )
 IS 'Atomically updates the editable profile and monetary rates of one draft pricing version.';
 
-/* ============================VOYA TAXI — ACTIVATE PRICING PROFILE DRAFT================================
-    =====================================================================================================
-   PURPOSE
+/* ============================VOYA TAXI — ACTIVATE PRICING PROFILE DRAFT===============================================================
+PURPOSE
 
-   Activates one draft pricing version and archives the currently
-   active version of the same pricing-profile family.
+Activates one draft pricing version.
 
-   Example:
+The function supports two cases:
 
-       Version 1 → active
-       Version 2 → draft
+1. Existing pricing family
+   - an active version already exists;
+   - the active version is archived;
+   - the draft becomes active.
 
-   Admin activates Version 2:
+Example:
+   Version 2 → active
+   Version 3 → draft
 
-       Version 1 → archived
-       Version 2 → active
+Admin activates Version 3:
+   Version 2 → archived
+   Version 3 → active
 
-   Both changes use exactly the same database timestamp.
+2. Brand-new pricing family
+   - no active version exists yet;
+   - Version 1 draft becomes the first active version.
 
-   This creates a continuous pricing timeline:
+Example:   Version 1 → draft
 
-       Version 1 ----------------|
-                                 |---------------- Version 2
-                         same activation moment
+Admin activates Version 1:   Version 1 → active
 
-   IMPORTANT
+TIMELINE RULE
+When replacing an existing active version, both lifecycle changes use exactly the same database timestamp.
+Example:
+   Version 2 ----------------|
+                             |---------------- Version 3
+                     same activation moment
 
-   The draft creation date is NOT the date customers started using
-   the new prices.
+The draft creation date is NOT the date customers started using the new prices.
+Therefore, when a draft becomes active:  effective_from = actual activation timestamp
+When an older active version exists, it receives: effective_until = same activation timestamp
 
-   Therefore, when the draft becomes active:
-
-       effective_from = actual activation timestamp
-
-   The old active version receives:
-
-       effective_until = same activation timestamp
-
-   This entire operation is atomic. If any part fails, PostgreSQL
-   rolls back all changes.
-============================================================ */
-
-
-/* ============================================================
-   ACTIVATE PRICING PROFILE DRAFT FUNCTION
-
-   Parameters:
-
-   p_pricing_profile_id
-       UUID of the draft profile that must become active.
-
-   p_activated_by_user_id
-       UUID of the authenticated administrator performing
-       the activation.
-
-   Returns:
-
-       UUID of the newly activated pricing profile.
-============================================================ */
+SAFETY
+The complete activation operation is atomic.
+If any validation or database operation fails, PostgreSQL rolls back the complete transition.
+A pricing-profile family can have only one active version.
+===================================================================================================== */
 
 CREATE OR REPLACE FUNCTION public.activate_pricing_profile_draft(
     p_pricing_profile_id UUID,
@@ -3096,20 +3620,20 @@ DECLARE
     /* Stores the draft that will become active. */
     v_draft_profile public.pricing_profiles%ROWTYPE;
 
-    /* Stores the currently active version that will be archived. */
+    /* Stores the active predecessor when one exists. */
     v_active_profile public.pricing_profiles%ROWTYPE;
 
     /*
-     * NOW() returns the same transaction timestamp throughout
-     * this function.
-
-     * Therefore both versions receive exactly the same transition
-     * time.
+     * NOW() stays the same throughout this transaction.
+     *
+     * When an old active version exists, both versions therefore
+     * receive exactly the same transition timestamp.
      */
     v_activation_time TIMESTAMPTZ := NOW();
 
     /* Used to verify that the draft contains pricing rates. */
     v_rate_exists BOOLEAN;
+
 BEGIN
     /* Both IDs are required. */
     IF p_pricing_profile_id IS NULL
@@ -3121,15 +3645,7 @@ BEGIN
                 MESSAGE = 'Pricing profile ID and administrator user ID are required.';
     END IF;
 
-
-    /*
-     * Load the profile code first.
-
-     * The code identifies the complete pricing family,
-     * for example:
-
-         NL_DAYTIME_STANDARD
-    */
+    /* Load the profile-family code. */
     SELECT pricing_profile.pricing_profile_code
     INTO v_pricing_profile_code
     FROM public.pricing_profiles AS pricing_profile
@@ -3142,19 +3658,17 @@ BEGIN
                 MESSAGE = 'The pricing profile could not be found.';
     END IF;
 
-
     /*
-     * Lock this complete pricing-profile family.
-
+     * Lock the complete pricing family.
+     *
      * This prevents two administrators from activating competing
-     * versions of the same pricing family at the same moment.
+     * versions of the same family at the same moment.
      */
     PERFORM pg_advisory_xact_lock(
         hashtextextended(v_pricing_profile_code, 0)
     );
 
-
-    /* Reload and lock the draft after obtaining the family lock. */
+    /* Reload and lock the selected draft. */
     SELECT pricing_profile.*
     INTO v_draft_profile
     FROM public.pricing_profiles AS pricing_profile
@@ -3168,8 +3682,7 @@ BEGIN
                 MESSAGE = 'The pricing profile could not be found.';
     END IF;
 
-
-    /* Only draft profiles may enter the activation workflow. */
+    /* Only draft profiles may be activated. */
     IF v_draft_profile.status <> 'draft' THEN
         RAISE EXCEPTION
             USING
@@ -3177,11 +3690,7 @@ BEGIN
                 MESSAGE = 'Only a draft pricing profile can be activated.';
     END IF;
 
-
-    /*
-     * The draft must contain its complete pricing_rates record
-     * before it can become active.
-     */
+    /* A complete pricing-rates record must exist. */
     SELECT EXISTS (
         SELECT 1
         FROM public.pricing_rates AS pricing_rate
@@ -3196,83 +3705,68 @@ BEGIN
                 MESSAGE = 'The draft pricing profile does not contain pricing rates.';
     END IF;
 
-
     /*
-     * Find and lock the currently active profile belonging to the
-     * same pricing family.
-
-     * Our current workflow creates drafts from an active profile,
-     * so one active predecessor must exist.
+     * Find the currently active version of this family.
+     *
+     * A brand-new family such as NL_NIGHT_STANDARD V1 does not
+     * have an active predecessor yet. That is valid.
      */
     SELECT pricing_profile.*
     INTO v_active_profile
     FROM public.pricing_profiles AS pricing_profile
-    WHERE pricing_profile.pricing_profile_code = v_draft_profile.pricing_profile_code
+    WHERE pricing_profile.pricing_profile_code =
+        v_draft_profile.pricing_profile_code
       AND pricing_profile.status = 'active'
     FOR UPDATE;
 
-    IF NOT FOUND THEN
-        RAISE EXCEPTION
-            USING
-                ERRCODE = 'P0002',
-                MESSAGE = 'No active pricing profile exists to replace.';
+    /*
+     * When an active predecessor exists, validate and archive it.
+     *
+     * When none exists, this complete block is skipped and the
+     * new family's first draft is activated directly.
+     */
+    IF FOUND THEN
+
+        /* Old and new versions must belong to the same market. */
+        IF v_active_profile.country_code <> v_draft_profile.country_code
+            OR v_active_profile.currency_code <> v_draft_profile.currency_code
+        THEN
+            RAISE EXCEPTION
+                USING
+                    ERRCODE = '22023',
+                    MESSAGE = 'The draft pricing market does not match the active pricing market.';
+        END IF;
+
+        /* Preserve a valid effective period for the old version. */
+        IF v_activation_time <= v_active_profile.effective_from THEN
+            RAISE EXCEPTION
+                USING
+                    ERRCODE = '22023',
+                    MESSAGE = 'The activation time must be later than the active profile effective start.';
+        END IF;
+
+        /*
+         * Archive the current active version before activating
+         * the replacement.
+         */
+        UPDATE public.pricing_profiles
+        SET
+            status = 'archived',
+            effective_until = v_activation_time,
+            archived_by_user_id = p_activated_by_user_id,
+            archived_at = v_activation_time
+        WHERE id = v_active_profile.id;
+
     END IF;
 
 
     /*
-     * The old and new versions must describe the same market.
-
-     * Website language is never involved in this decision.
-     */
-    IF v_active_profile.country_code <> v_draft_profile.country_code
-        OR v_active_profile.currency_code <> v_draft_profile.currency_code
-    THEN
-        RAISE EXCEPTION
-            USING
-                ERRCODE = '22023',
-                MESSAGE = 'The draft pricing market does not match the active pricing market.';
-    END IF;
-
-
-    /*
-     * The old active profile must be able to end at the activation
-     * timestamp without creating an invalid effective period.
-     */
-    IF v_activation_time <= v_active_profile.effective_from THEN
-        RAISE EXCEPTION
-            USING
-                ERRCODE = '22023',
-                MESSAGE = 'The activation time must be later than the active profile effective start.';
-    END IF;
-
-
-    /*
-     * STEP 1 — ARCHIVE THE CURRENT ACTIVE VERSION
-
-     * We archive it first because the database contains a unique
-     * partial index allowing only one active version per profile
-     * code.
-
-     * effective_until and archived_at use exactly the same
-     * transition timestamp.
-     */
-    UPDATE public.pricing_profiles
-    SET
-        status = 'archived',
-        effective_until = v_activation_time,
-        archived_by_user_id = p_activated_by_user_id,
-        archived_at = v_activation_time
-    WHERE id = v_active_profile.id;
-
-
-    /*
-     * STEP 2 — ACTIVATE THE DRAFT
-
-     * Its previous effective_from value represented the time when
-     * the draft was created.
-
-     * That is replaced with the real moment when customers start
-     * using this pricing version.
+     * Activate the draft.
+     *
+     * This works both for:
+     *
+     * - Version 1 of a brand-new family;
+     * - a replacement version of an existing family.
      */
     UPDATE public.pricing_profiles
     SET
@@ -3286,44 +3780,29 @@ BEGIN
     WHERE id = v_draft_profile.id;
 
 
-    /* Return the newly activated profile for redirecting. */
+    /* Return the activated profile UUID for the Next.js redirect. */
     RETURN v_draft_profile.id;
+
 END;
 $$;
 
 
-/* ============================================================
-   FUNCTION PERMISSIONS
-
-   Browser users must never call this financial transition
-   directly.
-
-   The Next.js server action will first execute:
-
-       const adminUser = await requireAdminUser();
-
-   It then calls this function through supabaseAdmin and passes:
-
-       adminUser.id
-
-   for both the activation and archive audit trail.
-============================================================ */
-
+/* Browser roles cannot perform this financial transition. */
 REVOKE ALL
 ON FUNCTION public.activate_pricing_profile_draft(UUID, UUID)
 FROM PUBLIC, anon, authenticated;
 
+
+/* Trusted Next.js server operations use service_role. */
 GRANT EXECUTE
 ON FUNCTION public.activate_pricing_profile_draft(UUID, UUID)
 TO service_role;
 
 
 COMMENT ON FUNCTION public.activate_pricing_profile_draft(UUID, UUID)
-IS 'Atomically archives the current active pricing version and activates one draft using the same transition timestamp.';
+IS 'Activates one draft pricing profile and archives the previous active version when one exists.';
 
-
-
---============================Default vehicle management=========================================
+--============================Default vehicle management=======================================================================================
 /* ==============================================================================================
    SET DEFAULT VEHICLE
 

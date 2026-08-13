@@ -117,7 +117,12 @@ export async function POST(request: Request) {
 
             The browser cannot decide whether the quote matches.
         */
-        const bookingDataFingerprint = createBookingDataFingerprint(bookingRequest.pickupCoordinate, bookingRequest.destinationCoordinate );
+        const bookingDataFingerprint = createBookingDataFingerprint(
+            bookingRequest.pickupCoordinate,
+            bookingRequest.destinationCoordinate,
+            bookingRequest.date,
+            bookingRequest.time
+        );
         const { data: journeyQuote, error: journeyQuoteError } = await supabaseAdmin
             .from("journey_quotes")
             .select(`

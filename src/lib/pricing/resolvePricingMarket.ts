@@ -17,7 +17,6 @@
  */
 
 export type PricingMarket = {
-    pricingProfileCode: string;
     countryCode: string;
     currencyCode: string;
     serviceCategory: string;
@@ -39,7 +38,6 @@ export function resolvePricingMarket(countryCode: string): PricingMarket | null 
 
     if (normalizedCountryCode === "NL") {
         return {
-            pricingProfileCode: "NL_DAYTIME_STANDARD",
             countryCode: "NL",
             currencyCode: "EUR",
             serviceCategory: "passenger_transport",
