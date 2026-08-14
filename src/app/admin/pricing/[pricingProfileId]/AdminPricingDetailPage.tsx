@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAdminUser } from "@/lib/auth/requireAdminUser";
+import DraftPricingNavigationGuard from "./DraftPricingNavigationGuard";
+import CancelPricingDraftButton from "./CancelPricingDraftButton";
 
 type AdminPricingDetailPageProps = {
     params: Promise<{ pricingProfileId: string }>;
@@ -131,6 +133,7 @@ async function updateDraftPricingVersion(formData: FormData) {
     await requireAdminUser();
 
     const pricingProfileId = String(formData.get("pricingProfileId") || "");
+    const saveAction = String(formData.get("saveAction") || "");
     const pricingProfileName = String(formData.get("pricingProfileName") || "").trim();
     const quoteValidityText = String(formData.get("quoteValidityMinutes") || "").trim();
     const baseFareText = String(formData.get("baseFareExcludingVat") || "").trim();
@@ -190,7 +193,7 @@ async function updateDraftPricingVersion(formData: FormData) {
 
     revalidatePath("/admin/pricing");
     revalidatePath(`/admin/pricing/${pricingProfileId}`);
-
+    if (saveAction === "save-and-return") {redirect("/admin/pricing");}
     redirect(`/admin/pricing/${updatedPricingProfileId}`);
 }
 
@@ -246,6 +249,37 @@ async function activateDraftPricingVersion(formData: FormData) {
     revalidatePath(`/admin/pricing/${pricingProfileId}`);
 
     redirect(`/admin/pricing/${activatedPricingProfileId}`);
+}
+
+/**
+ * PURPOSE: CANCEL AN UNFINISHED PRICING DRAFT
+ *
+ * Only administrators can request this operation.
+ *
+ * PostgreSQL performs the safety checks:
+ * - profile must still exist;
+ * - status must still be draft;
+ * - quoted financial versions cannot be deleted.
+ *
+ * pricing_rates are deleted automatically by the database
+ * through ON DELETE CASCADE.
+ */
+async function cancelDraftPricingVersion(formData: FormData) {
+    "use server";
+
+    await requireAdminUser();
+
+    const pricingProfileId = String(formData.get("pricingProfileId") || "");
+    if (!pricingProfileId) { redirect("/admin/pricing?error=missing-profile");}
+
+    const { error } = await supabaseAdmin.rpc("cancel_pricing_profile_draft", {p_pricing_profile_id: pricingProfileId,});
+    if (error) {
+        console.error("Could not cancel pricing-profile draft:", error);
+        redirect(`/admin/pricing/${pricingProfileId}?error=cancel-draft-failed`);
+    }
+
+    revalidatePath("/admin/pricing");
+    redirect("/admin/pricing?success=draft-cancelled");
 }
 
 /**
@@ -442,7 +476,13 @@ export default async function AdminPricingDetailPage({ params, searchParams}: Ad
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
-                <Link href="/admin/pricing" className={formStyles.link}>Back to pricing</Link>
+                {pricingProfile.status === "draft"
+                    ? (<DraftPricingNavigationGuard formId="draft-pricing-form" saveAndReturnButtonId="draft-save-and-return"/> )
+                    : (
+                        <Link href="/admin/pricing" className={formStyles.link}>
+                            Back to pricing
+                        </Link>)
+                }
 
                 <p className={pageStyles.pageLabelUpper}>Financial configuration</p>
                 <h1 className={pageStyles.pageTitle}>{pricingProfile.pricing_profile_name}</h1>
@@ -495,58 +535,95 @@ export default async function AdminPricingDetailPage({ params, searchParams}: Ad
                     and PostgreSQL also rejects attempts to edit them.
                 =========================================================*/}
                 {pricingProfile.status === "draft" && pricingRate ? (
-                    <form action={updateDraftPricingVersion} className={formStyles.form}>
-                        <input type="hidden" name="pricingProfileId" value={pricingProfile.id} />
+                    <>
+                        <form id="draft-pricing-form" action={updateDraftPricingVersion} className={formStyles.form}>
+                            <input type="hidden" name="pricingProfileId" value={pricingProfile.id} />
+                            <button id="draft-save-and-return" type="submit" name="saveAction" value="save-and-return" className="hidden">
+                                Save and return
+                            </button>
+                            <h2 className="mb-4 text-lg font-semibold text-cyan-300">Edit draft pricing</h2>
 
-                        <h2 className="mb-4 text-lg font-semibold text-cyan-300">Edit draft pricing</h2>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <label>
+                                    <span className={formStyles.span}>Profile name</span>
+                                    <input type="text" name="pricingProfileName" defaultValue={pricingProfile.pricing_profile_name}
+                                        className={formStyles.inputWFullCyan} required />
+                                </label>
+
+                                <label>
+                                    <span className={formStyles.span}>Quote validity (minutes)</span>
+                                    <input type="number" name="quoteValidityMinutes" defaultValue={pricingProfile.quote_validity_minutes}
+                                        min="1" max="1440" step="1" className={formStyles.inputWFullCyan} required />
+                                </label>
+
+                                {/*step="0.0001" matches our database precision: NUMERIC(12,4)*/}
+                                <label>
+                                    <span className={formStyles.span}>Base fare excluding VAT</span>
+                                    <input type="number" name="baseFareExcludingVat" defaultValue={pricingRate.base_fare_excluding_vat}
+                                        min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
+                                </label>
+
+                                <label>
+                                    <span className={formStyles.span}>Rate per kilometre excluding VAT</span>
+                                    <input type="number" name="distanceRatePerKmExcludingVat" defaultValue={pricingRate.distance_rate_per_km_excluding_vat}
+                                        min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
+                                </label>
+
+                                <label>
+                                    <span className={formStyles.span}>Rate per minute excluding VAT</span>
+                                    <input type="number" name="durationRatePerMinuteExcludingVat" defaultValue={pricingRate.duration_rate_per_minute_excluding_vat}
+                                        min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
+                                </label>
+
+                                <label>
+                                    <span className={formStyles.span}>Minimum fare excluding VAT</span>
+                                    <input type="number" name="minimumFareExcludingVat" defaultValue={pricingRate.minimum_fare_excluding_vat}
+                                        min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
+                                </label>
+                            </div>
+                        </form>
 
                         <div className="grid gap-4 md:grid-cols-2">
-                            <label>
-                                <span className={formStyles.span}>Profile name</span>
-                                <input type="text" name="pricingProfileName" defaultValue={pricingProfile.pricing_profile_name}
-                                    className={formStyles.inputWFullCyan} required />
-                            </label>
+                            <button type="submit" className={`${formStyles.smallButton} mt-5`}>
+                                Save draft pricing
+                            </button>
+                            {/* =========================================================
+                                PURPOSE: CANCEL UNFINISHED PRICING DRAFT
 
-                            <label>
-                                <span className={formStyles.span}>Quote validity (minutes)</span>
-                                <input type="number" name="quoteValidityMinutes" defaultValue={pricingProfile.quote_validity_minutes}
-                                    min="1" max="1440" step="1" className={formStyles.inputWFullCyan} required />
-                            </label>
+                                This permanently removes only this draft version.
 
-                            {/*step="0.0001" matches our database precision: NUMERIC(12,4)*/}
-                            <label>
-                                <span className={formStyles.span}>Base fare excluding VAT</span>
-                                <input type="number" name="baseFareExcludingVat" defaultValue={pricingRate.base_fare_excluding_vat}
-                                    min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
-                            </label>
+                                PostgreSQL verifies that:
+                                - the profile is still a draft;
+                                - it is not referenced by a journey quote.
+                                The currently active pricing version is not changed
 
-                            <label>
-                                <span className={formStyles.span}>Rate per kilometre excluding VAT</span>
-                                <input type="number" name="distanceRatePerKmExcludingVat" defaultValue={pricingRate.distance_rate_per_km_excluding_vat}
-                                    min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
-                            </label>
-
-                            <label>
-                                <span className={formStyles.span}>Rate per minute excluding VAT</span>
-                                <input type="number" name="durationRatePerMinuteExcludingVat" defaultValue={pricingRate.duration_rate_per_minute_excluding_vat}
-                                    min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
-                            </label>
-
-                            <label>
-                                <span className={formStyles.span}>Minimum fare excluding VAT</span>
-                                <input type="number" name="minimumFareExcludingVat" defaultValue={pricingRate.minimum_fare_excluding_vat}
-                                    min="0" step="0.0001" className={formStyles.inputWFullCyan} required />
-                            </label>
+                                we give the form the name-like identifier: cancel-pricing-draft-form
+                                form has ID: form id="cancel-pricing-draft-form"
+                                cancel-pricing-draft-form
+                                        ↓
+                                CancelPricingDraftButton receives that ID
+                                        ↓
+                                user confirms "Yes, cancel draft"
+                                        ↓
+                                document.getElementById(...)    [Inside CancelPricingDraftButton.tsx, this line uses it: const form = document.getElementById(formId);]
+                                        ↓
+                                finds that exact form
+                                        ↓
+                                form.requestSubmit()
+                                        ↓
+                                cancelDraftPricingVersion() runs on server
+                            ========================================================= */}
+                            <form action={cancelDraftPricingVersion} className="mt-4">
+                                <input type="hidden" name="pricingProfileId" value={pricingProfile.id}/>
+                                <CancelPricingDraftButton pricingProfileVersion={pricingProfile.pricing_profile_version}/>
+                            </form>
                         </div>
 
-                        <button type="submit" className={`${formStyles.smallButton} mt-5`}>
-                            Save draft pricing
-                        </button>
-                    </form>
+                     </>
                 ) : null}
 
                 {/*=========================================================
-                    PURPOSE: ACTIVATE DRAFT PRICING
+                    PURPOSE: ACTIVATE DRAFT PRICIN
 
                     Activation makes this draft the official pricing version
                     used for new customer quotes.
@@ -689,7 +766,7 @@ export default async function AdminPricingDetailPage({ params, searchParams}: Ad
                     </section>
                 ) : null}
 
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-6 lg:grid-cols-2 mt-4">
                     <section className={cardClass}>
                         <h2 className={titleClass}>Profile</h2>
 

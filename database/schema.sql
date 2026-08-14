@@ -2418,6 +2418,15 @@ ON public.pricing_profiles (
 WHERE status = 'active';
 
 
+/* Only one draft version of each pricing-profile family. */
+CREATE UNIQUE INDEX IF NOT EXISTS
+    pricing_profiles_one_draft_version_idx
+ON public.pricing_profiles (
+    pricing_profile_code
+)
+WHERE status = 'draft';
+
+
 /* Supports pricing-profile lookup by country and currency. */
 CREATE INDEX IF NOT EXISTS
     pricing_profiles_lookup_idx
@@ -3043,21 +3052,23 @@ COMMENT ON FUNCTION public.create_pricing_profile_family(
 IS 'Creates Version 1 of a new pricing-profile family as an editable draft with zero initial rates.';
 
 --============================Pricing profile draft management====================================================================
-/* ===============================================================================================================================
-   CREATE PRICING PROFILE DRAFT FUNCTION
+/* ===============================================================================================================================*/
 
-   Parameters:
-
-   p_source_pricing_profile_id
-       The active pricing profile that must be copied.
-
-   p_created_by_user_id
-       The authenticated administrator who creates the draft.
-
-   Returns:
-
-       UUID of the newly created draft pricing profile.
-============================================================ */
+/*
+ * Pricing Version - Pricing lifecycle correction
+ *
+ * Prevents multiple draft versions from being created for the
+ * same pricing-profile family.
+ *
+ * New rule:
+ *
+ * 0 drafts → create a new draft
+ * 1 draft  → return the existing draft
+ * 2+ drafts → raise a configuration error
+ *
+ * The family advisory lock keeps this operation safe when two
+ * administrators request a draft at nearly the same moment.
+ */
 
 CREATE OR REPLACE FUNCTION public.create_pricing_profile_draft(
     p_source_pricing_profile_id UUID,
@@ -3078,10 +3089,16 @@ DECLARE
     /* Stores the rates connected to the source profile. */
     v_source_rate public.pricing_rates%ROWTYPE;
 
+    /* Number of existing drafts in this pricing family. */
+    v_draft_count INTEGER;
+
+    /* Existing draft UUID when exactly one draft already exists. */
+    v_existing_draft_profile_id UUID;
+
     /* Stores the next available version number. */
     v_next_version INTEGER;
 
-    /* Stores the UUID generated for the new draft profile. */
+    /* Stores the UUID generated for a new draft profile. */
     v_new_draft_profile_id UUID;
 BEGIN
     /* Both IDs are required. */
@@ -3094,12 +3111,8 @@ BEGIN
                 MESSAGE = 'Source pricing profile ID and administrator user ID are required.';
     END IF;
 
-
     /*
-     * Load the profile code first.
-     *
-     * The profile code identifies the complete version family,
-     * for example NL_DAYTIME_STANDARD.
+     * Load the pricing-profile family code first.
      */
     SELECT pricing_profile.pricing_profile_code
     INTO v_pricing_profile_code
@@ -3113,31 +3126,22 @@ BEGIN
                 MESSAGE = 'The source pricing profile could not be found.';
     END IF;
 
-
     /*
-     * Lock draft creation for this pricing-profile family.
-     *
-     * Two administrators may click Create draft at nearly the
-     * same moment. The advisory transaction lock makes the second
-     * request wait until the first request has calculated and
-     * inserted its version.
+     * Lock the complete pricing family.
      *
      * Example:
      *
-     * Request 1 creates Version 2.
-     * Request 2 waits and then creates Version 3.
+     * Request 1 creates Version 2 draft.
      *
-     * Both requests cannot independently choose Version 2.
+     * Request 2 waits for Request 1.
+     * After the lock is released, Request 2 finds Version 2
+     * and returns that existing draft instead of creating Version 3.
      */
     PERFORM pg_advisory_xact_lock(
         hashtextextended(v_pricing_profile_code, 0)
     );
 
-
-    /*
-     * Reload and lock the selected source profile after obtaining
-     * the family lock.
-     */
+    /* Reload and lock the selected source profile. */
     SELECT pricing_profile.*
     INTO v_source_profile
     FROM public.pricing_profiles AS pricing_profile
@@ -3151,12 +3155,8 @@ BEGIN
                 MESSAGE = 'The source pricing profile could not be found.';
     END IF;
 
-
     /*
-     * A new draft must be copied from the currently active version.
-     *
-     * Draft and archived profiles are historical or unfinished
-     * records and are not authoritative sources for this workflow.
+     * New drafts may only be requested from the active version.
      */
     IF v_source_profile.status <> 'active' THEN
         RAISE EXCEPTION
@@ -3165,11 +3165,48 @@ BEGIN
                 MESSAGE = 'A draft pricing version can only be created from an active pricing profile.';
     END IF;
 
+    /*
+     * Check whether this pricing family already contains a draft.
+     *
+     * Normal lifecycle:
+     *
+     * 0 drafts → create one
+     * 1 draft  → reuse it
+     * 2+ drafts → existing data must be corrected
+     */
+    SELECT COUNT(*)
+    INTO v_draft_count
+    FROM public.pricing_profiles AS pricing_profile
+    WHERE pricing_profile.pricing_profile_code =
+        v_source_profile.pricing_profile_code
+      AND pricing_profile.status = 'draft';
+
+    IF v_draft_count > 1 THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Multiple draft pricing versions already exist for this pricing-profile family.';
+    END IF;
 
     /*
-     * Load the complete rate row connected to the active profile.
+     * If one draft already exists, return its UUID.
      *
-     * FOR SHARE keeps the rate values stable while they are copied.
+     * The Next.js server action can use the returned UUID exactly
+     * as before and redirect the administrator to that draft.
+     */
+    IF v_draft_count = 1 THEN
+        SELECT pricing_profile.id
+        INTO v_existing_draft_profile_id
+        FROM public.pricing_profiles AS pricing_profile
+        WHERE pricing_profile.pricing_profile_code =
+            v_source_profile.pricing_profile_code
+          AND pricing_profile.status = 'draft';
+
+        RETURN v_existing_draft_profile_id;
+    END IF;
+
+    /*
+     * No draft exists, so load the active profile's rates.
      */
     SELECT pricing_rate.*
     INTO v_source_rate
@@ -3184,15 +3221,8 @@ BEGIN
                 MESSAGE = 'The active pricing profile does not contain a pricing-rates record.';
     END IF;
 
-
     /*
-     * Calculate the next version number across the complete
-     * pricing-profile family.
-     *
-     * Example:
-     *
-     * Existing versions: 1, 2 and 3
-     * New draft version: 4
+     * Calculate the next version number across the complete family.
      */
     SELECT COALESCE(MAX(pricing_profile.pricing_profile_version), 0) + 1
     INTO v_next_version
@@ -3202,15 +3232,7 @@ BEGIN
 
 
     /*
-     * Create the new profile as a draft.
-     *
-     * Identity and market information are copied.
-     *
-     * Lifecycle fields are not copied:
-     * - status becomes draft;
-     * - effective_from starts now;
-     * - effective_until remains null;
-     * - activated and archived fields remain null.
+     * Create the new draft profile.
      */
     INSERT INTO public.pricing_profiles (
         pricing_profile_code,
@@ -3247,12 +3269,8 @@ BEGIN
     RETURNING id
     INTO v_new_draft_profile_id;
 
-
     /*
      * Copy the active profile's monetary values to the new draft.
-     *
-     * The administrator can later edit these copied values without
-     * changing the active or historical profile.
      */
     INSERT INTO public.pricing_rates (
         pricing_profile_id,
@@ -3269,41 +3287,156 @@ BEGIN
         v_source_rate.minimum_fare_excluding_vat
     );
 
-
-    /* Return the UUID needed for redirecting to the new draft. */
+    /* Return the UUID needed for the Next.js redirect. */
     RETURN v_new_draft_profile_id;
 END;
 $$;
 
 
-/* ============================================================
-   FUNCTION PERMISSIONS
-
-   Browser roles must not call this privileged financial
-   operation directly.
-
-   The Next.js server action will:
-
-   1. call requireAdminUser();
-   2. receive the authenticated administrator;
-   3. call this function through supabaseAdmin;
-   4. pass adminUser.id for the audit trail.
-============================================================ */
-
+/* Browser roles cannot perform this financial operation directly. */
 REVOKE ALL
 ON FUNCTION public.create_pricing_profile_draft(UUID, UUID)
 FROM PUBLIC, anon, authenticated;
 
+
+/* Trusted Next.js server operations use service_role. */
 GRANT EXECUTE
 ON FUNCTION public.create_pricing_profile_draft(UUID, UUID)
 TO service_role;
 
 
 COMMENT ON FUNCTION public.create_pricing_profile_draft(UUID, UUID)
-IS 'Creates an atomic draft pricing-profile version by copying one active profile and its rates.';
+IS 'Returns the existing draft for a pricing family or atomically creates one when no draft exists.';
 
-/*  --============================VOYA TAXI — UPDATE PRICING PROFILE DRAFT====================================
-    ==========================================================================================================
+/*  --============================================================================================================================
+    -- Pricing Version - Pricing lifecycle correction
+    ==============================================================================================================================*/
+/*
+ * Pricing Version - Pricing lifecycle correction
+ *
+ * Cancels one unfinished pricing-profile draft.
+ *
+ * Safety rules:
+ *
+ * - only status = draft may be deleted;
+ * - active and archived versions can never be cancelled;
+ * - a draft referenced by a journey quote cannot be deleted;
+ * - pricing_rates are removed automatically through ON DELETE CASCADE;
+ * - the complete pricing family is locked during cancellation.
+ */
+
+CREATE OR REPLACE FUNCTION public.cancel_pricing_profile_draft( p_pricing_profile_id UUID)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    v_pricing_profile public.pricing_profiles%ROWTYPE;
+BEGIN
+    /* A pricing-profile ID is required. */
+    IF p_pricing_profile_id IS NULL THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Pricing profile ID is required.';
+    END IF;
+
+
+    /*
+     * Load the profile first so we know which pricing family
+     * must be locked.
+     */
+    SELECT pricing_profile.*
+    INTO v_pricing_profile
+    FROM public.pricing_profiles AS pricing_profile
+    WHERE pricing_profile.id = p_pricing_profile_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The pricing profile could not be found.';
+    END IF;
+
+
+    /* Lock the complete pricing-profile family. */
+    PERFORM pg_advisory_xact_lock(hashtextextended(v_pricing_profile.pricing_profile_code, 0));
+
+    /*
+     * Reload and lock the selected profile after obtaining the family lock.
+     */
+    SELECT pricing_profile.*
+    INTO v_pricing_profile
+    FROM public.pricing_profiles AS pricing_profile
+    WHERE pricing_profile.id = p_pricing_profile_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The pricing profile could not be found.';
+    END IF;
+
+
+    /* Only unfinished drafts may be cancelled. */
+    IF v_pricing_profile.status <> 'draft' THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Only a draft pricing profile can be cancelled.';
+    END IF;
+
+    /*
+     * A pricing version already referenced by a journey quote
+     * must remain available for financial history.
+     *
+     * The foreign key also uses ON DELETE RESTRICT, but this
+     * explicit check gives a clearer financial-domain error.
+     */
+    IF EXISTS (
+        SELECT 1
+        FROM public.journey_quotes AS journey_quote
+        WHERE journey_quote.pricing_profile_id = p_pricing_profile_id
+    ) THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '23503',
+                MESSAGE = 'This pricing draft is already referenced by a journey quote and cannot be cancelled.';
+    END IF;
+
+
+    /*
+     * Delete the draft profile.
+     *
+     * Its pricing_rates row is deleted automatically because
+     * pricing_rates.pricing_profile_id uses ON DELETE CASCADE.
+     */
+    DELETE FROM public.pricing_profiles
+    WHERE id = p_pricing_profile_id;
+
+    RETURN p_pricing_profile_id;
+END;
+$$;
+
+/* Browser roles cannot cancel financial configuration directly. */
+REVOKE ALL
+ON FUNCTION public.cancel_pricing_profile_draft(UUID)
+FROM PUBLIC, anon, authenticated;
+
+
+/* Trusted Next.js server operations use service_role. */
+GRANT EXECUTE
+ON FUNCTION public.cancel_pricing_profile_draft(UUID)
+TO service_role;
+
+COMMENT ON FUNCTION public.cancel_pricing_profile_draft(UUID)
+IS 'Safely deletes one unfinished pricing-profile draft while preserving active, archived and quoted financial versions.';
+
+/*  --============================================================================================================================
+    --VOYA TAXI — UPDATE PRICING PROFILE DRAFT
+    ==============================================================================================================================
     PURPOSE
    Updates editable values belonging to one draft pricing profile.
 

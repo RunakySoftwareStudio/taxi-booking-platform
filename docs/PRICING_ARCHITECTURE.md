@@ -1428,3 +1428,59 @@ Suggested project location:
 ```text
 docs/PRICING_ARCHITECTURE.md
 ```
+### Draft Lifecycle Protection
+
+Each pricing-profile family may contain:
+
+```text
+maximum 1 active version
+maximum 1 draft version
+many archived versions
+```
+
+When an administrator requests a new draft:
+
+```text
+0 existing drafts
+→ create the next draft version
+
+1 existing draft
+→ return and reopen that existing draft
+
+2+ drafts
+→ configuration error
+```
+
+A partial unique database index also prevents more than one draft version from existing for the same pricing-profile family.
+
+An unfinished draft can be cancelled through the admin pricing page.
+
+Cancel draft:
+
+```text
+draft profile
+    ↓
+administrator confirms cancellation
+    ↓
+PostgreSQL verifies status = draft
+    ↓
+draft profile is deleted
+    ↓
+connected pricing_rates are deleted by ON DELETE CASCADE
+    ↓
+active and archived pricing versions remain unchanged
+```
+
+A draft referenced by a journey quote cannot be cancelled.
+
+The draft page also protects unsaved edits.
+
+When the administrator chooses **Back to pricing** after changing draft values:
+
+```text
+Save changes & return
+Discard changes & return
+Stay on page
+```
+
+`Discard changes & return` discards only the unsaved form changes. It does not delete the draft itself.
