@@ -2879,6 +2879,43 @@ export const translations = {
       tr: "Rezervasyonu onayla",
       fa: "تأیید رزرو",
     },
+    priceValidForText: {
+      en: "Price valid for",
+      nl: "Prijs geldig voor",
+      ar: "السعر صالح لمدة",
+      tr: "Fiyat şu süre boyunca geçerli",
+      fa: "قیمت معتبر است برای",
+    },
+    cancelBookingButton: {
+      en: "Cancel booking",
+      nl: "Boeking annuleren",
+      ar: "إلغاء الحجز",
+      tr: "Rezervasyonu iptal et",
+      fa: "لغو رزرو",
+    },
+    priceQuoteExpiredTitle: {
+      en: "Price quote expired",
+      nl: "Prijsopgave verlopen",
+      ar: "انتهت صلاحية عرض السعر",
+      tr: "Fiyat teklifi süresi doldu",
+      fa: "اعتبار قیمت پیشنهادی تمام شده است",
+    },
+
+    priceQuoteExpiredMessage: {
+      en: "Your price quote has expired and can no longer be confirmed. Please recalculate the price to continue with your booking.",
+      nl: "Uw Prijsopgave is verlopen en kan niet meer worden bevestigd. Bereken de prijs opnieuw om verder te gaan met uw boeking.",
+      ar: "انتهت صلاحية عرض السعر ولا يمكن تأكيده بعد الآن. يرجى إعادة حساب السعر للمتابعة مع الحجز.",
+      tr: "Fiyat teklifinizin süresi doldu ve artık onaylanamaz. Rezervasyonunuza devam etmek için lütfen fiyatı yeniden hesaplayın.",
+      fa: "اعتبار قیمت پیشنهادی شما تمام شده و دیگر قابل تأیید نیست. برای ادامه رزرو، لطفاً قیمت را دوباره محاسبه کنید.",
+    },
+
+    recalculatePriceButton: {
+      en: "Recalculate price",
+      nl: "Prijs opnieuw berekenen",
+      ar: "إعادة حساب السعر",
+      tr: "Fiyatı yeniden hesapla",
+      fa: "محاسبه مجدد قیمت",
+    },
     submitErrorMessage: {
       en: "Something went wrong. Please try again.",
       nl: "Er is iets misgegaan. Probeer het opnieuw.",

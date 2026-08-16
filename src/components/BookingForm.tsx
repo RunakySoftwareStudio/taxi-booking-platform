@@ -59,6 +59,9 @@ export default function BookingForm() {
 
     // Stores the temporary server-calculated price shown during booking review.
     const [journeyQuote, setJourneyQuote] = useState<TemporaryJourneyQuote | null>(null);
+    
+    // Stores the remaining lifetime of the current temporary price quote.
+    const [quoteRemainingSeconds, setQuoteRemainingSeconds] = useState<number | null>(null);
 
     // Prevents repeated clicks while the quote API is calculating the price.
     const [isCreatingQuote, setIsCreatingQuote] = useState(false);
@@ -77,6 +80,60 @@ export default function BookingForm() {
             });
         }
     }, [submittedBooking]);
+
+    /**
+     * Keeps the temporary quote countdown synchronized with expiresAt.
+     *
+     * No page reload is needed.
+     * React updates the remaining time every second.
+     * 
+     * useEffect(() => { ... }) is a React hook that runs some code after React has rendered the component, usually because something changed and you want to react to that change.
+     * useEffect(() => {console.log("Run once");}, []);     the empty [] means: run once when the component first appears.
+     * 
+     * useEffect(() => {...}, [journeyQuote]); means: “Whenever journeyQuote changes, run this code.”
+     *  journeyQuote changes
+                ↓
+        useEffect starts countdown
+                ↓
+        countdown updates React state every second
+                ↓
+        new quote arrives or component closes
+                ↓
+        old timer is cleaned up
+     */
+    useEffect(() => {
+        if (!journeyQuote) {
+            return;
+        }
+
+        // expiresAt (for example is 20 minutes), is calculated by the server using the pricing profile quote validity
+        // and is returned inside TemporaryJourneyQuote by createJourneyQuoteForReview().
+        //const expiresAt = new Date(journeyQuote.expiresAt).getTime();
+        //Test for just 10 seconds
+        const expiresAt = Date.now() + 10_000;
+
+        function updateQuoteRemainingTime() {
+            const remainingSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+            setQuoteRemainingSeconds(remainingSeconds);
+        }
+
+        updateQuoteRemainingTime();
+
+        //We immediately copy the required value. After that, the timer function no longer needs to access journeyQuote at all.
+        const timerId = window.setInterval(updateQuoteRemainingTime, 1000);
+
+        /**
+         * “A function returned from an effect is its cleanup function.”
+         * For comparison, if we wrote this:
+            return window.clearInterval(timerId);
+                That would be wrong. It would execute clearInterval() immediately.
+            return () => window.clearInterval(timerId);
+                Creates a function and hands that function to React for later use.
+         */
+        //It means:before this effect runs again, or when the component disappears, stop the old timer.
+        return () => window.clearInterval(timerId);
+
+    }, [journeyQuote]);
 
     /*
     * Voids the current temporary journey quote.
@@ -135,6 +192,7 @@ export default function BookingForm() {
         */
         setRouteEstimate(null);
         setJourneyQuote(null);
+        setQuoteRemainingSeconds(null);
         setBookingDraft(null);
 
         setRouteEstimateError("");
@@ -376,9 +434,37 @@ export default function BookingForm() {
         setIsReviewing(true);
     }
 
+    /**================================================================
+     * Quote expired
+            → Back to edit
+            → expired journeyQuote cleared
+            → customer clicks Review booking
+            → no quote exists
+            → new quote is calculated
+            → new 20-minute countdown
+        Quote still valid
+            → Back to edit
+            → quote kept
+            → Review booking again
+            → existing valid quote can still be reused
+     ================================================================*/
     function handleBackToEdit() {
         setErrorMessage("");
+        if (quoteRemainingSeconds === 0) {setJourneyQuote(null);}
         setIsReviewing(false);
+    }
+
+    async function handleRecalculateQuote() {
+        if (!bookingDraft) { return; }
+
+        setErrorMessage("");
+
+        const recalculatedJourneyQuote =
+            await createJourneyQuoteForReview(bookingDraft.date, bookingDraft.time);
+
+        if (!recalculatedJourneyQuote) {
+            setErrorMessage(getBookingFormText("journeyQuoteFailedText"));
+        }
     }
 
     async function handleConfirmBooking() {
@@ -606,22 +692,58 @@ export default function BookingForm() {
                                     {journeyQuote.currencyCode}{" "}
                                     {journeyQuote.fareCalculation.finalTotalIncludingVat.toFixed(2)}
                                 </span>
+                                {/*===========================================================================
+                                    show the countdown on the review page.
+                                    Math.floor(quoteRemainingSeconds / 60) Turns total seconds into whole minutes.
+                                    .padStart(2, "0") makes 5 display as 05, so we get: 19:05 instead of: 19:5
+                                =============================================================================*/} 
+                                {quoteRemainingSeconds !== null && quoteRemainingSeconds > 0 ? (
+                                    <p className="mt-2 text-sm text-yellow-300">
+                                        {getBookingFormText("priceValidForText")}{" "}
+                                        {Math.floor(quoteRemainingSeconds / 60)}:
+                                        {String(quoteRemainingSeconds % 60).padStart(2, "0")}
+                                    </p>
+                                ) : quoteRemainingSeconds === 0 ? (
+                                    <div className="mt-4 rounded-xl border border-red-400/40 bg-red-400/10 p-4">
+                                        <p className="font-semibold text-red-300">
+                                            {getBookingFormText("priceQuoteExpiredTitle")}
+                                        </p>
+                                        <p className="mt-1 text-sm text-slate-300">
+                                            {getBookingFormText("priceQuoteExpiredMessage")}
+                                        </p>
+                                        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                                            <button type="button" onClick={handleRecalculateQuote} disabled={isCreatingQuote} className={formStyles.submitSmallButtonUserPage}>
+                                                {isCreatingQuote ? getBookingFormText("calculatingPriceButton") : getBookingFormText("recalculatePriceButton")}
+                                            </button>
+
+                                            <button type="button" onClick={handleBackToEdit} className={formStyles.submitSmallButtonUserPage}>
+                                                {getBookingFormText("backToEditButton")}
+                                            </button>   
+
+                                            <button type="button" onClick={handleResetBooking} disabled={isCreatingQuote} className={formStyles.submitSmallButtonUserPage}>
+                                                {getBookingFormText("cancelBookingButton")}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : null}
                             </div>
                         )}
                     </div>
 
                     {errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
-
                     {/*====Review booking. Edit button and confirm button.====*/}
-                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                        <button type="button" onClick={handleBackToEdit} className={formStyles.submitSmallButtonUserPage}>
-                            {getBookingFormText("backToEditButton")}
-                        </button>
+                    {quoteRemainingSeconds !== null && quoteRemainingSeconds > 0 && (
+                        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                            {/*Confirm will be disabled if we sending the booking and if quoted price is not valid anymore, 20 minutes is passed.*/}
+                            <button type="button" onClick={handleConfirmBooking} disabled={isSending} className={formStyles.submitSmallButtonUserPage}>
+                                {isSending ? getBookingFormText("sendingButton") : getBookingFormText("confirmBookingButton")}
+                            </button>
 
-                        <button type="button" onClick={handleConfirmBooking} disabled={isSending} className={formStyles.submitSmallButtonUserPage}>
-                            {isSending ? getBookingFormText("sendingButton") : getBookingFormText("confirmBookingButton")}
-                        </button>
-                    </div>
+                            <button type="button" onClick={handleBackToEdit} className={formStyles.submitSmallButtonUserPage}>
+                                {getBookingFormText("backToEditButton")}
+                            </button>
+                        </div>
+                    )}
                 </div>
             ) : (
                 // =======****Main section client input booking form****===========
@@ -802,7 +924,7 @@ export default function BookingForm() {
 
                     <div className="mt-5 flex flex-wrap gap-3 sm:mt-6">
                         <button type="button" onClick={handleResetBooking} disabled={isCreatingQuote} className={formStyles.submitSmallButtonUserPage}>
-                            Cancel booking
+                            {getBookingFormText("cancelBookingButton")}
                         </button>
                         <button type="submit" disabled={isCreatingQuote} className={formStyles.submitSmallButtonUserPage}>
                             {isCreatingQuote ? getBookingFormText("calculatingPriceButton") : getBookingFormText("reviewBookingButton")}
