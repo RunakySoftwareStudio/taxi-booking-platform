@@ -6,9 +6,11 @@
  * administrator, invoice, and database can see how the final fare
  * was calculated.
  */
+
 export type JourneyFareCalculation = {
     basicFareExcludingVat: number;
     vatAmount: number;
     totalIncludingVatBeforeRounding: number;
+    roundingAdjustment: number;
     finalTotalIncludingVat: number;
 };

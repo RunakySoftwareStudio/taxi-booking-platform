@@ -80,4 +80,45 @@ describe("createJourneyQuoteItems", () => {
         expect(totalVat).toBe(1.35);
         expect(totalIncludingVat).toBe(16.35);
     });
+
+    it("uses a rounding adjustment to reconcile the final rounded total", () => {
+        const fiveCentRoundingRule = {
+            ...dutchEuroRoundingRule,
+            roundingIncrement: 0.05,
+        };
+
+        const journeyQuote = createTemporaryJourneyQuote(
+            dutchDaytimePricingProfile,
+            dutchPassengerTransportTaxRule,
+            fiveCentRoundingRule,
+            10,
+            20,
+            15
+        );
+
+        const quoteItems = createJourneyQuoteItems(
+            dutchDaytimePricingProfile,
+            journeyQuote
+        );
+
+        const totalIncludingVat = sumAmounts(
+            quoteItems.map((quoteItem) => quoteItem.amountIncludingVat)
+        );
+
+        /*
+        * Sum of quote items = total before final rounding.
+        * Sum of quote items + rounding adjustment = final payable total.
+        */
+        expect(journeyQuote.fareCalculation.totalIncludingVatBeforeRounding).toBe(40.33);
+        expect(journeyQuote.fareCalculation.roundingAdjustment).toBe(0.02);
+        expect(journeyQuote.fareCalculation.finalTotalIncludingVat).toBe(40.35);
+
+        expect(totalIncludingVat).toBe(
+            journeyQuote.fareCalculation.totalIncludingVatBeforeRounding
+        );
+
+        expect(
+            Number((totalIncludingVat + journeyQuote.fareCalculation.roundingAdjustment).toFixed(4))
+        ).toBe(journeyQuote.fareCalculation.finalTotalIncludingVat);
+    });
 });

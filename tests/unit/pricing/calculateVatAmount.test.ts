@@ -5,19 +5,27 @@ import { calculateVatAmount } from "../../../src/lib/pricing/calculateVatAmount"
 
 /**
  * Purpose:
- * Tests the VAT calculation using the Dutch passenger-transport tax rule.
- *
- * Example:
- * €37.00 excluding VAT × 9%
- * = approximately €3.33 VAT.
+ * Tests VAT calculation and VAT cent rounding using the
+ * Dutch passenger-transport tax rule.
  */
 describe("calculateVatAmount", () => {
+
     it("calculates 9 percent VAT on a fare excluding VAT", () => {
         const vatAmount = calculateVatAmount(
             37,
             dutchPassengerTransportTaxRule
         );
-        console.log("Fare calculation result:", vatAmount);
-        expect(vatAmount).toBeCloseTo(3.33, 2);
+
+        expect(vatAmount).toBe(3.33);
     });
+
+    it("rounds the VAT amount mathematically to 2 decimals", () => {
+        const vatAmount = calculateVatAmount(
+            37.06,
+            dutchPassengerTransportTaxRule
+        );
+
+        expect(vatAmount).toBe(3.34);
+    });
+
 });

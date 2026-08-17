@@ -10,11 +10,15 @@ import { roundCurrencyAmount } from "./roundCurrencyAmount";
 /**
  * Purpose:
  * Combines the basic fare, VAT, and currency-rounding calculations.
- *
+ * The reason for toFixed(4) is that our internal calculation still supports four-decimal precision,
+ * so we should not prematurely force the adjustment itself to two decimals.
+
  * Example:
- * Basic fare excluding VAT: €37.00
- * VAT at 9%:               €3.33
- * Final total:            €40.33
+    * Fare excl. VAT             €37.00
+    * VAT                         €3.33
+    * Before final rounding      €40.33
+    * Rounding adjustment         €0.02
+    * Final total                €40.35
  */
 export function calculateJourneyFare(
         pricingProfile: PricingProfile, taxRule: CountryTaxRule, 
@@ -25,12 +29,14 @@ export function calculateJourneyFare(
     const vatAmount = calculateVatAmount(basicFareExcludingVat, taxRule );
     const totalIncludingVatBeforeRounding = basicFareExcludingVat + vatAmount;
     const finalTotalIncludingVat = roundCurrencyAmount(totalIncludingVatBeforeRounding, roundingRule );
+    const roundingAdjustment = Number((finalTotalIncludingVat - totalIncludingVatBeforeRounding).toFixed(4));
 
     // Return every part of the calculation for display and storage.
     return {
         basicFareExcludingVat,
         vatAmount,
         totalIncludingVatBeforeRounding,
+        roundingAdjustment,
         finalTotalIncludingVat,
     };
 }
