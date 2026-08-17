@@ -11,6 +11,7 @@ import { reverseGeocodeCoordinate } from "@/lib/mapbox/mapboxGeocodingService";
 import { resolvePricingMarket } from "@/lib/pricing/resolvePricingMarket";
 import { createBookingDataFingerprint } from "@/lib/pricing/createBookingDataFingerprint";
 import { resolveScheduledPricingProfileCode } from "@/lib/pricing/resolveScheduledPricingProfileCode";
+import { createJourneyEffectiveDate } from "@/lib/pricing/createJourneyEffectiveDate";
 
 /**
  * Purpose:
@@ -127,13 +128,19 @@ export async function POST(request: Request) {
         requestBody.time
     );
 
-    const pricingConfiguration =
-        await loadActiveJourneyPricingConfiguration({
+    const taxEffectiveAt = createJourneyEffectiveDate(
+        requestBody.date,
+        requestBody.time,
+        pricingMarket.timeZone
+    );
+
+    const pricingConfiguration = await loadActiveJourneyPricingConfiguration({
             pricingProfileCode,
             countryCode: pricingMarket.countryCode,
             currencyCode: pricingMarket.currencyCode,
             serviceCategory: pricingMarket.serviceCategory,
-        });
+            taxEffectiveAt,
+    });
 
     const journeyQuote = createTemporaryJourneyQuote(
         pricingConfiguration.pricingProfile,

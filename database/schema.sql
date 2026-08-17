@@ -2437,16 +2437,24 @@ ON public.pricing_profiles (
     effective_from
 );
 
-
-/* Only one active tax rule in the same business scope. */
-CREATE UNIQUE INDEX IF NOT EXISTS
-    tax_rules_one_active_rule_idx
-ON public.tax_rules (
-    country_code,
-    service_category
+/*
+ * Multiple active tax rules may exist for the same country and
+ * service category when they apply to different effective periods.
+ *
+ * Their effective periods may touch, but must never overlap.
+ */
+ALTER TABLE public.tax_rules
+ADD CONSTRAINT tax_rules_active_periods_do_not_overlap
+EXCLUDE USING gist (
+    country_code WITH =,
+    service_category WITH =,
+    tstzrange(
+        effective_from,
+        COALESCE(effective_until, 'infinity'::timestamptz),
+        '[)'
+    ) WITH &&
 )
-WHERE status = 'active';
-
+WHERE (status = 'active');
 
 /* Supports selection of the applicable tax rule. */
 CREATE INDEX IF NOT EXISTS
@@ -2458,16 +2466,24 @@ ON public.tax_rules (
     effective_from
 );
 
-
-/* Only one active rounding rule per country and currency. */
-CREATE UNIQUE INDEX IF NOT EXISTS
-    currency_rounding_rules_one_active_rule_idx
-ON public.currency_rounding_rules (
-    country_code,
-    currency_code
+/*
+ * Multiple active rounding rules may exist for the same country
+ * and currency when they apply to different effective periods.
+ *
+ * Their effective periods may touch, but must never overlap.
+ */
+ALTER TABLE public.currency_rounding_rules
+ADD CONSTRAINT currency_rounding_rules_active_periods_do_not_overlap
+EXCLUDE USING gist (
+    country_code WITH =,
+    currency_code WITH =,
+    tstzrange(
+        effective_from,
+        COALESCE(effective_until, 'infinity'::timestamptz),
+        '[)'
+    ) WITH &&
 )
-WHERE status = 'active';
-
+WHERE (status = 'active');
 
 /* Supports selection of the applicable rounding rule. */
 CREATE INDEX IF NOT EXISTS

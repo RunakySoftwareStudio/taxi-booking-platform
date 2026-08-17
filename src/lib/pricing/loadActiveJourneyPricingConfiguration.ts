@@ -8,11 +8,12 @@ import type { JourneyPricingConfiguration } from "@/types/journeyPricingConfigur
  * Defines which active financial configuration must be loaded
  * for one journey-price calculation.
  *
- * effectiveAt:
- * Determines which version is valid at the calculation moment.
- * The current quote API will initially use the current time.
- * Later it may use the planned journey date and time.
- * 
+ * taxEffectiveAt:
+ * The real timestamp of the planned pickup moment.
+ * It determines which tax rule applies to the journey.
+ *
+ * Pricing profile and rounding configuration currently use
+ * the quote calculation moment.
  *  Database snake_case rows
             ↓
     Validation and number conversion
@@ -21,12 +22,13 @@ import type { JourneyPricingConfiguration } from "@/types/journeyPricingConfigur
             ↓
     JourneyPricingConfiguration
  */
+
 type LoadJourneyPricingConfigurationInput = {
     pricingProfileCode: string;
     countryCode: string;
     currencyCode: string;
     serviceCategory: string;
-    effectiveAt?: Date;
+    taxEffectiveAt: Date;
 };
 
 /**
@@ -56,9 +58,11 @@ function getFiniteNumber(inputValue: unknown, fieldName: string): number {
  * existing pricing calculation functions.
  */
 export async function loadActiveJourneyPricingConfiguration(inputValue: LoadJourneyPricingConfigurationInput): Promise<JourneyPricingConfiguration> {
-    const effectiveAt = inputValue.effectiveAt ?? new Date();
-    const effectiveAtIso = effectiveAt.toISOString();
 
+    const pricingEffectiveAtIso = new Date().toISOString();
+    const taxEffectiveAtIso = inputValue.taxEffectiveAt.toISOString();
+
+    // Pricing profile
     const { data: pricingProfileRow, error: pricingProfileError } =
         await supabaseAdmin
             .from("pricing_profiles")
@@ -76,8 +80,8 @@ export async function loadActiveJourneyPricingConfiguration(inputValue: LoadJour
             .eq("country_code", inputValue.countryCode)
             .eq("currency_code", inputValue.currencyCode)
             .eq("status", "active")
-            .lte("effective_from", effectiveAtIso)
-            .or(`effective_until.is.null,effective_until.gt.${effectiveAtIso}`)
+            .lte("effective_from", pricingEffectiveAtIso) //effective_from <= journey time
+            .or(`effective_until.is.null,effective_until.gt.${pricingEffectiveAtIso}`) //(effective_until is null OR effective_until > journey time)
             .maybeSingle();
 
     if (pricingProfileError) {
@@ -89,6 +93,7 @@ export async function loadActiveJourneyPricingConfiguration(inputValue: LoadJour
         throw new Error("No active pricing profile is available.");
     }
 
+    // Pricing rates
     const { data: pricingRatesRow, error: pricingRatesError } =
         await supabaseAdmin
             .from("pricing_rates")
@@ -110,6 +115,7 @@ export async function loadActiveJourneyPricingConfiguration(inputValue: LoadJour
         throw new Error("The active pricing profile has no pricing rates.");
     }
 
+    // Tax
     const { data: taxRuleRow, error: taxRuleError } =
         await supabaseAdmin
             .from("tax_rules")
@@ -125,8 +131,8 @@ export async function loadActiveJourneyPricingConfiguration(inputValue: LoadJour
             .eq("country_code", inputValue.countryCode)
             .eq("service_category", inputValue.serviceCategory)
             .eq("status", "active")
-            .lte("effective_from", effectiveAtIso)
-            .or(`effective_until.is.null,effective_until.gt.${effectiveAtIso}`)
+            .lte("effective_from", taxEffectiveAtIso) //effective_from <= journey time
+            .or(`effective_until.is.null,effective_until.gt.${taxEffectiveAtIso}`) //(effective_until is null OR effective_until > journey time)
             .maybeSingle();
 
     if (taxRuleError) {
@@ -136,6 +142,7 @@ export async function loadActiveJourneyPricingConfiguration(inputValue: LoadJour
 
     if (!taxRuleRow) { throw new Error("No active tax rule is available."); }
 
+    // Rounding
     const { data: roundingRuleRow, error: roundingRuleError } =
         await supabaseAdmin
             .from("currency_rounding_rules")
@@ -151,8 +158,8 @@ export async function loadActiveJourneyPricingConfiguration(inputValue: LoadJour
             .eq("country_code", inputValue.countryCode)
             .eq("currency_code", inputValue.currencyCode)
             .eq("status", "active")
-            .lte("effective_from", effectiveAtIso)
-            .or(`effective_until.is.null,effective_until.gt.${effectiveAtIso}`)
+            .lte("effective_from", pricingEffectiveAtIso) //effective_from <= journey time
+            .or(`effective_until.is.null,effective_until.gt.${pricingEffectiveAtIso}`) //(effective_until is null OR effective_until > journey time)
             .maybeSingle();
 
     if (roundingRuleError) {

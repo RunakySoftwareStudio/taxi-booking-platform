@@ -14,12 +14,14 @@
  * EUR
  * NL_DAYTIME_STANDARD
  * passenger_transport
+ * Europe/Amsterdam
  */
 
 export type PricingMarket = {
     countryCode: string;
     currencyCode: string;
     serviceCategory: string;
+    timeZone: string;
 };
 
 
@@ -35,14 +37,13 @@ export type PricingMarket = {
 export function resolvePricingMarket(countryCode: string): PricingMarket | null {
 
     const normalizedCountryCode = countryCode.trim().toUpperCase();
-
     if (normalizedCountryCode === "NL") {
         return {
             countryCode: "NL",
             currencyCode: "EUR",
             serviceCategory: "passenger_transport",
+            timeZone: "Europe/Amsterdam",
         };
     }
-
     return null;
 }

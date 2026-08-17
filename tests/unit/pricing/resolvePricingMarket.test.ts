@@ -24,6 +24,7 @@ describe("resolvePricingMarket", () => {
             countryCode: "NL",
             currencyCode: "EUR",
             serviceCategory: "passenger_transport",
+            timeZone: "Europe/Amsterdam",
         });
     });
 
