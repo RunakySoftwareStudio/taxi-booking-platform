@@ -117,11 +117,19 @@ Journey fare calculation
 
 ## Process 4 — Tax and Rounding Lifecycle
 
-Complete administration/versioning for:
+Process 4 controls when tax and rounding rules apply and prepares the
+pricing system for correct domestic and cross-border tax calculation.
+
+The main responsibilities are:
 
 ```text
-tax_rules
-currency_rounding_rules
+quote validity and expiry
+tax-rule effective periods
+currency-rounding effective periods
+journey-local tax timing
+VAT cent rounding
+final currency rounding
+cross-border route allocation
 ```
 
 These already have lifecycle structures in the database.
@@ -169,6 +177,7 @@ The main pricing-related tables are:
 | `pricing_rates` | Stores the monetary rates for one pricing profile |
 | `tax_rules` | Stores VAT/tax rules |
 | `currency_rounding_rules` | Stores final currency-rounding rules |
+| `country_boundaries` | Stores PostGIS country polygons used to split international route distance per country |
 | `journey_quotes` | Stores the summary/snapshot of one temporary price quote |
 | `journey_quote_items` | Stores the detailed calculation lines belonging to a quote |
 | `bookings` | Links an accepted quote to the confirmed booking |
@@ -390,7 +399,11 @@ Minimum fare:          €15.00 excluding VAT
 | `effective_from` / `effective_until` | Validity period |
 | lifecycle user/timestamp fields | Audit and version lifecycle |
 
-The database permits only one active tax rule for the same:
+
+Replace only that section with:
+
+```md
+The database allows multiple active tax rules for the same:
 
 ```text
 country_code
@@ -428,12 +441,27 @@ Rate: 9%
 | `effective_from` / `effective_until` | Validity period |
 | lifecycle user/timestamp fields | Audit and version lifecycle |
 
-The database permits only one active rounding rule for the same:
+```md
+The database allows multiple active currency-rounding rules for the same:
 
 ```text
 country_code
 +
 currency_code
+```
+
+Example:
+
+```text
+NL / EUR
+
+Rule 1:
+€0.01 nearest
+2026-01-01 → 2027-01-01
+
+Rule 2:
+€0.05 nearest
+2027-01-01 → future
 ```
 
 Example:
@@ -1329,21 +1357,37 @@ Already implemented:
 Completed pricing processes:
 
 ```text
-Process 1 → Atomic Quote Creation          ✅
-Process 2 → Cross-Border Pricing Rules    ✅
+Process 1 → Atomic Quote Creation           ✅
+Process 2 → Cross-Border Pricing Rules     ✅
 Process 3 → Pricing Schedules / Time Rules ✅
 ```
 
 Current status:
 
-> **Pricing Version — Process 3 is complete.**
+> **Pricing Version — Process 4 is in progress.**
 
-Next:
+Completed inside Process 4:
 
-```text
-Process 4 → Tax and Rounding Lifecycle
+Quote expiry and recalculation flow              ✅
+Journey-local tax effective timestamp            ✅
+Future tax-rule lifecycle                        ✅
+Future currency-rounding lifecycle               ✅
+VAT cent rounding                                ✅
+Final currency rounding adjustment               ✅
+PostGIS geographic foundation                    ✅
+NL / BE country-boundary import                  ✅
+Route distance split per country                 ✅
+
+Still in progress inside Process 4:
+
+Country-specific VAT allocation                  ⏳
+Cross-border tax-rule application                ⏳
+Quote storage for multiple country tax portions  ⏳
+
+Next after Process 4:
+
+Pricing extras / passenger options
 Process 5 → Invoicing Version
-```
 
 ---
 

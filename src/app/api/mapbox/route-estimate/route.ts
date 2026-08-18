@@ -33,8 +33,15 @@ export async function POST(request: Request) {
         }
 
         const routeEstimate = await calculateRouteEstimate(requestBody.pickup, requestBody.destination);
-
-        return NextResponse.json({ route: routeEstimate });
+        
+        return NextResponse.json({
+            route: {
+                distanceMeters: routeEstimate.distanceMeters,
+                distanceKilometers: routeEstimate.distanceKilometers,
+                durationSeconds: routeEstimate.durationSeconds,
+                durationMinutes: routeEstimate.durationMinutes,
+            },
+        });
     } catch (error) {
         console.error("Route-estimate API error:", error);
         return NextResponse.json({ message: "The route estimate could not be calculated." }, { status: 500 });

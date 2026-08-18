@@ -4,6 +4,14 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- Supports exclusion constraints combining UUID equality with time ranges.
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
+/*
+ * PostGIS adds geographic and geometry support to PostgreSQL.
+ * Voya Taxi will use it to work with route lines and country
+ * boundaries, for example to calculate how much of an
+ * international journey takes place in each country.
+ */
+CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
+
 -- Booking status values used by the platform
 CREATE TYPE booking_status AS ENUM (
   'pending',
@@ -2741,11 +2749,80 @@ ALTER TABLE public.chauffeurs ADD CONSTRAINT chauffeurs_bio_length CHECK (bio IS
 -- Limits the stored Supabase Storage path.
 -----------------------------------------------------
 ALTER TABLE public.chauffeurs ADD CONSTRAINT chauffeurs_profile_photo_path_length CHECK (profile_photo_path IS NULL OR length(profile_photo_path) <= 500);
---===================================================================
+
+--=======================================================================================================================
+-- COUNTRY BOUNDARIES
+--
+-- Stores geographic country borders used to split an international
+-- Mapbox route into the distance travelled inside each country.
+--
+-- Example:
+-- Amsterdam → Brussels
+-- NL part → 118.313 km
+-- BE part →  86.093 km
+--=============================================================================================================================
+
+CREATE TABLE IF NOT EXISTS public.country_boundaries (
+    country_code TEXT PRIMARY KEY,
+    country_name TEXT NOT NULL,
+
+    /*
+     * MultiPolygon supports countries consisting of several
+     * separate geographic areas.
+     *
+     * SRID 4326 is the longitude/latitude coordinate system
+     * used by Mapbox GeoJSON.
+     */
+    boundary extensions.geometry(MultiPolygon, 4326) NOT NULL,
+
+    /*
+     * Store the source of the geographic data so the boundary
+     * remains traceable for maintenance and licensing.
+     */
+    source_name TEXT NOT NULL,
+    source_license TEXT NOT NULL,
+    source_reference TEXT,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT country_boundaries_country_code_valid
+        CHECK (
+            LENGTH(country_code) = 2
+            AND country_code = UPPER(country_code)
+        ),
+
+    CONSTRAINT country_boundaries_name_not_empty
+        CHECK (
+            LENGTH(TRIM(country_name)) > 0
+        )
+);
 
 
-/* Automatically update updated_at columns */
 /*
+ * Spatial index used by PostGIS when finding which
+ * country boundaries intersect a route.
+ */
+CREATE INDEX IF NOT EXISTS country_boundaries_boundary_idx
+ON public.country_boundaries
+USING gist (boundary);
+
+
+/*
+ * Country boundaries are server-side financial/geographic data.
+ * Browser roles do not need direct access.
+ */
+ALTER TABLE public.country_boundaries ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON TABLE public.country_boundaries FROM anon, authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON TABLE public.country_boundaries
+TO service_role;
+
+/* ====================================================================================================================
+    Automatically update updated_at columns 
+
     1. This creates a PostgreSQL function named:update_updated_at_column
     2. The $$ is just a PostgreSQL way to mark the start and end of the function body.
 
@@ -2829,6 +2906,12 @@ BEFORE UPDATE ON public.currency_rounding_rules
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
+-- Automatically updates country_boundaries.updated_at.
+CREATE TRIGGER update_country_boundaries_updated_at
+BEFORE UPDATE ON public.country_boundaries
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
 /* Automatically updates pricing_schedules.updated_at. */
 CREATE TRIGGER update_pricing_schedules_updated_at
 BEFORE UPDATE ON public.pricing_schedules
@@ -2841,9 +2924,121 @@ CREATE TRIGGER update_pricing_schedule_overrides_updated_at
 BEFORE UPDATE ON public.pricing_schedule_overrides
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
+--==============================================================================================================================
+--==============================================================================================================================
+-- ROUTE DISTANCE PER COUNTRY
+--
+-- Receives a Mapbox GeoJSON LineString and calculates how much
+-- of the route lies inside each stored country boundary.
+--
+-- Example:
+-- Amsterdam -> Brussels
+-- NL -> 118.313 km
+-- BE ->  86.093 km
+--
+-- This function only calculates geography.
+-- VAT allocation is handled separately.
+--===================================================================
+
+CREATE OR REPLACE FUNCTION public.calculate_route_country_distances(
+    p_route_geojson JSONB
+)
+RETURNS TABLE (
+    country_code TEXT,
+    country_name TEXT,
+    distance_meters NUMERIC,
+    distance_kilometers NUMERIC
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, extensions
+AS $function$
+
+DECLARE
+    v_route_geometry extensions.geometry;
+BEGIN
+    IF p_route_geojson IS NULL THEN
+        RAISE EXCEPTION 'Route GeoJSON is required.';
+    END IF;
+
+    /*
+     * Convert the Mapbox GeoJSON LineString to PostGIS geometry.
+     * Mapbox coordinates use longitude/latitude, SRID 4326.
+     */
+    v_route_geometry :=
+        extensions.ST_SetSRID(
+            extensions.ST_GeomFromGeoJSON(p_route_geojson),
+            4326
+        );
+
+    IF extensions.ST_GeometryType(v_route_geometry) <> 'ST_LineString' THEN
+        RAISE EXCEPTION 'Route geometry must be a LineString.';
+    END IF;
+
+
+    /*
+     * Find each country touched by the route, cut the route
+     * by that country's boundary and measure the resulting line.
+     */
+    RETURN QUERY
+
+    WITH route_parts AS (
+        SELECT
+            boundary.country_code,
+            boundary.country_name,
+            extensions.ST_CollectionExtract(
+                extensions.ST_Intersection(
+                    v_route_geometry,
+                    boundary.boundary
+                ),
+                2
+            ) AS route_part
+        FROM public.country_boundaries boundary
+        WHERE extensions.ST_Intersects(
+            v_route_geometry,
+            boundary.boundary
+        )
+    ),
+
+    measured_parts AS (
+        SELECT
+            route_parts.country_code,
+            route_parts.country_name,
+            extensions.ST_Length(
+                route_parts.route_part::extensions.geography
+            ) AS measured_meters
+        FROM route_parts
+        WHERE NOT extensions.ST_IsEmpty(route_parts.route_part)
+    )
+
+    SELECT
+        measured_parts.country_code,
+        measured_parts.country_name,
+        ROUND(measured_parts.measured_meters::NUMERIC, 2),
+        ROUND((measured_parts.measured_meters / 1000)::NUMERIC, 3)
+
+    FROM measured_parts
+    WHERE measured_parts.measured_meters > 0
+    ORDER BY measured_parts.country_code;
+END;
+
+$function$;
+
+
+/*
+ * Route-country calculations are server-side financial logic.
+ * Browser roles cannot execute this function directly.
+ */
+REVOKE ALL
+ON FUNCTION public.calculate_route_country_distances(JSONB)
+FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE
+ON FUNCTION public.calculate_route_country_distances(JSONB)
+TO service_role;
 
 --============================create_pricing_profile_family=====================================================================
-
+--==============================================================================================================================
 /*
  * Pricing Version - Process 3
  *
@@ -2863,8 +3058,6 @@ EXECUTE FUNCTION public.update_updated_at_column();
  * The administrator can then edit the draft through the
  * existing pricing-detail page before activating it.
  */
-
-
 CREATE OR REPLACE FUNCTION public.create_pricing_profile_family(
     p_pricing_profile_code TEXT,
     p_pricing_profile_name TEXT,
@@ -3067,9 +3260,8 @@ COMMENT ON FUNCTION public.create_pricing_profile_family(
 )
 IS 'Creates Version 1 of a new pricing-profile family as an editable draft with zero initial rates.';
 
---============================Pricing profile draft management====================================================================
-/* ===============================================================================================================================*/
-
+--============================Pricing profile draft management==================================================================
+--==============================================================================================================================
 /*
  * Pricing Version - Pricing lifecycle correction
  *

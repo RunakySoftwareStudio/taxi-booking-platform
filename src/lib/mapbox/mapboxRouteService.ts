@@ -27,12 +27,19 @@ export type MapboxCoordinate = {
     latitude: number;
 };
 
+// Represents the complete driving route as a GeoJSON line.
+export type RouteGeometry = {
+    type: "LineString";
+    coordinates: [number, number][];
+};
+
 // Represents the useful route values returned to the application.
 export type RouteEstimate = {
     distanceMeters: number;
     distanceKilometers: number;
     durationSeconds: number;
     durationMinutes: number;
+    geometry: RouteGeometry;
 };
 
 /**
@@ -49,7 +56,11 @@ export type RouteEstimate = {
 type MapboxDirectionsResponse = {
     code?: string;
     message?: string;
-    routes?: Array<{ distance: number; duration: number; }>;
+    routes?: Array<{
+        distance: number;
+        duration: number;
+        geometry: RouteGeometry;
+    }>;
 };
 
 const directionsBaseUrl = "https://api.mapbox.com/directions/v5/mapbox/driving";
@@ -72,10 +83,31 @@ export async function calculateRouteEstimate( startCoordinate: MapboxCoordinate,
 
     //Sends your Mapbox access token so Mapbox can authorize the request.
     requestUrl.searchParams.set("access_token", accessToken);
-    //Tells Mapbox not to return the full route geometry. We only need distance and duration, so this keeps the response smaller.
-    requestUrl.searchParams.set("overview", "false");
+
+    /*
+        Mapbox documents that overview=full returns the most detailed overview geometry, 
+        while geometries=geojson returns it as a GeoJSON LineString. 
+        We only need distance and duration, so this keeps the response smaller.
+    
+        * So we now have:
+            Mapbox
+            ↓
+            distance + duration + full route geometry
+            ↓
+            mapboxRouteService.ts
+            ↓
+            server routes can use geometry for cross-border VAT
+
+            /api/mapbox/route-estimate
+            ↓
+            still sends only distance + duration to browser
+     */
+    requestUrl.searchParams.set("overview", "full");
+    requestUrl.searchParams.set("geometries", "geojson");
+
     //Requests only the main recommended route, without additional alternative routes.
     requestUrl.searchParams.set("alternatives", "false");
+
     //Tells Mapbox not to return turn-by-turn navigation instructions. We only need the total route information.
     requestUrl.searchParams.set("steps", "false");
 
@@ -88,11 +120,12 @@ export async function calculateRouteEstimate( startCoordinate: MapboxCoordinate,
         throw new Error(result.message || "Mapbox could not calculate the route.");
     }
 
-    // Converts Mapbox meters and seconds into values suitable for the UI.
+    // Converts the Mapbox route into values used by the application.
     return {
         distanceMeters: Math.round(firstRoute.distance),
         distanceKilometers: Math.round(firstRoute.distance / 100) / 10,
         durationSeconds: Math.round(firstRoute.duration),
         durationMinutes: Math.ceil(firstRoute.duration / 60),
+        geometry: firstRoute.geometry,
     };
 }

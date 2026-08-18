@@ -12,6 +12,7 @@ import { resolvePricingMarket } from "@/lib/pricing/resolvePricingMarket";
 import { createBookingDataFingerprint } from "@/lib/pricing/createBookingDataFingerprint";
 import { resolveScheduledPricingProfileCode } from "@/lib/pricing/resolveScheduledPricingProfileCode";
 import { createJourneyEffectiveDate } from "@/lib/pricing/createJourneyEffectiveDate";
+import { calculateRouteCountryDistances } from "@/lib/pricing/calculateRouteCountryDistances";
 
 /**
  * Purpose:
@@ -59,6 +60,16 @@ export async function POST(request: Request) {
             requestBody.pickupCoordinate,
             requestBody.destinationCoordinate
         );
+
+        const countryDistances = await calculateRouteCountryDistances(routeEstimate.geometry);
+        /*==========test===================================================
+        const countryDistanceTotal = countryDistances.reduce((totalDistance, countryDistance) => totalDistance + countryDistance.distanceKilometers, 0);
+        console.log("Route country distance check:", {
+            mapboxDistanceKilometers: routeEstimate.distanceKilometers,
+            countryDistanceKilometers: Number(countryDistanceTotal.toFixed(3)),
+            differenceKilometers: Number((routeEstimate.distanceKilometers - countryDistanceTotal).toFixed(3)),
+        });
+        ==========end test===================================================*/
     }
     catch (error) {
         console.error("Could not calculate trusted journey route:", error);
