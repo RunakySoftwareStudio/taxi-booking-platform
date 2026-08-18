@@ -12,7 +12,7 @@ import type { JourneyFareCalculation } from "./journeyFareCalculationType";
  * - quoteId: uniquely identifies the quote.
  * - pricingProfileCode and pricingProfileVersion:
  *   record which pricing configuration was used.
- * - taxRatePercentage: records the VAT rate applied.
+ * - taxRatePercentage: stores the single VAT rate for a domestic quote; is null for a multi-country quote, where exact tax rates are stored in journey_quote_tax_allocations.
  * - fareCalculation: contains the calculated amounts.
  * - expiresAt: prevents confirmation of an outdated quote.
  */
@@ -24,7 +24,12 @@ export type TemporaryJourneyQuote = {
     currencyCode: string;
     distanceKm: number;
     estimatedDurationMinutes: number;
-    taxRatePercentage: number;
+    /*
+     * Domestic quote → one VAT rate.
+     * Multi-country quote → null; exact rates are stored
+     * in the country tax allocations.
+     */
+    taxRatePercentage: number | null;
     fareCalculation: JourneyFareCalculation;
     createdAt: string;
     expiresAt: string;

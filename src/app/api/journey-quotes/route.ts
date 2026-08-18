@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { loadActiveJourneyPricingConfiguration } from "@/lib/pricing/loadActiveJourneyPricingConfiguration";
-import { createTemporaryJourneyQuote } from "@/lib/pricing/createTemporaryJourneyQuote";
 import { isCreateJourneyQuoteRequest } from "@/lib/pricing/isCreateJourneyQuoteRequest";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import type { CreateJourneyQuoteResponse } from "@/types/createJourneyQuoteResponseType";
@@ -12,7 +11,13 @@ import { resolvePricingMarket } from "@/lib/pricing/resolvePricingMarket";
 import { createBookingDataFingerprint } from "@/lib/pricing/createBookingDataFingerprint";
 import { resolveScheduledPricingProfileCode } from "@/lib/pricing/resolveScheduledPricingProfileCode";
 import { createJourneyEffectiveDate } from "@/lib/pricing/createJourneyEffectiveDate";
-import { calculateRouteCountryDistances } from "@/lib/pricing/calculateRouteCountryDistances";
+import { calculateRouteCountryDistances, type RouteCountryDistance,} from "@/lib/pricing/calculateRouteCountryDistances";
+import { validateRouteCountryDistanceCoverage } from "@/lib/pricing/validateRouteCountryDistanceCoverage";
+import { loadJourneyCountryTaxRules, type JourneyCountryTaxRule,} from "@/lib/pricing/loadJourneyCountryTaxRules";
+import { calculateJourneyQuoteTaxAllocations } from "@/lib/pricing/calculateJourneyQuoteTaxAllocations";
+import { calculateBasicJourneyFare } from "@/lib/pricing/calculateBasicJourneyFare";
+import { calculateJourneyFareFromVatAmount } from "@/lib/pricing/calculateJourneyFareFromVatAmount";
+import { createTemporaryJourneyQuoteFromFareCalculation } from "@/lib/pricing/createTemporaryJourneyQuoteFromFareCalculation";
 
 /**
  * Purpose:
@@ -54,14 +59,12 @@ export async function POST(request: Request) {
         request to make a journey appear shorter or cheaper.
     */
     let routeEstimate;
+    let countryDistances: RouteCountryDistance[];
 
     try {
-        routeEstimate = await calculateRouteEstimate(
-            requestBody.pickupCoordinate,
-            requestBody.destinationCoordinate
-        );
+        routeEstimate = await calculateRouteEstimate(requestBody.pickupCoordinate, requestBody.destinationCoordinate);
+        countryDistances = await calculateRouteCountryDistances(routeEstimate.geometry);
 
-        const countryDistances = await calculateRouteCountryDistances(routeEstimate.geometry);
         /*==========test===================================================
         const countryDistanceTotal = countryDistances.reduce((totalDistance, countryDistance) => totalDistance + countryDistance.distanceKilometers, 0);
         console.log("Route country distance check:", {
@@ -79,6 +82,9 @@ export async function POST(request: Request) {
             { status: 500 }
         );
     }
+
+    // meaning a maximum difference of 10 metres.
+    validateRouteCountryDistanceCoverage(routeEstimate.distanceMeters, countryDistances);
 
     /*
         PURPOSE: DETERMINE THE PRICING COUNTRY FROM THE PICKUP
@@ -145,6 +151,27 @@ export async function POST(request: Request) {
         pricingMarket.timeZone
     );
 
+    const countryCodes = countryDistances.map((countryDistance) => countryDistance.countryCode);
+    let countryTaxRules: JourneyCountryTaxRule[];
+
+    try {
+        countryTaxRules = await loadJourneyCountryTaxRules(
+            countryCodes,
+            pricingMarket.serviceCategory,
+            taxEffectiveAt
+        );
+    }
+    catch (error) {
+        console.error("Could not load journey country tax rules:", error);
+        return NextResponse.json(
+            {
+                errorCode: "TAX_CONFIGURATION_UNAVAILABLE",
+                error: "Tax configuration is not available for the complete journey.",
+            },
+            { status: 503 }
+        );
+    }
+
     const pricingConfiguration = await loadActiveJourneyPricingConfiguration({
             pricingProfileCode,
             countryCode: pricingMarket.countryCode,
@@ -153,14 +180,46 @@ export async function POST(request: Request) {
             taxEffectiveAt,
     });
 
-    const journeyQuote = createTemporaryJourneyQuote(
+    const basicFareExcludingVat = calculateBasicJourneyFare(
         pricingConfiguration.pricingProfile,
-        pricingConfiguration.taxRule,
-        pricingConfiguration.roundingRule,
+        routeEstimate.distanceKilometers,
+        routeEstimate.durationMinutes
+    );
+
+    const taxAllocations = calculateJourneyQuoteTaxAllocations(
+        basicFareExcludingVat,
+        countryDistances,
+        countryTaxRules
+    );
+
+    const totalVatAmount = Number(
+        taxAllocations.reduce(
+            (totalVat, taxAllocation) =>
+                totalVat + taxAllocation.vatAmount,
+            0
+        ).toFixed(4)
+    );
+
+    const fareCalculation = calculateJourneyFareFromVatAmount(
+        basicFareExcludingVat,
+        totalVatAmount,
+        pricingConfiguration.roundingRule
+    );
+
+    const isMultiCountryQuote = taxAllocations.length > 1;
+
+    const journeyQuote = createTemporaryJourneyQuoteFromFareCalculation(
+        pricingConfiguration.pricingProfile,
+        fareCalculation,
         routeEstimate.distanceKilometers,
         routeEstimate.durationMinutes,
-        pricingConfiguration.quoteValidityMinutes
+        pricingConfiguration.quoteValidityMinutes,
+        isMultiCountryQuote
+            ? null
+            : taxAllocations[0].taxRatePercentage
     );
+
+    const quoteTaxRuleId = isMultiCountryQuote ? null : taxAllocations[0].taxRuleId;
 
     const quoteItems = createJourneyQuoteItems(
         pricingConfiguration.pricingProfile,
@@ -193,6 +252,17 @@ export async function POST(request: Request) {
         amount_including_vat: quoteItem.amountIncludingVat,
         calculation_order: quoteItem.calculationOrder,
     }));
+
+    const taxAllocationsForStorage = taxAllocations.map((taxAllocation) => ({
+        country_code: taxAllocation.countryCode,
+        tax_rule_id: taxAllocation.taxRuleId,
+        distance_km: taxAllocation.distanceKilometers,
+        allocated_fare_excluding_vat: taxAllocation.allocatedFareExcludingVat,
+        tax_rate_percentage: taxAllocation.taxRatePercentage,
+        vat_amount: taxAllocation.vatAmount,
+        amount_including_vat: taxAllocation.amountIncludingVat,
+    }));
+
     /*
         PURPOSE: CREATE THE JOURNEY FINGERPRINT
 
@@ -215,20 +285,35 @@ export async function POST(request: Request) {
         - lock this booking session;
         - insert the journey_quotes header;
         - insert all journey_quote_items;
+        - insert all journey_quote_tax_allocations;
+        - verify the tax-allocation totals;
         - void other active quotes from the same booking session.
 
-        If any step fails, PostgreSQL rolls back the complete operation.
-        TypeScript
-                ↓
-        ONE RPC
-                ↓
-        PostgreSQL transaction
-        ├── insert header
-        ├── insert items
-        └── void old quote
+        For a normal NL journey:
+        journeyQuote
+            ↓
+        fare excl. VAT = for example €37.00
 
-        anything fails
-        → automatic rollback
+        countryDistances
+            ↓
+        NL only
+
+        countryTaxRules
+            ↓
+        NL tax rule
+
+        taxAllocations
+            ↓
+        NL
+        fare = €37.00
+        VAT = €3.33
+        total = €40.33
+
+        new atomic RPC
+            ↓
+        journey_quotes                    ✅
+        journey_quote_items               ✅
+        journey_quote_tax_allocations     ✅
     */
     const { error: createQuoteError } = await supabaseAdmin
         .rpc("create_journey_quote_with_items", {
@@ -236,7 +321,7 @@ export async function POST(request: Request) {
             p_booking_session_id: requestBody.bookingSessionId,
 
             p_pricing_profile_id: pricingConfiguration.pricingProfileId,
-            p_tax_rule_id: pricingConfiguration.taxRuleId,
+            p_tax_rule_id: quoteTaxRuleId,
             p_rounding_rule_id: pricingConfiguration.roundingRuleId,
 
             p_pricing_calculation_version: 1,
@@ -263,6 +348,7 @@ export async function POST(request: Request) {
             p_expires_at: journeyQuote.expiresAt,
 
             p_quote_items: quoteItemsForStorage,
+            p_tax_allocations: taxAllocationsForStorage,
         });
 
     if (createQuoteError) {

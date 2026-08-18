@@ -31,9 +31,31 @@ export type JourneyQuoteItem = {
     unitAmountExcludingVat: number;
     amountExcludingVat: number;
 
-    vatRatePercentage: number;
-    vatAmount: number;
+    /*
+    * Domestic quote items can store one VAT calculation directly.
+    *
+    * For a multi-country quote, these fields are null because the
+    * exact VAT breakdown is stored in journey_quote_tax_allocations.
+    * So conceptually:
+        Domestic NL item:
+            BASE_FARE
+            amountExcludingVat = €4.50
+            vatRatePercentage  = 9
+            vatAmount          = €0.41
+            amountIncludingVat = €4.91
 
-    amountIncludingVat: number;
+        Cross-border item:
+            BASE_FARE
+            amountExcludingVat = €4.50
+            vatRatePercentage  = null
+            vatAmount          = null
+            amountIncludingVat = null
+
+        Exact VAT  → journey_quote_tax_allocations
+    */
+    vatRatePercentage: number | null;
+    vatAmount: number | null;
+    amountIncludingVat: number | null;
+
     calculationOrder: number;
 };

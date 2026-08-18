@@ -5,7 +5,8 @@ import type { PricingProfile } from "@/types/pricingProfileType";
 
 import { calculateBasicJourneyFare } from "./calculateBasicJourneyFare";
 import { calculateVatAmount } from "./calculateVatAmount";
-import { roundCurrencyAmount } from "./roundCurrencyAmount";
+import { calculateJourneyFareFromVatAmount } from "./calculateJourneyFareFromVatAmount";
+
 
 /**
  * Purpose:
@@ -21,22 +22,22 @@ import { roundCurrencyAmount } from "./roundCurrencyAmount";
     * Final total                €40.35
  */
 export function calculateJourneyFare(
-        pricingProfile: PricingProfile, taxRule: CountryTaxRule, 
-        roundingRule: CountryRoundingRule, distanceKm: number, 
-        estimatedDurationMinutes: number): JourneyFareCalculation 
-{
-    const basicFareExcludingVat = calculateBasicJourneyFare(pricingProfile, distanceKm, estimatedDurationMinutes);
-    const vatAmount = calculateVatAmount(basicFareExcludingVat, taxRule );
-    const totalIncludingVatBeforeRounding = basicFareExcludingVat + vatAmount;
-    const finalTotalIncludingVat = roundCurrencyAmount(totalIncludingVatBeforeRounding, roundingRule );
-    const roundingAdjustment = Number((finalTotalIncludingVat - totalIncludingVatBeforeRounding).toFixed(4));
+    pricingProfile: PricingProfile, taxRule: CountryTaxRule,
+    roundingRule: CountryRoundingRule, distanceKm: number,
+    estimatedDurationMinutes: number
+): JourneyFareCalculation {
 
-    // Return every part of the calculation for display and storage.
-    return {
+    const basicFareExcludingVat = calculateBasicJourneyFare(
+        pricingProfile,
+        distanceKm,
+        estimatedDurationMinutes
+    );
+
+    const vatAmount = calculateVatAmount( basicFareExcludingVat, taxRule );
+
+    return calculateJourneyFareFromVatAmount(
         basicFareExcludingVat,
         vatAmount,
-        totalIncludingVatBeforeRounding,
-        roundingAdjustment,
-        finalTotalIncludingVat,
-    };
+        roundingRule
+    );
 }

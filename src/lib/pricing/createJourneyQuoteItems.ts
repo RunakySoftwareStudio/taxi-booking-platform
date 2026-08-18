@@ -103,6 +103,21 @@ export function createJourneyQuoteItems(pricingProfile: PricingProfile, journeyQ
         });
     }
 
+    /*
+    * A multi-country quote does not have one truthful VAT rate
+    * for each commercial item.
+    *
+    * The commercial amounts remain stored here, while the exact
+    * country VAT breakdown is stored in journey_quote_tax_allocations.
+    */
+    if (taxRatePercentage === null) {
+        return itemsBeforeVat.map((quoteItem) => ({
+            ...quoteItem,
+            vatAmount: null,
+            amountIncludingVat: null,
+        }));
+    }
+
     const targetVatAmount = roundMoney(fareCalculation.vatAmount);
     let allocatedVatAmount = 0;
 

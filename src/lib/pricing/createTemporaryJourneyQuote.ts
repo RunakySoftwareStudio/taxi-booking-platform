@@ -4,6 +4,8 @@ import type { PricingProfile } from "@/types/pricingProfileType";
 import type { TemporaryJourneyQuote } from "@/types/temporaryJourneyQuoteType";
 
 import { calculateJourneyFare } from "./calculateJourneyFare";
+import { createTemporaryJourneyQuoteFromFareCalculation } from "./createTemporaryJourneyQuoteFromFareCalculation";
+
 
 /**
  * Purpose:
@@ -15,11 +17,16 @@ import { calculateJourneyFare } from "./calculateJourneyFare";
  * This function builds and returns the quote object.
  * The API route is responsible for saving it to the database.
  */
+
 export function createTemporaryJourneyQuote(
-    pricingProfile: PricingProfile, taxRule: CountryTaxRule, roundingRule: CountryRoundingRule, 
-    distanceKm: number, estimatedDurationMinutes: number, quoteValidityMinutes: number
-    ): TemporaryJourneyQuote 
-{
+    pricingProfile: PricingProfile,
+    taxRule: CountryTaxRule,
+    roundingRule: CountryRoundingRule,
+    distanceKm: number,
+    estimatedDurationMinutes: number,
+    quoteValidityMinutes: number
+): TemporaryJourneyQuote {
+
     const fareCalculation = calculateJourneyFare(
         pricingProfile,
         taxRule,
@@ -28,21 +35,12 @@ export function createTemporaryJourneyQuote(
         estimatedDurationMinutes
     );
 
-    const createdAtDate = new Date();
-    const expiresAtDate = new Date(createdAtDate.getTime() + quoteValidityMinutes * 60 * 1000 );
-
-    // Return the complete temporary quote.
-    return {
-        quoteId: crypto.randomUUID(),
-        pricingProfileCode: pricingProfile.pricingProfileCode,
-        pricingProfileVersion: pricingProfile.pricingProfileVersion,
-        countryCode: pricingProfile.countryCode,
-        currencyCode: pricingProfile.currencyCode,
+    return createTemporaryJourneyQuoteFromFareCalculation(
+        pricingProfile,
+        fareCalculation,
         distanceKm,
         estimatedDurationMinutes,
-        taxRatePercentage: taxRule.taxRatePercentage,
-        fareCalculation,
-        createdAt: createdAtDate.toISOString(),
-        expiresAt: expiresAtDate.toISOString(),
-    };
+        quoteValidityMinutes,
+        taxRule.taxRatePercentage
+    );
 }

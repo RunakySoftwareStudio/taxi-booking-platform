@@ -1377,17 +1377,27 @@ Final currency rounding adjustment               ✅
 PostGIS geographic foundation                    ✅
 NL / BE country-boundary import                  ✅
 Route distance split per country                 ✅
+Route-distance coverage validation               ✅
+Country-specific VAT allocation                  ✅
+Cross-border tax-rule loading                    ✅
+Multi-country quote tax storage                  ✅
+Nullable multi-country item VAT fields           ✅
+Atomic quote + tax-allocation storage            ✅
+Domestic NL end-to-end verification              ✅
 
 Still in progress inside Process 4:
 
-Country-specific VAT allocation                  ⏳
-Cross-border tax-rule application                ⏳
-Quote storage for multiple country tax portions  ⏳
+Official foreign-country tax-rule configuration  ⏳
+Full cross-border end-to-end verification         ⏳
+Removal of the old atomic quote RPC overload      ⏳
 
 Next after Process 4:
 
 Pricing extras / passenger options
 Process 5 → Invoicing Version
+
+> **`journey_quote_items` tells us HOW the quote was calculated.**
+> **`journey_quote_tax_allocations` tells us WHERE the fare is allocated for tax and which country-specific tax rules were applied.**
 
 ---
 
@@ -1414,15 +1424,18 @@ Already implemented:
 
 Current focus:
 
-> **Pricing Version — Process 1: Atomic Quote Creation**
+```md
+Current focus:
 
-Next:
+> **Pricing Version — Process 4: Tax and Rounding Lifecycle**
+
+Completed processes:
 
 ```text
-Process 2 → Cross-Border Pricing Rules
-Process 3 → Pricing Schedules / Time Rules
-Process 4 → Tax and Rounding Lifecycle
-Process 5 → Invoicing Version
+Process 1 → Atomic Quote Creation                 ✅
+Process 2 → Cross-Border Pricing Rules            ✅
+Process 3 → Pricing Schedules / Time Rules        ✅
+Process 4 → Tax and Rounding Lifecycle            ⏳
 ```
 
 ---

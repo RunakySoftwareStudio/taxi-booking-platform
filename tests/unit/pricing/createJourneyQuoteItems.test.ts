@@ -9,9 +9,21 @@ import { createTemporaryJourneyQuote } from "../../../src/lib/pricing/createTemp
 /**
  * Adds all numbers in an array and returns the total
  * rounded to four decimal places.
+ *
+ * Throws when a value is null so domestic VAT tests
+ * cannot accidentally hide missing VAT values.
  */
-function sumAmounts(inputValues: number[]): number {
-    const total = inputValues.reduce((currentTotal, inputValue) => currentTotal + inputValue, 0);
+function sumAmounts(inputValues: (number | null)[]): number {
+    let total = 0;
+
+    for (const inputValue of inputValues) {
+        if (inputValue === null) {
+            throw new Error("Cannot sum amounts containing null.");
+        }
+
+        total += inputValue;
+    }
+
     return Number(total.toFixed(4));
 }
 
@@ -120,5 +132,60 @@ describe("createJourneyQuoteItems", () => {
         expect(
             Number((totalIncludingVat + journeyQuote.fareCalculation.roundingAdjustment).toFixed(4))
         ).toBe(journeyQuote.fareCalculation.finalTotalIncludingVat);
+    });
+
+    it("keeps commercial item amounts but leaves item VAT fields null for a multi-country quote", () => {
+        /*
+        * Start with a normal calculated quote so we have a valid
+        * commercial fare calculation.
+        *
+        * Setting taxRatePercentage to null represents a multi-country
+        * quote where VAT is stored separately by country in
+        * journey_quote_tax_allocations.
+        */
+        const domesticJourneyQuote = createTemporaryJourneyQuote(
+            dutchDaytimePricingProfile,
+            dutchPassengerTransportTaxRule,
+            dutchEuroRoundingRule,
+            10,
+            20,
+            15
+        );
+
+        const multiCountryJourneyQuote = {
+            ...domesticJourneyQuote,
+            taxRatePercentage: null,
+        };
+
+        const quoteItems = createJourneyQuoteItems(
+            dutchDaytimePricingProfile,
+            multiCountryJourneyQuote
+        );
+
+        const totalExcludingVat = sumAmounts(
+            quoteItems.map((quoteItem) => quoteItem.amountExcludingVat)
+        );
+
+        expect(totalExcludingVat).toBe(
+            multiCountryJourneyQuote.fareCalculation.basicFareExcludingVat
+        );
+
+        expect(
+            quoteItems.every(
+                (quoteItem) => quoteItem.vatRatePercentage === null
+            )
+        ).toBe(true);
+
+        expect(
+            quoteItems.every(
+                (quoteItem) => quoteItem.vatAmount === null
+            )
+        ).toBe(true);
+
+        expect(
+            quoteItems.every(
+                (quoteItem) => quoteItem.amountIncludingVat === null
+            )
+        ).toBe(true);
     });
 });
