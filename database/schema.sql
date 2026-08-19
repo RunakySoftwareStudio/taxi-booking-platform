@@ -2476,7 +2476,7 @@ VALUES (
     NOW()
 );
 
-/* Dutch EUR rounding rule. */
+/* VOYA TAXI - Dutch CURRENCY ROUNDING RULE. */
 INSERT INTO public.currency_rounding_rules (
     country_code,
     currency_code,
@@ -2496,6 +2496,51 @@ VALUES (
     TIMESTAMPTZ '2026-01-01 00:00:00+00',
     NULL,
     NOW()
+);
+
+/*
+ * VOYA TAXI - BELGIAN CURRENCY ROUNDING RULE
+ *
+ * Purpose:
+ * Adds the initial Belgian EUR rounding configuration used
+ * by journey fare and quote calculations.
+ *
+ * Important:
+ * This is normal currency precision rounding:
+ *
+ *     EUR -> nearest €0.01
+ *
+ * Belgian cash-payment rounding to €0.05 is a separate
+ * payment-settlement concern and does not belong in the
+ * journey quote rounding configuration.
+ */
+
+INSERT INTO public.currency_rounding_rules (
+    country_code,
+    currency_code,
+    rounding_increment,
+    rounding_mode,
+    status,
+    effective_from,
+    effective_until,
+    activated_at
+)
+SELECT
+    'BE',
+    'EUR',
+    0.0100,
+    'nearest',
+    'active',
+    TIMESTAMPTZ '2026-01-01 00:00:00+00',
+    NULL,
+    NOW()
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.currency_rounding_rules AS rounding_rule
+    WHERE rounding_rule.country_code = 'BE'
+      AND rounding_rule.currency_code = 'EUR'
+      AND rounding_rule.status = 'active'
+      AND rounding_rule.effective_from = TIMESTAMPTZ '2026-01-01 00:00:00+00'
 );
 /*====================================================================================================================*/
 /* ===================================================================================================================
@@ -2543,6 +2588,82 @@ VALUES
 
     ('NL', 'passenger_transport', 6, '00:00', '24:00', 'NL_WEEKEND_STANDARD'),
     ('NL', 'passenger_transport', 7, '00:00', '24:00', 'NL_WEEKEND_STANDARD')
+ON CONFLICT (
+    country_code,
+    service_category,
+    day_of_week,
+    start_local_time,
+    end_local_time
+)
+DO NOTHING;
+
+/*
+ * VOYA TAXI - BELGIAN PASSENGER TRANSPORT PRICING SCHEDULE
+ *
+ * Purpose:
+ * Adds the normal weekly Belgian pricing schedule.
+ *
+ * Belgium currently uses the same business-time structure
+ * as the Netherlands:
+ *
+ * Monday-Friday:
+ * 00:00-06:00 -> Night
+ * 06:00-22:00 -> Daytime
+ * 22:00-24:00 -> Night
+ *
+ * Saturday-Sunday:
+ * 00:00-24:00 -> Weekend
+ *
+ * Important:
+ * Belgium uses its own pricing-profile families:
+ *
+ * BE_DAYTIME_STANDARD
+ * BE_NIGHT_STANDARD
+ * BE_WEEKEND_STANDARD
+ *
+ * These profiles already exist and are active.
+ */
+
+INSERT INTO public.pricing_schedules (
+    country_code,
+    service_category,
+    day_of_week,
+    start_local_time,
+    end_local_time,
+    pricing_profile_code
+)
+VALUES
+    /* Monday */
+    ('BE', 'passenger_transport', 1, '00:00', '06:00', 'BE_NIGHT_STANDARD'),
+    ('BE', 'passenger_transport', 1, '06:00', '22:00', 'BE_DAYTIME_STANDARD'),
+    ('BE', 'passenger_transport', 1, '22:00', '24:00', 'BE_NIGHT_STANDARD'),
+
+    /* Tuesday */
+    ('BE', 'passenger_transport', 2, '00:00', '06:00', 'BE_NIGHT_STANDARD'),
+    ('BE', 'passenger_transport', 2, '06:00', '22:00', 'BE_DAYTIME_STANDARD'),
+    ('BE', 'passenger_transport', 2, '22:00', '24:00', 'BE_NIGHT_STANDARD'),
+
+    /* Wednesday */
+    ('BE', 'passenger_transport', 3, '00:00', '06:00', 'BE_NIGHT_STANDARD'),
+    ('BE', 'passenger_transport', 3, '06:00', '22:00', 'BE_DAYTIME_STANDARD'),
+    ('BE', 'passenger_transport', 3, '22:00', '24:00', 'BE_NIGHT_STANDARD'),
+
+    /* Thursday */
+    ('BE', 'passenger_transport', 4, '00:00', '06:00', 'BE_NIGHT_STANDARD'),
+    ('BE', 'passenger_transport', 4, '06:00', '22:00', 'BE_DAYTIME_STANDARD'),
+    ('BE', 'passenger_transport', 4, '22:00', '24:00', 'BE_NIGHT_STANDARD'),
+
+    /* Friday */
+    ('BE', 'passenger_transport', 5, '00:00', '06:00', 'BE_NIGHT_STANDARD'),
+    ('BE', 'passenger_transport', 5, '06:00', '22:00', 'BE_DAYTIME_STANDARD'),
+    ('BE', 'passenger_transport', 5, '22:00', '24:00', 'BE_NIGHT_STANDARD'),
+
+    /* Saturday */
+    ('BE', 'passenger_transport', 6, '00:00', '24:00', 'BE_WEEKEND_STANDARD'),
+
+    /* Sunday */
+    ('BE', 'passenger_transport', 7, '00:00', '24:00', 'BE_WEEKEND_STANDARD')
+
 ON CONFLICT (
     country_code,
     service_category,
@@ -2686,6 +2807,20 @@ ON public.pricing_profiles (
 )
 WHERE status = 'draft';
 
+/*
+ * Only one draft tax rule may exist for each country and
+ * service category at a time.
+ *
+ * Multiple active rules remain allowed when their effective
+ * periods do not overlap.
+ */
+CREATE UNIQUE INDEX IF NOT EXISTS
+    tax_rules_one_draft_version_idx
+ON public.tax_rules (
+    country_code,
+    service_category
+)
+WHERE status = 'draft';
 
 /* Supports pricing-profile lookup by country and currency. */
 CREATE INDEX IF NOT EXISTS
@@ -3302,6 +3437,949 @@ FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE
 ON FUNCTION public.calculate_route_country_distances(JSONB)
 TO service_role;
+
+/* ====================================================================================================
+   TAX RULE LIFECYCLE
+   ====================================================================================================
+
+   Functions:
+       create_tax_rule_draft
+       update_tax_rule_draft
+       cancel_tax_rule_draft
+       activate_tax_rule_draft
+
+   Purpose:
+   Manages versioned country/service tax configuration.
+
+   Tax-rule family:
+       country_code + service_category
+
+   Normal lifecycle:
+
+       approved active rule
+              |
+              v
+         create draft
+              |
+              v
+          edit draft
+           /      \
+          v        v
+      activate   cancel
+          |
+          v
+   approved current/future tax rule
+
+   Important:
+   Active tax rules may coexist when they cover different,
+   non-overlapping effective periods.
+
+==================================================================================================== */
+/*
+ * VOYA TAXI - CREATE TAX-RULE DRAFT
+ *
+ * Purpose:
+ * Creates one editable draft for an existing active tax-rule family.
+ *
+ * Tax-rule family:
+ *     country_code + service_category
+ *
+ * Safety rules:
+ *
+ * 0 drafts -> create a new draft
+ * 1 draft  -> return the existing draft
+ * 2+ drafts -> raise a configuration error
+ *
+ * The family advisory lock prevents two administrators from
+ * creating competing drafts at the same time.
+ *
+ * Important:
+ * The draft's effective_from initially uses NOW() only as an
+ * editable placeholder. The administrator may change the planned
+ * effective period before activating the rule.
+ */
+
+CREATE OR REPLACE FUNCTION public.create_tax_rule_draft(
+    p_source_tax_rule_id UUID,
+    p_created_by_user_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    /* Identifies the tax-rule family before taking the family lock. */
+    v_country_code TEXT;
+    v_service_category TEXT;
+
+    /* Complete active source tax rule. */
+    v_source_tax_rule public.tax_rules%ROWTYPE;
+
+    /* Number of existing drafts in this tax-rule family. */
+    v_draft_count INTEGER;
+
+    /* Existing draft UUID when exactly one draft already exists. */
+    v_existing_draft_tax_rule_id UUID;
+
+    /* UUID created for a new draft. */
+    v_new_draft_tax_rule_id UUID;
+
+BEGIN
+    /* Both IDs are required. */
+    IF p_source_tax_rule_id IS NULL
+        OR p_created_by_user_id IS NULL
+    THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Source tax rule ID and administrator user ID are required.';
+    END IF;
+
+
+    /*
+     * Load the tax family first.
+     */
+    SELECT
+        tax_rule.country_code,
+        tax_rule.service_category
+    INTO
+        v_country_code,
+        v_service_category
+    FROM public.tax_rules AS tax_rule
+    WHERE tax_rule.id = p_source_tax_rule_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The source tax rule could not be found.';
+    END IF;
+
+
+    /*
+     * Lock the complete tax-rule family.
+     *
+     * Example:
+     *
+     * BE + passenger_transport
+     *
+     * Administrator 1 creates a draft.
+     * Administrator 2 waits.
+     *
+     * After the lock is released, administrator 2 finds the
+     * existing draft instead of creating another one.
+     */
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(
+            /*
+            || means concatenate strings. -- example: BE|passenger_transport. 
+            hashtextextended(...) converts that text into a number.
+            PostgreSQL advisory locks work very conveniently with a numeric lock key.
+            */
+            v_country_code || '|' || v_service_category, 
+            0
+        )
+    );
+
+
+    /*
+     * Reload and lock the selected source rule.
+     */
+    SELECT tax_rule.*
+    INTO v_source_tax_rule
+    FROM public.tax_rules AS tax_rule
+    WHERE tax_rule.id = p_source_tax_rule_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The source tax rule could not be found.';
+    END IF;
+
+
+    /*
+     * New drafts may only be created from an approved active rule.
+     *
+     * "active" does not necessarily mean currently effective.
+     * A future approved tax rule may also have status = active.
+     */
+    IF v_source_tax_rule.status <> 'active' THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'A tax-rule draft can only be created from an active tax rule.';
+    END IF;
+
+
+    /*
+     * Check whether this tax family already contains a draft.
+     *
+     * The unique partial index also protects this rule at database
+     * level, while this check allows us to return the existing draft.
+     */
+    SELECT COUNT(*)
+    INTO v_draft_count
+    FROM public.tax_rules AS tax_rule
+    WHERE tax_rule.country_code = v_source_tax_rule.country_code
+      AND tax_rule.service_category = v_source_tax_rule.service_category
+      AND tax_rule.status = 'draft';
+
+    IF v_draft_count > 1 THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Multiple tax-rule drafts already exist for this country and service category.';
+    END IF;
+
+
+    /*
+     * Reuse the existing draft when one already exists.
+     */
+    IF v_draft_count = 1 THEN
+        SELECT tax_rule.id
+        INTO v_existing_draft_tax_rule_id
+        FROM public.tax_rules AS tax_rule
+        WHERE tax_rule.country_code = v_source_tax_rule.country_code
+          AND tax_rule.service_category = v_source_tax_rule.service_category
+          AND tax_rule.status = 'draft';
+
+        RETURN v_existing_draft_tax_rule_id;
+    END IF;
+
+
+    /*
+     * Create a new draft by copying the stable tax identity and
+     * current percentage from the selected source rule.
+     *
+     * effective_from = NOW() is only the initial draft value.
+     * It may be changed before activation.
+     */
+    INSERT INTO public.tax_rules (
+        country_code,
+        tax_name,
+        service_category,
+        tax_rate_percentage,
+        status,
+        effective_from,
+        effective_until,
+        created_by_user_id,
+        activated_by_user_id,
+        archived_by_user_id,
+        activated_at,
+        archived_at
+    )
+    VALUES (
+        v_source_tax_rule.country_code,
+        v_source_tax_rule.tax_name,
+        v_source_tax_rule.service_category,
+        v_source_tax_rule.tax_rate_percentage,
+        'draft',
+        NOW(),
+        NULL,
+        p_created_by_user_id,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+    )
+    RETURNING id
+    INTO v_new_draft_tax_rule_id;
+
+
+    /* Return the UUID needed by the Next.js admin page. */
+    RETURN v_new_draft_tax_rule_id;
+
+END;
+$$;
+
+
+/*
+ * Browser roles cannot directly perform this financial operation.
+ */
+REVOKE ALL
+ON FUNCTION public.create_tax_rule_draft(UUID, UUID)
+FROM PUBLIC, anon, authenticated;
+
+
+/*
+ * Trusted Next.js server operations use service_role.
+ */
+GRANT EXECUTE
+ON FUNCTION public.create_tax_rule_draft(UUID, UUID)
+TO service_role;
+
+
+COMMENT ON FUNCTION public.create_tax_rule_draft(UUID, UUID)
+IS 'Returns the existing draft for a tax-rule family or atomically creates one when no draft exists.';
+
+/*
+ * VOYA TAXI - UPDATE TAX-RULE DRAFT
+ *
+ * Purpose:
+ * Updates the editable values of one unfinished tax-rule draft.
+ *
+ * Editable:
+ * - tax_name;
+ * - tax_rate_percentage;
+ * - effective_from;
+ * - effective_until.
+ *
+ * Immutable tax-family identity:
+ * - country_code;
+ * - service_category.
+ *
+ * Safety:
+ * Active and archived tax rules are historical financial records
+ * and cannot be changed through this function.
+ */
+
+CREATE OR REPLACE FUNCTION public.update_tax_rule_draft(
+    p_tax_rule_id UUID,
+    p_tax_name TEXT,
+    p_tax_rate_percentage NUMERIC,
+    p_effective_from TIMESTAMPTZ,
+    p_effective_until TIMESTAMPTZ
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    /* Stores and locks the draft while it is being updated. */
+    v_tax_rule public.tax_rules%ROWTYPE;
+
+BEGIN
+    /* Tax-rule ID is required. */
+    IF p_tax_rule_id IS NULL THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Tax rule ID is required.';
+    END IF;
+
+
+    /*
+     * Load and lock the exact tax rule.
+     *
+     * FOR UPDATE prevents two simultaneous save requests from
+     * changing the same draft at exactly the same time.
+     */
+    SELECT tax_rule.*
+    INTO v_tax_rule
+    FROM public.tax_rules AS tax_rule
+    WHERE tax_rule.id = p_tax_rule_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The tax rule could not be found.';
+    END IF;
+
+
+    /*
+     * Only unfinished drafts may be edited.
+     *
+     * Active and archived tax rules must remain immutable
+     * historical financial configuration.
+     */
+    IF v_tax_rule.status <> 'draft' THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Only draft tax rules can be edited.';
+    END IF;
+
+
+    /* Tax name must contain real text. */
+    IF p_tax_name IS NULL
+        OR LENGTH(TRIM(p_tax_name)) = 0
+    THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Tax name is required.';
+    END IF;
+
+
+    /* Tax percentage must be between 0% and 100%. */
+    IF p_tax_rate_percentage IS NULL
+        OR p_tax_rate_percentage < 0
+        OR p_tax_rate_percentage > 100
+    THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Tax rate percentage must be between 0 and 100.';
+    END IF;
+
+
+    /* Every tax rule requires an effective start. */
+    IF p_effective_from IS NULL THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Effective-from date is required.';
+    END IF;
+
+
+    /*
+     * An optional effective end must always be later than
+     * the effective start.
+     */
+    IF p_effective_until IS NOT NULL
+        AND p_effective_until <= p_effective_from
+    THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Effective-until must be later than effective-from.';
+    END IF;
+
+
+    /*
+     * Update only editable draft values.
+     *
+     * country_code and service_category deliberately remain unchanged.
+     *
+     * updated_at is maintained automatically by the existing
+     * tax_rules trigger.
+     */
+    UPDATE public.tax_rules
+    SET
+        tax_name = TRIM(p_tax_name),
+        tax_rate_percentage = p_tax_rate_percentage,
+        effective_from = p_effective_from,
+        effective_until = p_effective_until
+    WHERE id = p_tax_rule_id;
+
+
+    /* Return the same UUID for the Next.js admin workflow. */
+    RETURN p_tax_rule_id;
+
+END;
+$$;
+
+
+/*
+ * Browser roles cannot directly perform this financial operation.
+ */
+REVOKE ALL
+ON FUNCTION public.update_tax_rule_draft(
+    UUID,
+    TEXT,
+    NUMERIC,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+)
+FROM PUBLIC, anon, authenticated;
+
+
+/*
+ * Trusted Next.js server operations use service_role.
+ */
+GRANT EXECUTE
+ON FUNCTION public.update_tax_rule_draft(
+    UUID,
+    TEXT,
+    NUMERIC,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+)
+TO service_role;
+
+
+COMMENT ON FUNCTION public.update_tax_rule_draft(
+    UUID,
+    TEXT,
+    NUMERIC,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+)
+IS 'Updates editable financial values of one tax-rule draft while preserving its country and service family.';
+
+/*
+ * VOYA TAXI - CANCEL TAX-RULE DRAFT
+ *
+ * Purpose:
+ * Safely deletes one unfinished tax-rule draft.
+ *
+ * Safety rules:
+ * - only status = draft may be deleted;
+ * - active and archived tax rules can never be cancelled;
+ * - a tax rule referenced by a journey quote must remain;
+ * - a tax rule referenced by a country tax allocation must remain;
+ * - the complete country/service tax family is locked during cancellation.
+ */
+
+CREATE OR REPLACE FUNCTION public.cancel_tax_rule_draft(
+    p_tax_rule_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    /* Stores the selected tax rule and identifies its tax family. */
+    v_tax_rule public.tax_rules%ROWTYPE;
+
+BEGIN
+    /* A tax-rule ID is required. */
+    IF p_tax_rule_id IS NULL THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Tax rule ID is required.';
+    END IF;
+
+
+    /*
+     * Load the tax rule first so we know which country/service
+     * family must be locked.
+     */
+    SELECT tax_rule.*
+    INTO v_tax_rule
+    FROM public.tax_rules AS tax_rule
+    WHERE tax_rule.id = p_tax_rule_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The tax rule could not be found.';
+    END IF;
+
+
+    /*
+     * Lock the complete tax-rule family.
+     *
+     * Example:
+     *
+     * BE + passenger_transport
+     *
+     * Draft creation, cancellation and later activation use the
+     * same family lock so competing lifecycle operations cannot
+     * modify this tax family at the same moment.
+     */
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(
+            v_tax_rule.country_code || '|' || v_tax_rule.service_category,
+            0
+        )
+    );
+
+
+    /*
+     * Reload and lock the exact tax rule after obtaining
+     * the family lock.
+     */
+    SELECT tax_rule.*
+    INTO v_tax_rule
+    FROM public.tax_rules AS tax_rule
+    WHERE tax_rule.id = p_tax_rule_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The tax rule could not be found.';
+    END IF;
+
+
+    /*
+     * Only unfinished drafts may be cancelled.
+     *
+     * Active and archived tax rules are historical financial
+     * configuration and must remain available.
+     */
+    IF v_tax_rule.status <> 'draft' THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Only a draft tax rule can be cancelled.';
+    END IF;
+
+
+    /*
+     * A tax rule directly referenced by a journey quote must
+     * remain available for financial history.
+     */
+    IF EXISTS (
+        SELECT 1
+        FROM public.journey_quotes AS journey_quote
+        WHERE journey_quote.tax_rule_id = p_tax_rule_id
+    ) THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '23503',
+                MESSAGE = 'This tax-rule draft is already referenced by a journey quote and cannot be cancelled.';
+    END IF;
+
+
+    /*
+     * Cross-border quotes store their exact country-specific tax
+     * rules in journey_quote_tax_allocations.
+     *
+     * A referenced tax rule must therefore also remain available.
+     */
+    IF EXISTS (
+        SELECT 1
+        FROM public.journey_quote_tax_allocations AS tax_allocation
+        WHERE tax_allocation.tax_rule_id = p_tax_rule_id
+    ) THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '23503',
+                MESSAGE = 'This tax-rule draft is already referenced by a journey tax allocation and cannot be cancelled.';
+    END IF;
+
+
+    /* Delete the unfinished draft. */
+    DELETE FROM public.tax_rules
+    WHERE id = p_tax_rule_id;
+
+
+    /* Return the deleted UUID for the Next.js admin workflow. */
+    RETURN p_tax_rule_id;
+
+END;
+$$;
+
+
+/*
+ * Browser roles cannot directly perform this financial operation.
+ */
+REVOKE ALL
+ON FUNCTION public.cancel_tax_rule_draft(UUID)
+FROM PUBLIC, anon, authenticated;
+
+
+/*
+ * Trusted Next.js server operations use service_role.
+ */
+GRANT EXECUTE
+ON FUNCTION public.cancel_tax_rule_draft(UUID)
+TO service_role;
+
+
+COMMENT ON FUNCTION public.cancel_tax_rule_draft(UUID)
+IS 'Safely deletes one unfinished tax-rule draft while preserving active, archived and quoted financial tax rules.';
+
+/*
+ * VOYA TAXI - ACTIVATE TAX-RULE DRAFT
+ *
+ * Purpose:
+ * Approves one tax-rule draft and appends it to the end of the
+ * existing approved tax timeline.
+ *
+ * IMPORTANT TAX-RULE SEMANTICS
+ *
+ * status = active
+ *     means the tax rule is approved financial configuration.
+ *
+ * effective_from / effective_until
+ *     determine for which journey timestamp the approved rule applies.
+ *
+ * Therefore a future tax rule may be activated today while an older
+ * active rule remains applicable until the future effective boundary.
+ *
+ * The most important part is the order:
+ *
+ * 1. Lock tax family
+ * 2. Lock draft
+ * 3. Lock latest active rule
+ * 4. Close old period
+ * 5. Activate new period
+
+ * Example:
+ *
+ * Before:
+ *
+ * BE 6%
+ * [2026-01-01 ------------------------------------ infinity)
+ *
+ * Draft BE 7%
+ * [2027-01-01 ------------------------------------ infinity)
+ *
+ * After activation:
+ *
+ * BE 6%
+ * [2026-01-01 ------------------- 2027-01-01)
+ *
+ * BE 7%
+ *                               [2027-01-01 ------ infinity)
+ *
+ * The previous rule remains status = active because it is still an
+ * approved historical/effective-period rule.
+ *
+ * SAFE FIRST VERSION
+ *
+ * This function only appends a new rule to the end of the approved
+ * timeline. It does not insert rules into the middle of existing
+ * approved periods.
+ *
+ * The new terminal rule must therefore have:
+ *
+ *     effective_until = NULL
+ */
+
+CREATE OR REPLACE FUNCTION public.activate_tax_rule_draft(
+    p_tax_rule_id UUID,
+    p_activated_by_user_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    /* The draft that will become approved/active. */
+    v_tax_rule public.tax_rules%ROWTYPE;
+
+    /*
+     * The final currently approved tax rule in this
+     * country/service timeline.
+     */
+    v_latest_active_tax_rule public.tax_rules%ROWTYPE;
+
+BEGIN
+    /* A tax-rule ID is required. */
+    IF p_tax_rule_id IS NULL THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Tax rule ID is required.';
+    END IF;
+
+
+    /* The activating admin user is required for financial audit history. */
+    IF p_activated_by_user_id IS NULL THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Activated-by user ID is required.';
+    END IF;
+
+
+    /*
+     * Load the draft first so we know which country/service
+     * tax family must be locked.
+     */
+    SELECT tax_rule.*
+    INTO v_tax_rule
+    FROM public.tax_rules AS tax_rule
+    WHERE tax_rule.id = p_tax_rule_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The tax rule could not be found.';
+    END IF;
+
+
+    /*
+     * Lock the complete tax-rule family.
+     *
+     * Example:
+     *
+     * BE|passenger_transport
+     *
+     * The same family lock is used by tax draft creation,
+     * cancellation and activation.
+     */
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(
+            v_tax_rule.country_code || '|' || v_tax_rule.service_category,
+            0
+        )
+    );
+
+
+    /*
+     * Reload and lock the exact draft after obtaining
+     * the family lock.
+     */
+    SELECT tax_rule.*
+    INTO v_tax_rule
+    FROM public.tax_rules AS tax_rule
+    WHERE tax_rule.id = p_tax_rule_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The tax rule could not be found.';
+    END IF;
+
+
+    /* Only an unfinished draft may be activated. */
+    IF v_tax_rule.status <> 'draft' THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Only a draft tax rule can be activated.';
+    END IF;
+
+
+    /*
+     * This first lifecycle version only supports appending a new
+     * terminal rule.
+     *
+     * A finite effective_until would deliberately create a future
+     * gap unless another approved rule already followed it.
+     *
+     * Inserting rules into the middle of an existing timeline will
+     * be handled separately if that capability is needed later.
+     */
+    IF v_tax_rule.effective_until IS NOT NULL THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'A newly activated terminal tax rule must have no effective-until date.';
+    END IF;
+
+    /*
+    * Normal lifecycle activation must not create a tax rule
+    * retroactively.
+    *
+    * Historical corrections should use a separate controlled
+    * financial-maintenance process if ever required.
+    */
+    IF v_tax_rule.effective_from <= NOW() THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The new tax rule effective-from date must be in the future.';
+    END IF;
+
+    /*
+     * Find and lock the latest approved rule in this tax family.
+     *
+     * Multiple status = active rows are valid because each one may
+     * represent a different non-overlapping effective period.
+     */
+    SELECT active_tax_rule.*
+    INTO v_latest_active_tax_rule
+    FROM public.tax_rules AS active_tax_rule
+    WHERE active_tax_rule.country_code = v_tax_rule.country_code
+      AND active_tax_rule.service_category = v_tax_rule.service_category
+      AND active_tax_rule.status = 'active'
+    ORDER BY active_tax_rule.effective_from DESC
+    LIMIT 1
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'No approved tax rule exists for this country and service family.';
+    END IF;
+
+
+    /*
+     * The latest approved rule must currently be the open-ended
+     * terminal rule.
+     *
+     * If it already has an effective_until value while no later
+     * approved rule exists, the timeline is incomplete and should
+     * be repaired rather than silently extended.
+     */
+    IF v_latest_active_tax_rule.effective_until IS NOT NULL THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The latest approved tax rule is not open-ended.';
+    END IF;
+
+
+    /*
+     * Append-only safety rule.
+     *
+     * The new rule must start strictly after the latest approved
+     * rule started. This prevents inserting a new rule before or
+     * inside an already approved future timeline.
+     */
+    IF v_tax_rule.effective_from <= v_latest_active_tax_rule.effective_from THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The new tax rule must start after the latest approved tax rule.';
+    END IF;
+
+    /*
+     * Close the previous terminal rule exactly where the new
+     * approved rule begins.
+     *
+     * Because our periods use [start, end):
+     *
+     * previous effective_until = new effective_from
+     *
+     * creates no overlap and no gap.
+     * 
+     * Before changing the draft to status = 'active'. Otherwise PostgreSQL's non-overlap constraint would temporarily see 
+     * two overlapping active periods and reject the transaction.
+     * And because everything happens inside one PostgreSQL function call, if activation fails after 
+     * changing the old rule, the whole statement is rolled back so we don't leave the tax timeline half-modified.
+     */
+    UPDATE public.tax_rules
+    SET effective_until = v_tax_rule.effective_from
+    WHERE id = v_latest_active_tax_rule.id;
+
+
+    /*
+     * Approve the draft.
+     *
+     * IMPORTANT:
+     * effective_from is NOT replaced with NOW().
+     *
+     * activated_at records when the administrator approved the rule.
+     * effective_from records when journeys begin using the rule.
+     */
+    UPDATE public.tax_rules
+    SET
+        status = 'active',
+        activated_by_user_id = p_activated_by_user_id,
+        activated_at = NOW()
+    WHERE id = p_tax_rule_id;
+
+
+    /* Return the activated tax-rule UUID to the Next.js admin workflow. */
+    RETURN p_tax_rule_id;
+
+END;
+$$;
+
+
+/*
+ * Browser roles cannot directly activate financial configuration.
+ */
+REVOKE ALL
+ON FUNCTION public.activate_tax_rule_draft(UUID, UUID)
+FROM PUBLIC, anon, authenticated;
+
+
+/*
+ * Trusted Next.js server operations use service_role.
+ */
+GRANT EXECUTE
+ON FUNCTION public.activate_tax_rule_draft(UUID, UUID)
+TO service_role;
+
+
+COMMENT ON FUNCTION public.activate_tax_rule_draft(UUID, UUID)
+IS 'Activates one terminal tax-rule draft and atomically closes the previous approved tax period at the new rule effective-from boundary.';
+/* ============================================================================================================================
+   End TAX RULE LIFECYCLE
+   ============================================================================================================================*/
 
 --============================create_pricing_profile_family=====================================================================
 --==============================================================================================================================

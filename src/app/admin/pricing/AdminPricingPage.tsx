@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles, tableStyles } from "@/styles/classNames";
 import { redirect } from "next/navigation";
 import { requireAdminUser } from "@/lib/auth/requireAdminUser";
+import { supportedPricingMarkets } from "@/data/supportedPricingMarketData";
+import PricingCountrySelector from "./PricingCountrySelector";
 
 type PricingProfileRow = {
     id: string;
@@ -26,6 +28,13 @@ type PricingRateRow = {
     minimum_fare_excluding_vat: string;
 };
 
+type AdminPricingPageProps = {
+    searchParams: Promise<{
+        country?: string;
+        error?: string;
+    }>;
+};
+
 /**
  * Formats a database amount using the currency stored on the
  * pricing profile. This only controls display formatting.
@@ -45,8 +54,8 @@ function formatStatus(status: string): string {
 /**
  * Creates Version 1 of a completely new pricing-profile family.
  *
- * The administrator selects a business purpose.
- * The server translates that purpose into the stable profile code
+ * The administrator selects a pricing market and business purpose.
+ * The server translates those selections into the stable profile code
  * and name. The browser is therefore not trusted to choose the
  * actual financial identity.
  */
@@ -54,47 +63,64 @@ async function createPricingProfileFamily(formData: FormData) {
     "use server";
 
     const adminUser = await requireAdminUser();
+    const selectedCountryCode = String(formData.get("countryCode") || "")
+        .trim()
+        .toUpperCase();
+
+    const pricingMarket = supportedPricingMarkets.find(
+        (supportedMarket) =>
+            supportedMarket.countryCode === selectedCountryCode &&
+            supportedMarket.pricingEnabled
+    );
+
+    if (!pricingMarket) {
+        redirect("/admin/pricing?error=invalid-pricing-market");
+    }
+
     const pricingPurpose = String(formData.get("pricingPurpose") || "").trim();
 
-    let pricingProfileCode = "";
-    let pricingProfileName = "";
+    let pricingPurposeCode = "";
+    let pricingPurposeName = "";
 
     if (pricingPurpose === "daytime") {
-        pricingProfileCode = "NL_DAYTIME_STANDARD";
-        pricingProfileName = "Netherlands Daytime Standard";
+        pricingPurposeCode = "DAYTIME";
+        pricingPurposeName = "Daytime";
     }
 
     if (pricingPurpose === "night") {
-        pricingProfileCode = "NL_NIGHT_STANDARD";
-        pricingProfileName = "Netherlands Night Standard";
+        pricingPurposeCode = "NIGHT";
+        pricingPurposeName = "Night";
     }
 
     if (pricingPurpose === "weekend") {
-        pricingProfileCode = "NL_WEEKEND_STANDARD";
-        pricingProfileName = "Netherlands Weekend Standard";
+        pricingPurposeCode = "WEEKEND";
+        pricingPurposeName = "Weekend";
     }
 
     if (pricingPurpose === "holiday") {
-        pricingProfileCode = "NL_HOLIDAY_STANDARD";
-        pricingProfileName = "Netherlands Holiday Standard";
+        pricingPurposeCode = "HOLIDAY";
+        pricingPurposeName = "Holiday";
     }
 
     if (pricingPurpose === "event") {
-        pricingProfileCode = "NL_EVENT_STANDARD";
-        pricingProfileName = "Netherlands Event Standard";
+        pricingPurposeCode = "EVENT";
+        pricingPurposeName = "Event";
     }
 
-    if (!pricingProfileCode) {
+    if (!pricingPurposeCode) {
         redirect("/admin/pricing?error=invalid-pricing-purpose");
     }
+
+    const pricingProfileCode = `${pricingMarket.countryCode}_${pricingPurposeCode}_STANDARD`;
+    const pricingProfileName = `${pricingMarket.countryName} ${pricingPurposeName} Standard`;
 
     const { data: newPricingProfileId, error } = await supabaseAdmin.rpc(
         "create_pricing_profile_family",
         {
             p_pricing_profile_code: pricingProfileCode,
             p_pricing_profile_name: pricingProfileName,
-            p_country_code: "NL",
-            p_currency_code: "EUR",
+            p_country_code: pricingMarket.countryCode,
+            p_currency_code: pricingMarket.currencyCode,
             p_created_by_user_id: adminUser.id,
         }
     );
@@ -116,26 +142,67 @@ async function createPricingProfileFamily(formData: FormData) {
  * Displays a read-only overview of all versioned pricing profiles
  * and their matching rate records.
  */
-export default async function AdminPricingPage() {
-    const [profileResult, rateResult] = await Promise.all([
-        supabaseAdmin
-            .from("pricing_profiles")
-            .select(`
-                id,
-                pricing_profile_code,
-                pricing_profile_name,
-                pricing_profile_version,
-                country_code,
-                currency_code,
-                quote_validity_minutes,
-                status,
-                effective_from,
-                effective_until
-            `)
-            .order("pricing_profile_code", { ascending: true })
-            .order("pricing_profile_version", { ascending: false }),
+export default async function AdminPricingPage({searchParams}: AdminPricingPageProps) {
 
-        supabaseAdmin
+    const pageSearchParams = await searchParams;
+    const enabledPricingMarkets = supportedPricingMarkets.filter((supportedMarket) => supportedMarket.pricingEnabled);
+
+    const requestedCountryCode = String(pageSearchParams.country || "")
+        .trim()
+        .toUpperCase();
+
+    const selectedPricingMarket = enabledPricingMarkets.find((supportedMarket) => supportedMarket.countryCode === requestedCountryCode) ?? enabledPricingMarkets[0];
+    const selectedCountryCode = selectedPricingMarket.countryCode;
+
+    /*
+    * First load only the pricing profiles that belong to
+    * the country currently selected on the page.
+    */
+    const profileResult = await supabaseAdmin
+        .from("pricing_profiles")
+        .select(`
+            id,
+            pricing_profile_code,
+            pricing_profile_name,
+            pricing_profile_version,
+            country_code,
+            currency_code,
+            quote_validity_minutes,
+            status,
+            effective_from,
+            effective_until
+        `)
+        .eq("country_code", selectedCountryCode)
+        .order("pricing_profile_code", { ascending: true })
+        .order("pricing_profile_version", { ascending: false });
+
+
+    if (profileResult.error) {
+        console.error("Could not load pricing profiles:", profileResult.error);
+
+        return (
+            <main className={pageStyles.main}>
+                <div className={pageStyles.containerMedium}>
+                    <h1 className={pageStyles.pageTitle}> Pricing management </h1>
+                    <p className={pageStyles.errorMsg}> Could not load pricing configuration.</p>
+                </div>
+            </main>
+        );
+    }
+
+    const pricingProfiles =(profileResult.data ?? []) as PricingProfileRow[];
+    const pricingProfileIds = pricingProfiles.map((pricingProfile) => pricingProfile.id);
+    /*
+    * Load rates only for the pricing profiles that belong
+    * to the selected country.
+    *
+    * If the selected country has no pricing profiles yet,
+    * no pricing-rate query is necessary.
+    */
+    let pricingRates: PricingRateRow[] = [];
+
+    if (pricingProfileIds.length > 0) {
+        const rateResult = await supabaseAdmin
             .from("pricing_rates")
             .select(`
                 pricing_profile_id,
@@ -143,30 +210,26 @@ export default async function AdminPricingPage() {
                 distance_rate_per_km_excluding_vat,
                 duration_rate_per_minute_excluding_vat,
                 minimum_fare_excluding_vat
-            `),
-    ]);
+            `)
+            .in("pricing_profile_id", pricingProfileIds);
 
-    const loadError = profileResult.error ?? rateResult.error;
+        if (rateResult.error) {
+            console.error("Could not load pricing rates:", rateResult.error);
 
-    if (loadError) {
-        console.error("Could not load pricing configuration:", loadError);
+            return (
+                <main className={pageStyles.main}>
+                    <div className={pageStyles.containerMedium}>
+                        <h1 className={pageStyles.pageTitle}> Pricing management </h1>
+                        <p className={pageStyles.errorMsg}> Could not load pricing configuration. </p>
+                    </div>
+                </main>
+            );
+        }
 
-        return (
-            <main className={pageStyles.main}>
-                <div className={pageStyles.containerMedium}>
-                    <h1 className={pageStyles.pageTitle}>Pricing management</h1>
-                    <p className={pageStyles.errorMsg}>Could not load pricing configuration.</p>
-                </div>
-            </main>
-        );
+        pricingRates = (rateResult.data ?? []) as PricingRateRow[];
     }
 
-    const pricingProfiles = (profileResult.data ?? []) as PricingProfileRow[];
-    const pricingRates = (rateResult.data ?? []) as PricingRateRow[];
-
-    const rateByProfileId = new Map(
-        pricingRates.map((pricingRate) => [pricingRate.pricing_profile_id, pricingRate])
-    );
+    const rateByProfileId = new Map(pricingRates.map((pricingRate) => [pricingRate.pricing_profile_id, pricingRate]));
 
     return (
         <main className={pageStyles.main}>
@@ -177,7 +240,13 @@ export default async function AdminPricingPage() {
                 <p className={pageStyles.pageDescription}>
                     Read-only overview of all pricing-profile versions and their configured rates.
                 </p>
+
+                <div className="mb-6 max-w-sm"> 
+                    <PricingCountrySelector selectedCountryCode={selectedCountryCode} pricingMarkets={enabledPricingMarkets}/>
+                </div>
+
                 <form action={createPricingProfileFamily} className="mb-8">
+                    <input type="hidden" name="countryCode" value={selectedCountryCode}/>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                         <label>
                             <span className={formStyles.span}>Pricing purpose</span>

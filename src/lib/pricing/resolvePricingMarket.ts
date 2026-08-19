@@ -1,3 +1,5 @@
+import { supportedPricingMarkets } from "@/data/supportedPricingMarketData";
+
 /**
  * Purpose:
  * Resolves the financial pricing market from a verified country code.
@@ -12,9 +14,11 @@
  * Netherlands pricing market
  *  ↓
  * EUR
- * NL_DAYTIME_STANDARD
  * passenger_transport
  * Europe/Amsterdam
+ *
+ * The actual pricing-profile code is selected separately
+ * from the pricing schedule.
  */
 
 export type PricingMarket = {
@@ -31,19 +35,25 @@ export type PricingMarket = {
  * null means Voya Taxi does not currently have a pricing
  * configuration for that country.
  *
- * More countries can later be added here without changing
- * the journey-quote calculation itself.
+ *  More countries can later be added to supportedPricingMarketData
+ *  without changing the journey-quote calculation itself.
  */
 export function resolvePricingMarket(countryCode: string): PricingMarket | null {
 
     const normalizedCountryCode = countryCode.trim().toUpperCase();
-    if (normalizedCountryCode === "NL") {
-        return {
-            countryCode: "NL",
-            currencyCode: "EUR",
-            serviceCategory: "passenger_transport",
-            timeZone: "Europe/Amsterdam",
-        };
-    }
-    return null;
+
+    const pricingMarket = supportedPricingMarkets.find(
+        (supportedMarket) =>
+            supportedMarket.countryCode === normalizedCountryCode &&
+            supportedMarket.pricingEnabled
+    );
+
+    if (!pricingMarket) {return null;}
+
+    return {
+        countryCode: pricingMarket.countryCode,
+        currencyCode: pricingMarket.currencyCode,
+        serviceCategory: pricingMarket.serviceCategory,
+        timeZone: pricingMarket.timeZone,
+    };
 }

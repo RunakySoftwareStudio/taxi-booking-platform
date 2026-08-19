@@ -477,7 +477,7 @@ export default async function AdminPricingDetailPage({ params, searchParams}: Ad
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
                 {pricingProfile.status === "draft"
-                    ? (<DraftPricingNavigationGuard formId="draft-pricing-form" saveAndReturnButtonId="draft-save-and-return"/> )
+                    ? (<DraftPricingNavigationGuard formId="draft-pricing-form" saveAndReturnButtonId="draft-save-and-return" saveButtonId="draft-save-button"/> )
                     : (
                         <Link href="/admin/pricing" className={formStyles.link}>
                             Back to pricing
@@ -582,9 +582,13 @@ export default async function AdminPricingDetailPage({ params, searchParams}: Ad
                                 </label>
                             </div>
                         </form>
-
+                        {/*------------------------------------------------------------------
+                         * form="draft-pricing-form" means:
+                         *      this button -> submits the form whose id is "draft-pricing-form" 
+                         * So the button may remain visually outside the form while still submitting it.
+                         ------------------------------------------------------------------- */}
                         <div className="grid gap-4 md:grid-cols-2">
-                            <button type="submit" className={`${formStyles.smallButton} mt-5`}>
+                            <button id="draft-save-button" form="draft-pricing-form" type="submit" className={`${formStyles.smallButton} mt-5`}>
                                 Save draft pricing
                             </button>
                             {/* =========================================================

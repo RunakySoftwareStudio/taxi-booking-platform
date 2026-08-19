@@ -279,6 +279,48 @@ export async function POST(request: Request) {
         requestBody.time
     );
 
+
+
+    /*=================================================================================
+     Test the amounts 
+        * LEARNING / DIAGNOSTIC EXAMPLE
+        *
+        * Used to diagnose a JavaScript floating-point mismatch:
+        *
+        * raw fare:        119.70000000000002
+        * normalized fare: 119.7000
+        *
+        * The database requires the quote header and tax-allocation totals
+        * to match exactly, so financial values are normalized to 4 decimals.
+     ==================================================================================
+        const taxAllocationFareTotal = taxAllocations.reduce(
+            (totalFare, taxAllocation) =>
+                totalFare + taxAllocation.allocatedFareExcludingVat,
+            0
+        );
+
+        console.log("QUOTE TAX ALLOCATION DEBUG", {
+            pricingProfileCode: journeyQuote.pricingProfileCode,
+
+            originalBasicFare: basicFareExcludingVat,
+
+            headerBasicFare:
+                journeyQuote.fareCalculation.basicFareExcludingVat,
+
+            allocationFareTotal: taxAllocationFareTotal,
+
+            originalBasicFarePrecision:
+                basicFareExcludingVat.toPrecision(17),
+
+            headerBasicFarePrecision:
+                journeyQuote.fareCalculation.basicFareExcludingVat.toPrecision(17),
+
+            allocationFareTotalPrecision:
+                taxAllocationFareTotal.toPrecision(17),
+
+            taxAllocations,
+        });
+    =======================================================================================*/
     /*
         Create the complete journey quote atomically.
         PostgreSQL will:

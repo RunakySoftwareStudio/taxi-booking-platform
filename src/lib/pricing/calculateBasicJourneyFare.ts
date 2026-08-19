@@ -36,6 +36,20 @@ export function calculateBasicJourneyFare(
         basicFareExcludingVat = pricingProfile.minimumFareExcludingVat;
     }
 
-    // Return the basic fare before VAT, discounts, and final rounding.
+    /*
+    * Normalize the financial amount to the same four-decimal
+    * precision used by the database NUMERIC(12,4) columns.
+    *
+    * Example:
+    *
+    * JavaScript calculation:
+    * 119.70000000000002
+    *
+    * Financial value:
+    * 119.7000
+    */
+    basicFareExcludingVat = Number(basicFareExcludingVat.toFixed(4));
+
+    // Return the normalized basic fare before VAT and final currency rounding.
     return basicFareExcludingVat;
 }

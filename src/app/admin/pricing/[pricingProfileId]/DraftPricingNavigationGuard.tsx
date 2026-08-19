@@ -8,8 +8,8 @@ import { formStyles } from "@/styles/classNames";
 type DraftPricingNavigationGuardProps = {
     formId: string;
     saveAndReturnButtonId: string;
+    saveButtonId: string;
 };
-
 /**
  * PURPOSE: PROTECT UNSAVED PRICING-DRAFT CHANGES
  *
@@ -23,11 +23,12 @@ type DraftPricingNavigationGuardProps = {
  * a hidden submit button that tells the server action to return
  * to /admin/pricing after saving.
  */
-export default function DraftPricingNavigationGuard({formId,saveAndReturnButtonId}: DraftPricingNavigationGuardProps) {
+export default function DraftPricingNavigationGuard({formId, saveAndReturnButtonId, saveButtonId,}: DraftPricingNavigationGuardProps) {
 
     const router = useRouter();
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [showWarning, setShowWarning] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     /**
      * Creates a simple snapshot of the current form values.
@@ -54,7 +55,7 @@ export default function DraftPricingNavigationGuard({formId,saveAndReturnButtonI
             );
         }
 
-        function handleSubmit() {setHasUnsavedChanges(false);}
+        function handleSubmit() {setIsSaving(true); setHasUnsavedChanges(false);}
 
         draftForm.addEventListener("input", checkForChanges);
         draftForm.addEventListener("change", checkForChanges);
@@ -87,7 +88,38 @@ export default function DraftPricingNavigationGuard({formId,saveAndReturnButtonI
         };
     }, [hasUnsavedChanges]);
 
+    /**
+     * Keeps the visible Save button synchronized with
+     * the actual state of the pricing draft.
+     *
+     * No changes  -> Saved
+     * Changed     -> Save draft pricing
+     * Submitting  -> Saving...
+     */
+    useEffect(() => {
+        const saveButton = document.getElementById(saveButtonId);
 
+        if (!(saveButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        if (isSaving) {
+            saveButton.textContent = "Saving...";
+            saveButton.disabled = true;
+            return;
+        }
+
+        if (hasUnsavedChanges) {
+            saveButton.textContent = "Save draft pricing";
+            saveButton.disabled = false;
+            return;
+        }
+
+        saveButton.textContent = "Saved";
+        saveButton.disabled = true;
+    }, [hasUnsavedChanges, isSaving, saveButtonId]);
+
+    // Handle Back To Pricing
     function handleBackToPricing() {
         if (!hasUnsavedChanges) {
             router.push("/admin/pricing");
