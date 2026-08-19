@@ -76,7 +76,11 @@ export function isCreateJourneyQuoteRequest(inputValue: unknown): inputValue is 
             /^\d{2}:\d{2}$/.test("7:30")     // false
             /^\d{2}:\d{2}$/.test("19.30")    // false
             /^\d{2}:\d{2}$/.test("19:30abc") // false
-            /^\d{2}:\d{2}$/.test("23:59 ") // true
+            /^\d{2}:\d{2}$/.test("23:59 ") // false , "23:59 " contains a trailing space.
+            /^\d{2}:\d{2}$/.test("23:59") // true
+
+            The RegEx checks the HH:MM format only; it does not validate whether the time is logically valid.
+            For example: /^\d{2}:\d{2}$/.test("99:99") // true
          */
         typeof requestData.date === "string" &&
         /^\d{4}-\d{2}-\d{2}$/.test(requestData.date) &&

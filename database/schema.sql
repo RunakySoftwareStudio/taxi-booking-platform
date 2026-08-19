@@ -1350,10 +1350,10 @@ END: ATOMIC BOOKING + JOURNEY QUOTE ACCEPTANCE
        several tax allocations
        quote header tax_rule_id + tax_rate_percentage are NULL
 
-   Important:
-   The previous RPC signature remains temporarily available so
-   the currently deployed application continues working while
-   the new application version is prepared and deployed.
+    Important:
+    Only the new atomic RPC signature is supported.
+    It stores both journey quote items and country-specific
+    tax allocations in one database transaction.
 ============================================================ */
 
 CREATE OR REPLACE FUNCTION public.create_journey_quote_with_items(
@@ -2454,6 +2454,27 @@ VALUES (
     NOW()
 );
 
+/* Belgian passenger-transport VAT. */
+INSERT INTO public.tax_rules (
+    country_code,
+    tax_name,
+    service_category,
+    tax_rate_percentage,
+    status,
+    effective_from,
+    effective_until,
+    activated_at
+)
+VALUES (
+    'BE',
+    'VAT',
+    'passenger_transport',
+    6.00,
+    'active',
+    TIMESTAMPTZ '2026-01-01 00:00:00+00',
+    NULL,
+    NOW()
+);
 
 /* Dutch EUR rounding rule. */
 INSERT INTO public.currency_rounding_rules (
