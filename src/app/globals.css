@@ -75,3 +75,12 @@ html[dir="rtl"] .technical-input { text-align: right; }
 */
 .language-text-input { unicode-bidi: plaintext; text-align: left; }
 html[dir="rtl"] .language-text-input { text-align: right; }
+
+.datetimeInput {
+    color-scheme: dark;
+}
+
+.datetimeInput::-webkit-calendar-picker-indicator {
+    transform: scale(1.25);
+    cursor: pointer;
+}
