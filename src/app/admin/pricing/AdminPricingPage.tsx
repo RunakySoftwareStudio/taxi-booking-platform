@@ -234,7 +234,13 @@ export default async function AdminPricingPage({searchParams}: AdminPricingPageP
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
-                <Link href="/admin" className={formStyles.link}>Back to admin</Link>
+                <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">
+                    <Link href="/admin" className={formStyles.link}>← Back to admin</Link>
+                    <span className="text-slate-600">|</span>
+                    <Link href={`/admin/pricing/tax-rules?country=${selectedCountryCode}`} className={formStyles.link}>Tax rules</Link>
+                    <span className="text-slate-600">|</span>
+                    <Link href={`/admin/pricing/rounding-rules?country=${selectedCountryCode}`} className={formStyles.link}>Rounding rules</Link>
+                </div>
                 <p className={pageStyles.pageLabelUpper}>Financial configuration</p>
                 <h1 className={pageStyles.pageTitle}>Pricing management</h1>
                 <p className={pageStyles.pageDescription}>

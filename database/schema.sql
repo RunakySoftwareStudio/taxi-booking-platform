@@ -4381,6 +4381,719 @@ IS 'Activates one terminal tax-rule draft and atomically closes the previous app
    End TAX RULE LIFECYCLE
    ============================================================================================================================*/
 
+/* ============================================================================================================================
+   CURRENCY ROUNDING RULE LIFECYCLE
+
+   Purpose:
+   Safely manages versioned country/currency rounding rules.
+
+   Lifecycle:
+       active rule
+           ↓
+       create draft
+           ↓
+       update draft
+           ↓
+       activate draft
+
+   A draft may also be deleted before activation.
+
+   Rounding-rule family:
+       country_code + currency_code
+
+   Functions:
+       create_currency_rounding_rule_draft
+       update_currency_rounding_rule_draft
+       cancel_currency_rounding_rule_draft
+       activate_currency_rounding_rule_draft
+   ============================================================================================================================*/
+
+/*
+ * Allows at most one unfinished draft for each
+ * country/currency rounding-rule family.
+ */
+CREATE UNIQUE INDEX IF NOT EXISTS
+    currency_rounding_rules_one_draft_per_family_idx
+ON public.currency_rounding_rules (
+    country_code,
+    currency_code
+)
+WHERE status = 'draft';
+
+/*
+ * VOYA TAXI - CREATE CURRENCY ROUNDING-RULE DRAFT
+ *
+ * Purpose:
+ * Creates one editable draft for an existing active
+ * currency-rounding-rule family.
+ *
+ * Rounding-rule family:
+ *     country_code + currency_code
+ *
+ * Safety:
+ * 0 drafts  -> create a new draft
+ * 1 draft   -> return the existing draft
+ * 2+ drafts -> configuration error
+ *
+ * A family advisory lock prevents competing drafts
+ * from being created at the same time.
+ *
+ * ARCHITECTURE CHECK
+ *
+ * Family identity:
+ *     country_code + currency_code
+ *
+ * Source must exist                    ✅
+ * Family advisory lock                 ✅
+ * Source row locked with FOR UPDATE    ✅
+ * Source must be status = active       ✅
+ * Existing draft is reused             ✅
+ * New draft copies increment + mode    ✅
+ * Draft gets effective_from = NOW()    ✅
+ * Audit created_by_user_id stored      ✅
+ * Browser roles blocked                ✅
+ * service_role allowed                 ✅
+ * Returns draft UUID                   ✅
+ *
+ * Example:
+ *
+ * BE + EUR active
+ * rounding_increment = 0.0100
+ * rounding_mode = nearest
+ *
+ *          ↓ Create draft
+ *
+ * BE + EUR draft
+ * rounding_increment = 0.0100
+ * rounding_mode = nearest
+ */
+
+
+CREATE OR REPLACE FUNCTION public.create_currency_rounding_rule_draft(
+    p_source_rounding_rule_id UUID,
+    p_created_by_user_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    v_country_code TEXT;
+    v_currency_code TEXT;
+    v_source_rounding_rule public.currency_rounding_rules%ROWTYPE;
+    v_draft_count INTEGER;
+    v_existing_draft_rounding_rule_id UUID;
+    v_new_draft_rounding_rule_id UUID;
+
+BEGIN
+    IF p_source_rounding_rule_id IS NULL OR p_created_by_user_id IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Source rounding rule ID and administrator user ID are required.';
+    END IF;
+
+    /* Load the rounding-rule family before taking the family lock. */
+    SELECT rounding_rule.country_code, rounding_rule.currency_code
+    INTO v_country_code, v_currency_code
+    FROM public.currency_rounding_rules AS rounding_rule
+    WHERE rounding_rule.id = p_source_rounding_rule_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'The source currency rounding rule could not be found.';
+    END IF;
+
+    /* Lock the complete country/currency family. */
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(v_country_code || '|' || v_currency_code, 0)
+    );
+
+    /* Reload and lock the source rule. */
+    SELECT rounding_rule.*
+    INTO v_source_rounding_rule
+    FROM public.currency_rounding_rules AS rounding_rule
+    WHERE rounding_rule.id = p_source_rounding_rule_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'The source currency rounding rule could not be found.';
+    END IF;
+
+    /* Drafts may only be created from an approved active rule. */
+    IF v_source_rounding_rule.status <> 'active' THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'A currency rounding-rule draft can only be created from an active rule.';
+    END IF;
+
+    /* Check whether this family already contains a draft. */
+    SELECT COUNT(*)
+    INTO v_draft_count
+    FROM public.currency_rounding_rules AS rounding_rule
+    WHERE rounding_rule.country_code = v_source_rounding_rule.country_code
+      AND rounding_rule.currency_code = v_source_rounding_rule.currency_code
+      AND rounding_rule.status = 'draft';
+
+    IF v_draft_count > 1 THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Multiple currency rounding-rule drafts already exist for this country and currency.';
+    END IF;
+
+    /* Reuse the existing draft when one already exists. */
+    IF v_draft_count = 1 THEN
+        SELECT rounding_rule.id
+        INTO v_existing_draft_rounding_rule_id
+        FROM public.currency_rounding_rules AS rounding_rule
+        WHERE rounding_rule.country_code = v_source_rounding_rule.country_code
+          AND rounding_rule.currency_code = v_source_rounding_rule.currency_code
+          AND rounding_rule.status = 'draft';
+
+        RETURN v_existing_draft_rounding_rule_id;
+    END IF;
+
+    /* Create the new editable draft. */
+    INSERT INTO public.currency_rounding_rules (
+        country_code,
+        currency_code,
+        rounding_increment,
+        rounding_mode,
+        status,
+        effective_from,
+        effective_until,
+        created_by_user_id,
+        activated_by_user_id,
+        archived_by_user_id,
+        activated_at,
+        archived_at
+    )
+    VALUES (
+        v_source_rounding_rule.country_code,
+        v_source_rounding_rule.currency_code,
+        v_source_rounding_rule.rounding_increment,
+        v_source_rounding_rule.rounding_mode,
+        'draft',
+        NOW(),
+        NULL,
+        p_created_by_user_id,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+    )
+    RETURNING id INTO v_new_draft_rounding_rule_id;
+
+    RETURN v_new_draft_rounding_rule_id;
+END;
+$$;
+
+/* Browser roles cannot directly perform this financial operation. */
+REVOKE ALL
+ON FUNCTION public.create_currency_rounding_rule_draft(UUID, UUID)
+FROM PUBLIC, anon, authenticated;
+
+/* Trusted Next.js server operations use service_role. */
+GRANT EXECUTE
+ON FUNCTION public.create_currency_rounding_rule_draft(UUID, UUID)
+TO service_role;
+
+COMMENT ON FUNCTION public.create_currency_rounding_rule_draft(UUID, UUID)
+IS 'Returns the existing draft for a country/currency rounding-rule family or atomically creates one when no draft exists.';
+
+/*
+ * VOYA TAXI - UPDATE CURRENCY ROUNDING-RULE DRAFT
+ *
+ * Purpose:
+ * Updates the editable values of one unfinished
+ * currency-rounding-rule draft.
+ *
+ * Editable:
+ * - rounding_increment;
+ * - rounding_mode;
+ * - effective_from;
+ * - effective_until.
+ *
+ * Immutable rounding-rule family identity:
+ * - country_code;
+ * - currency_code.
+ *
+ * Safety:
+ * Active and archived rounding rules are historical financial
+ * configuration and cannot be changed through this function.
+ *
+ * ARCHITECTURE CHECK
+ *
+ * Draft must exist                      ✅
+ * Draft row locked with FOR UPDATE      ✅
+ * Only status = draft can be changed    ✅
+ * Increment must be greater than 0      ✅
+ * Mode must be nearest / up / down      ✅
+ * Effective-from is required            ✅
+ * Effective-until must be after start   ✅
+ * Country and currency stay immutable   ✅
+ * service_role permissions              ✅
+ *
+ * Example:
+ *
+ * BE + EUR draft
+ * rounding_increment = 0.0100
+ * rounding_mode = nearest
+ *
+ *          ↓ Update draft
+ *
+ * BE + EUR draft
+ * rounding_increment = 0.0500
+ * rounding_mode = nearest
+ */
+
+CREATE OR REPLACE FUNCTION public.update_currency_rounding_rule_draft(
+    p_rounding_rule_id UUID,
+    p_rounding_increment NUMERIC,
+    p_rounding_mode TEXT,
+    p_effective_from TIMESTAMPTZ,
+    p_effective_until TIMESTAMPTZ
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    v_rounding_rule public.currency_rounding_rules%ROWTYPE;
+
+BEGIN
+    /* Rounding-rule ID is required. */
+    IF p_rounding_rule_id IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Currency rounding rule ID is required.';
+    END IF;
+
+    /*
+     * Load and lock the exact draft.
+     *
+     * FOR UPDATE prevents two simultaneous save requests from
+     * modifying the same draft at exactly the same time.
+     */
+    SELECT rounding_rule.*
+    INTO v_rounding_rule
+    FROM public.currency_rounding_rules AS rounding_rule
+    WHERE rounding_rule.id = p_rounding_rule_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'The currency rounding rule could not be found.';
+    END IF;
+
+    /* Only unfinished drafts may be edited. */
+    IF v_rounding_rule.status <> 'draft' THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Only draft currency rounding rules can be edited.';
+    END IF;
+
+    /* Rounding increment must always be greater than zero. */
+    IF p_rounding_increment IS NULL OR p_rounding_increment <= 0 THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Rounding increment must be greater than zero.';
+    END IF;
+
+    /* Only supported rounding modes may be stored. */
+    IF p_rounding_mode IS NULL OR p_rounding_mode NOT IN ('nearest', 'up', 'down') THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Rounding mode must be nearest, up, or down.';
+    END IF;
+
+    /* Every rounding rule requires an effective start. */
+    IF p_effective_from IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Effective-from date is required.';
+    END IF;
+
+    /* Optional effective end must be later than the start. */
+    IF p_effective_until IS NOT NULL AND p_effective_until <= p_effective_from THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Effective-until must be later than effective-from.';
+    END IF;
+
+    /*
+     * Update only editable draft values.
+     *
+     * country_code and currency_code deliberately remain unchanged.
+     * updated_at is maintained by the existing database trigger.
+     */
+    UPDATE public.currency_rounding_rules
+    SET rounding_increment = p_rounding_increment,
+        rounding_mode = p_rounding_mode,
+        effective_from = p_effective_from,
+        effective_until = p_effective_until
+    WHERE id = p_rounding_rule_id;
+
+    RETURN p_rounding_rule_id;
+END;
+$$;
+
+/* Browser roles cannot directly perform this financial operation. */
+REVOKE ALL
+ON FUNCTION public.update_currency_rounding_rule_draft(UUID, NUMERIC, TEXT, TIMESTAMPTZ, TIMESTAMPTZ)
+FROM PUBLIC, anon, authenticated;
+
+/* Trusted Next.js server operations use service_role. */
+GRANT EXECUTE
+ON FUNCTION public.update_currency_rounding_rule_draft(UUID, NUMERIC, TEXT, TIMESTAMPTZ, TIMESTAMPTZ)
+TO service_role;
+
+COMMENT ON FUNCTION public.update_currency_rounding_rule_draft(UUID, NUMERIC, TEXT, TIMESTAMPTZ, TIMESTAMPTZ)
+IS 'Updates editable values of one currency rounding-rule draft while preserving its country and currency family.';
+
+/*
+ * VOYA TAXI - CANCEL CURRENCY ROUNDING-RULE DRAFT
+ *
+ * Purpose:
+ * Deletes one unfinished currency-rounding-rule draft.
+ *
+ * IMPORTANT:
+ * In the admin UI this action is called:
+ *
+ *     Delete draft
+ *
+ * "Cancel" is used in the database function name because it cancels
+ * the unfinished financial configuration lifecycle.
+ *
+ * Rounding-rule family:
+ *     country_code + currency_code
+ *
+ * ARCHITECTURE CHECK
+ *
+ * Draft must exist                         ✅
+ * Family advisory lock                     ✅
+ * Draft row locked with FOR UPDATE         ✅
+ * Only status = draft may be deleted       ✅
+ * Referenced quote rules cannot be deleted ✅
+ * Active rules cannot be deleted           ✅
+ * Archived rules cannot be deleted         ✅
+ * Browser roles blocked                    ✅
+ * service_role allowed                     ✅
+ *
+ * Example:
+ *
+ * BE + EUR active
+ *     +
+ * BE + EUR draft
+ *
+ *          ↓ Delete draft
+ *
+ * BE + EUR active
+ *
+ * The approved active rule remains unchanged.
+ */
+
+CREATE OR REPLACE FUNCTION public.cancel_currency_rounding_rule_draft(
+    p_rounding_rule_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    v_country_code TEXT;
+    v_currency_code TEXT;
+    v_rounding_rule public.currency_rounding_rules%ROWTYPE;
+
+BEGIN
+    /* Rounding-rule ID is required. */
+    IF p_rounding_rule_id IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Currency rounding rule ID is required.';
+    END IF;
+
+    /* Load the family before taking the family lock. */
+    SELECT rounding_rule.country_code, rounding_rule.currency_code
+    INTO v_country_code, v_currency_code
+    FROM public.currency_rounding_rules AS rounding_rule
+    WHERE rounding_rule.id = p_rounding_rule_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'The currency rounding rule could not be found.';
+    END IF;
+
+    /* Lock the complete country/currency family. */
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(v_country_code || '|' || v_currency_code, 0)
+    );
+
+    /* Reload and lock the exact draft. */
+    SELECT rounding_rule.*
+    INTO v_rounding_rule
+    FROM public.currency_rounding_rules AS rounding_rule
+    WHERE rounding_rule.id = p_rounding_rule_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'The currency rounding rule could not be found.';
+    END IF;
+
+    /* Only unfinished drafts may be deleted. */
+    IF v_rounding_rule.status <> 'draft' THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Only draft currency rounding rules can be deleted.';
+    END IF;
+
+    /*
+     * Protect financial history.
+     *
+     * A rounding rule referenced by a stored journey quote must never be deleted.
+     * So even if something goes wrong elsewhere and a draft somehow becomes referenced by a quote, this function refuses to delete it.
+     */
+    IF EXISTS (
+        SELECT 1
+        FROM public.journey_quotes AS journey_quote
+        WHERE journey_quote.rounding_rule_id = p_rounding_rule_id
+    ) THEN
+        RAISE EXCEPTION USING ERRCODE = '23503',
+            MESSAGE = 'The currency rounding-rule draft is referenced by a journey quote and cannot be deleted.';
+    END IF;
+
+    /* Delete only the verified unreferenced draft. */
+    DELETE FROM public.currency_rounding_rules
+    WHERE id = p_rounding_rule_id;
+
+    RETURN p_rounding_rule_id;
+END;
+$$;
+
+/* Browser roles cannot directly perform this financial operation. */
+REVOKE ALL
+ON FUNCTION public.cancel_currency_rounding_rule_draft(UUID)
+FROM PUBLIC, anon, authenticated;
+
+/* Trusted Next.js server operations use service_role. */
+GRANT EXECUTE
+ON FUNCTION public.cancel_currency_rounding_rule_draft(UUID)
+TO service_role;
+
+COMMENT ON FUNCTION public.cancel_currency_rounding_rule_draft(UUID)
+IS 'Deletes one unreferenced currency rounding-rule draft while preserving approved financial history.';
+
+
+/*
+ * VOYA TAXI - ACTIVATE CURRENCY ROUNDING-RULE DRAFT
+ *
+ * Purpose:
+ * Approves one currency-rounding-rule draft and appends it
+ * to the end of the existing approved rounding timeline.
+ *
+ * Rounding-rule family:
+ *     country_code + currency_code
+ *
+ * IMPORTANT SEMANTICS
+ *
+ * status = active
+ *     means the rounding rule is approved financial configuration.
+ *
+ * effective_from / effective_until
+ *     determine when the approved rule actually applies.
+ *
+ * Therefore a future rounding rule may be activated today while
+ * the current active rule remains applicable until that future date.
+ *
+ * SAFE FIRST VERSION
+ *
+ * This function only appends a new rule to the end of the
+ * approved timeline. It does not insert rules into the middle
+ * of existing approved periods.
+ *
+ * The new terminal rule must therefore have:
+ *
+ *     effective_until = NULL
+ *
+ * ARCHITECTURE CHECK
+ *
+ * Draft must exist                         ✅
+ * Family advisory lock                    ✅
+ * Draft row locked with FOR UPDATE         ✅
+ * Only status = draft may be activated    ✅
+ * Effective-until must be NULL             ✅
+ * Effective-from must be in the future     ✅
+ * Latest active rule must exist            ✅
+ * Latest active rule must be open-ended    ✅
+ * New rule must start after latest rule    ✅
+ * Previous rule closes at new start        ✅
+ * New rule becomes active atomically       ✅
+ * Activation administrator is recorded     ✅
+ * Browser roles blocked                    ✅
+ * service_role allowed                     ✅
+ *
+ * Example:
+ *
+ * Before:
+ *
+ * BE + EUR
+ * 0.0100 nearest
+ * [2026-01-01 ----------------------------- infinity)
+ *
+ * Draft:
+ * 0.0500 nearest
+ * [2027-01-01 ----------------------------- infinity)
+ *
+ *          ↓ Activate draft
+ *
+ * After:
+ *
+ * 0.0100 nearest
+ * [2026-01-01 ----------- 2027-01-01)
+ *
+ * 0.0500 nearest
+ *                       [2027-01-01 ------- infinity)
+ */
+
+CREATE OR REPLACE FUNCTION public.activate_currency_rounding_rule_draft(
+    p_rounding_rule_id UUID,
+    p_activated_by_user_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    v_rounding_rule public.currency_rounding_rules%ROWTYPE;
+    v_latest_active_rounding_rule public.currency_rounding_rules%ROWTYPE;
+
+BEGIN
+    /* Both IDs are required. */
+    IF p_rounding_rule_id IS NULL OR p_activated_by_user_id IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Rounding rule ID and activating administrator user ID are required.';
+    END IF;
+
+    /*
+     * Load the draft first so we know which country/currency
+     * family must be locked.
+     */
+    SELECT rounding_rule.*
+    INTO v_rounding_rule
+    FROM public.currency_rounding_rules AS rounding_rule
+    WHERE rounding_rule.id = p_rounding_rule_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'The currency rounding rule could not be found.';
+    END IF;
+
+    /* Lock the complete country/currency family. */
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(v_rounding_rule.country_code || '|' || v_rounding_rule.currency_code, 0)
+    );
+
+    /* Reload and lock the exact draft after obtaining the family lock. */
+    SELECT rounding_rule.*
+    INTO v_rounding_rule
+    FROM public.currency_rounding_rules AS rounding_rule
+    WHERE rounding_rule.id = p_rounding_rule_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'The currency rounding rule could not be found.';
+    END IF;
+
+    /* Only an unfinished draft may be activated. */
+    IF v_rounding_rule.status <> 'draft' THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Only a draft currency rounding rule can be activated.';
+    END IF;
+
+    /* This version only supports a new open-ended terminal rule. */
+    IF v_rounding_rule.effective_until IS NOT NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'A newly activated terminal rounding rule must have no effective-until date.';
+    END IF;
+
+    /* Normal activation must not create a rule retroactively. */
+    IF v_rounding_rule.effective_from <= NOW() THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'The new rounding rule effective-from date must be in the future.';
+    END IF;
+
+    /*
+     * Find and lock the latest approved rule in this
+     * country/currency family.
+     */
+    SELECT active_rounding_rule.*
+    INTO v_latest_active_rounding_rule
+    FROM public.currency_rounding_rules AS active_rounding_rule
+    WHERE active_rounding_rule.country_code = v_rounding_rule.country_code
+      AND active_rounding_rule.currency_code = v_rounding_rule.currency_code
+      AND active_rounding_rule.status = 'active'
+    ORDER BY active_rounding_rule.effective_from DESC
+    LIMIT 1
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'No approved currency rounding rule exists for this country and currency.';
+    END IF;
+
+    /* The latest approved rule must be the current open-ended terminal rule. */
+    IF v_latest_active_rounding_rule.effective_until IS NOT NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'The latest approved currency rounding rule is not open-ended.';
+    END IF;
+
+    /* Append-only protection. */
+    IF v_rounding_rule.effective_from <= v_latest_active_rounding_rule.effective_from THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'The new currency rounding rule must start after the latest approved rule.';
+    END IF;
+
+    /*
+     * Close the previous approved terminal rule exactly when
+     * the newly approved rule begins.
+     *
+     * This happens before changing the draft to active so the
+     * active-period non-overlap constraint is never violated.
+     */
+    UPDATE public.currency_rounding_rules
+    SET effective_until = v_rounding_rule.effective_from
+    WHERE id = v_latest_active_rounding_rule.id;
+
+    /*
+     * Activate the draft.
+     *
+     * effective_from stays unchanged because it records when
+     * the rule starts applying.
+     *
+     * activated_at records when the administrator approved it.
+     */
+    UPDATE public.currency_rounding_rules
+    SET status = 'active',
+        activated_by_user_id = p_activated_by_user_id,
+        activated_at = NOW()
+    WHERE id = p_rounding_rule_id;
+
+    RETURN p_rounding_rule_id;
+END;
+$$;
+
+/* Browser roles cannot directly activate financial configuration. */
+REVOKE ALL
+ON FUNCTION public.activate_currency_rounding_rule_draft(UUID, UUID)
+FROM PUBLIC, anon, authenticated;
+
+/* Trusted Next.js server operations use service_role. */
+GRANT EXECUTE
+ON FUNCTION public.activate_currency_rounding_rule_draft(UUID, UUID)
+TO service_role;
+
+COMMENT ON FUNCTION public.activate_currency_rounding_rule_draft(UUID, UUID)
+IS 'Activates one terminal currency rounding-rule draft and atomically closes the previous approved rounding period at the new effective-from boundary.';
+
+/* ============================================================================================================================
+   End CURRENCY ROUNDING RULE LIFECYCLE
+   ============================================================================================================================*/
+
 --============================create_pricing_profile_family=====================================================================
 --==============================================================================================================================
 /*

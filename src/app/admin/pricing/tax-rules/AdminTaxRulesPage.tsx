@@ -89,7 +89,13 @@ export default async function AdminTaxRulesPage({ searchParams }: AdminTaxRulesP
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
-                <Link href="/admin/pricing" className={formStyles.link}>Back to pricing</Link>
+                <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">
+                    <Link href="/admin" className={formStyles.link}>← Back to admin</Link>
+                    <span className="text-slate-600">|</span>
+                    <Link href={`/admin/pricing?country=${selectedCountryCode}`} className={formStyles.link}>Pricing</Link>
+                    <span className="text-slate-600">|</span>
+                    <Link href={`/admin/pricing/rounding-rules?country=${selectedCountryCode}`} className={formStyles.link}>Rounding rules</Link>
+                </div>
                 <p className={pageStyles.pageLabelUpper}>Financial configuration</p>
                 <h1 className={pageStyles.pageTitle}>Tax rules management</h1>
 
@@ -97,6 +103,7 @@ export default async function AdminTaxRulesPage({ searchParams }: AdminTaxRulesP
                     Manage VAT and tax-rule versions for each supported pricing market.
                 </p>
 
+                {/* =========Select a country============ */}
                 <div className="mb-6 max-w-sm">
                     <PricingCountrySelector selectedCountryCode={selectedCountryCode} pricingMarkets={enabledPricingMarkets} basePath="/admin/pricing/tax-rules"/>
                 </div>
@@ -126,11 +133,17 @@ export default async function AdminTaxRulesPage({ searchParams }: AdminTaxRulesP
                                     <p><span className="font-medium text-cyan-300">Effective from: </span>{formatDate(taxRule.effective_from)}</p>
                                     <p><span className="font-medium text-cyan-300">Effective until: </span>{formatDate(taxRule.effective_until)}</p>
                                     <p className="mb-3"><span className="font-medium text-cyan-300">Activated: </span>{formatDate(taxRule.activated_at)}</p>
-                                    <p>
-                                        <Link href={`/admin/pricing/tax-rules/${taxRule.id}?country=${selectedCountryCode}`} className={formStyles.smallButton}>
-                                            Edit tax rule
-                                        </Link>
-                                    </p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        <Link href={`/admin/pricing/tax-rules/${taxRule.id}?country=${selectedCountryCode}`} className={formStyles.smallButton}>Edit tax rule</Link>
+
+                                        {taxRule.status === "draft" && (
+                                            <form action={activateTaxRuleDraft}>
+                                                <input type="hidden" name="taxRuleId" value={taxRule.id}/>
+                                                <input type="hidden" name="countryCode" value={selectedCountryCode}/>
+                                                <button type="submit" className={formStyles.smallButton}>Activate draft</button>
+                                            </form>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -159,21 +172,18 @@ export default async function AdminTaxRulesPage({ searchParams }: AdminTaxRulesP
                                             <td className={tableStyles.cell}>{formatDate(taxRule.effective_from)}</td>
                                             <td className={tableStyles.cell}>{formatDate(taxRule.effective_until)}</td>
                                             <td className={tableStyles.cell}>{formatDate(taxRule.activated_at)}</td>
-                                            
-
-                                                <td className={tableStyles.cell}>
-                                                    <div className="flex gap-2">
-                                                        <Link href={`/admin/pricing/tax-rules/${taxRule.id}?country=${selectedCountryCode}`} className={formStyles.smallButton}>Edit tax rule</Link>
-                                                        {taxRule.status === "draft" && (
-                                                            <form action={activateTaxRuleDraft}>
-                                                                <input type="hidden" name="taxRuleId" value={taxRule.id}/>
-                                                                <input type="hidden" name="countryCode" value={selectedCountryCode}/>
-                                                                <button type="submit" className={formStyles.smallButton}>Activate draft</button>
-                                                            </form>
-                                                        )}
-                                                    </div>
-                                                </td>
-
+                                            <td className={tableStyles.cell}>
+                                                <div className="flex gap-2">
+                                                    <Link href={`/admin/pricing/tax-rules/${taxRule.id}?country=${selectedCountryCode}`} className={formStyles.smallButton}>Edit tax rule</Link>
+                                                    {taxRule.status === "draft" && (
+                                                        <form action={activateTaxRuleDraft}>
+                                                            <input type="hidden" name="taxRuleId" value={taxRule.id}/>
+                                                            <input type="hidden" name="countryCode" value={selectedCountryCode}/>
+                                                            <button type="submit" className={formStyles.smallButton}>Activate draft</button>
+                                                        </form>
+                                                    )}
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

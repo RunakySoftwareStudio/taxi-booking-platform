@@ -136,8 +136,18 @@ export default async function AdminDashboardPage() {
         },
         {
             title: "Pricing management",
-            description: "View pricing profiles, rates, VAT rules, rounding rules, and version history.",
+            description: "Manage pricing profiles, rates, schedules, and version history.",
             href: "/admin/pricing",
+        },
+        {
+            title: "Tax rules management",
+            description: "Manage VAT and tax-rule versions for supported pricing markets.",
+            href: "/admin/pricing/tax-rules",
+        },
+        {
+            title: "Currency rounding rules",
+            description: "Manage currency rounding rules and their effective periods.",
+            href: "/admin/pricing/rounding-rules",
         },
     ];
 

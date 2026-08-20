@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireAdminUser } from "@/lib/auth/requireAdminUser";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles } from "@/styles/classNames";
-import DateTimeInputWithClear from "./DateTimeInputWithClear";
+import DateTimeInputWithClear from "../../DateTimeInputWithClear";
 
 type AdminTaxRuleDetailPageProps = {
     params: Promise<{ taxRuleId: string }>;
