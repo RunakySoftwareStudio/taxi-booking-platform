@@ -290,9 +290,17 @@ CREATE TYPE public.wheelchair_requirement_type AS ENUM (
     'remain_in_wheelchair'
 );
 
-/* ============================================================
+/* ===========================================================================================================================
    FINANCIAL STATUS TYPES
-============================================================ */
+
+   financial_configuration_status
+    → draft / active / archived
+    → individual financial versions
+
+    pricing_market_configuration_status
+    → review_required / ready
+    → entire country configuration
+================================================================================================================================ */
 
 CREATE TYPE public.financial_configuration_status AS ENUM (
     'draft',
@@ -306,14 +314,388 @@ CREATE TYPE public.journey_quote_status AS ENUM (
     'voided'
 );
 
-/* ============================================================
+/*
+ * Country-level configuration readiness.
+ *
+ * review_required = generated financial configuration still needs admin review.
+ * ready           = country configuration has been reviewed and approved.
+ *
+ * This is deliberately separate from financial_configuration_status,
+ * which controls the lifecycle of individual financial rule versions.
+ */
+CREATE TYPE public.pricing_market_configuration_status AS ENUM (
+    'review_required',
+    'ready'
+);
+
+/* ================================================================================================================================
+    End FINANCIAL STATUS TYPES
+ ==================================================================================================================================*/
+
+ /* ================================================================================================================================
+   PRICING MARKETS
+
+   Stores the countries that can participate in Voya Taxi
+   financial pricing.
+
+   configuration_status:
+   - review_required = configuration exists but still needs admin review
+   - ready           = configuration has been reviewed and approved
+
+   pricing_enabled:
+   - false = public journey pricing cannot start in this market
+   - true  = public journey pricing may use this market
+
+   Important:
+   A market may only enable pricing when its configuration
+   status is ready.
+===================================================================================================================================*/
+
+CREATE TABLE IF NOT EXISTS public.pricing_markets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    country_code TEXT NOT NULL,
+    country_name TEXT NOT NULL,
+    currency_code TEXT NOT NULL,
+    service_category TEXT NOT NULL,
+    time_zone TEXT NOT NULL,
+
+    configuration_status public.pricing_market_configuration_status
+        NOT NULL DEFAULT 'review_required',
+
+    pricing_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    planned_effective_from TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pricing_markets_country_code_unique
+        UNIQUE (country_code),
+
+    CONSTRAINT pricing_markets_country_code_valid
+        CHECK (
+            LENGTH(country_code) = 2
+            AND country_code = UPPER(country_code)
+        ),
+
+    CONSTRAINT pricing_markets_country_name_not_empty
+        CHECK (
+            LENGTH(TRIM(country_name)) > 0
+        ),
+
+    CONSTRAINT pricing_markets_currency_code_valid
+        CHECK (
+            LENGTH(currency_code) = 3
+            AND currency_code = UPPER(currency_code)
+        ),
+
+    CONSTRAINT pricing_markets_service_category_not_empty
+        CHECK (
+            LENGTH(TRIM(service_category)) > 0
+        ),
+
+    CONSTRAINT pricing_markets_time_zone_not_empty
+        CHECK (
+            LENGTH(TRIM(time_zone)) > 0
+        ),
+
+    /*
+    * Pricing enablement safety:
+    *
+    * review_required + enabled             = NOT allowed
+    * review_required + disabled + date     = allowed
+    * ready + disabled                      = allowed
+    * ready + enabled                       = allowed
+    */
+    CONSTRAINT pricing_markets_enabled_requires_ready
+        CHECK (
+            pricing_enabled = FALSE
+            OR configuration_status = 'ready'
+        ),
+
+    /*
+    * Planned effective-date safety:
+    *
+    * review_required + planned date        = allowed
+    * review_required + no planned date     = NOT allowed
+    *
+    * ready + planned date                  = allowed
+    * ready + no planned date               = allowed
+    *                                        (supports existing NL and BE)
+    */
+    CONSTRAINT pricing_markets_review_requires_planned_effective_from
+        CHECK (
+            configuration_status <> 'review_required'
+            OR planned_effective_from IS NOT NULL
+        )
+);
+/*===================================================================================================================================
+    End PRICING MARKETS
+===================================================================================================================================*/
+/* ================================================================================================================================
+   PRICING MARKET TEMPLATES
+
+   Stores reusable base configurations used when onboarding
+   a new pricing market.
+
+   Important:
+   Template data is never used directly to calculate customer
+   prices. It is copied into the real financial tables when
+   a new country is created.
+=================================================================================================================================*/
+
+CREATE TABLE IF NOT EXISTS public.pricing_market_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    template_code TEXT NOT NULL,
+    template_name TEXT NOT NULL,
+    service_category TEXT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pricing_market_templates_code_unique
+        UNIQUE (template_code),
+
+    CONSTRAINT pricing_market_templates_code_valid
+        CHECK (
+            template_code ~ '^[A-Z0-9_]+$'
+        ),
+
+    CONSTRAINT pricing_market_templates_name_not_empty
+        CHECK (
+            LENGTH(TRIM(template_name)) > 0
+        ),
+
+    CONSTRAINT pricing_market_templates_service_category_not_empty
+        CHECK (
+            LENGTH(TRIM(service_category)) > 0
+        )
+);
+
+/*===================================================================================================================================
+    End PRICING MARKET TEMPLATES
+===================================================================================================================================*/
+/* =================================================================================================================================
+   PRICING MARKET PROFILE TEMPLATES
+
+   Stores reusable pricing-profile blueprints and starter monetary
+   rates belonging to a pricing-market template.
+
+   Important:
+   These rows are never used directly for customer journey pricing.
+
+   When a new country is created, each row is copied into:
+   - public.pricing_profiles
+   - public.pricing_rates
+================================================================================================================================= */
+
+CREATE TABLE IF NOT EXISTS public.pricing_market_profile_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    pricing_market_template_id UUID NOT NULL
+        REFERENCES public.pricing_market_templates(id)
+        ON DELETE CASCADE,
+
+    profile_suffix TEXT NOT NULL,
+    profile_name_suffix TEXT NOT NULL,
+
+    quote_validity_minutes INTEGER NOT NULL DEFAULT 20,
+
+    base_fare_excluding_vat NUMERIC(12, 4) NOT NULL,
+    distance_rate_per_km_excluding_vat NUMERIC(12, 4) NOT NULL,
+    duration_rate_per_minute_excluding_vat NUMERIC(12, 4) NOT NULL,
+    minimum_fare_excluding_vat NUMERIC(12, 4) NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pricing_market_profile_templates_profile_unique
+        UNIQUE (
+            pricing_market_template_id,
+            profile_suffix
+        ),
+
+    CONSTRAINT pricing_market_profile_templates_suffix_valid
+        CHECK (
+            profile_suffix ~ '^[A-Z0-9_]+$'
+        ),
+
+    CONSTRAINT pricing_market_profile_templates_name_not_empty
+        CHECK (
+            LENGTH(TRIM(profile_name_suffix)) > 0
+        ),
+
+    CONSTRAINT pricing_market_profile_templates_quote_validity_valid
+        CHECK (
+            quote_validity_minutes >= 1
+            AND quote_validity_minutes <= 1440
+        ),
+
+    CONSTRAINT pricing_market_profile_templates_base_fare_valid
+        CHECK (
+            base_fare_excluding_vat >= 0
+        ),
+
+    CONSTRAINT pricing_market_profile_templates_distance_rate_valid
+        CHECK (
+            distance_rate_per_km_excluding_vat >= 0
+        ),
+
+    CONSTRAINT pricing_market_profile_templates_duration_rate_valid
+        CHECK (
+            duration_rate_per_minute_excluding_vat >= 0
+        ),
+
+    CONSTRAINT pricing_market_profile_templates_minimum_fare_valid
+        CHECK (
+            minimum_fare_excluding_vat >= 0
+        )
+);
+/* ===================================================================================================================================
+     End PRICING MARKET PROFILE TEMPLATES
+====================================================================================================================================== */
+/* =================================================================================================================================
+   PRICING MARKET SCHEDULE TEMPLATES
+
+   Stores reusable weekly pricing schedules belonging to a
+   pricing-market template.
+
+   Important:
+   These rows are never used directly for customer pricing.
+
+   When a new country is created, these rows are copied into
+   public.pricing_schedules and the profile suffix is combined
+   with the new country code.
+
+   day_of_week uses ISO numbering:
+   1 = Monday
+   ...
+   7 = Sunday
+================================================================================================================================= */
+
+CREATE TABLE IF NOT EXISTS public.pricing_market_schedule_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    pricing_market_template_id UUID NOT NULL,
+    day_of_week SMALLINT NOT NULL,
+    start_local_time TIME NOT NULL,
+    end_local_time TIME NOT NULL,
+    profile_suffix TEXT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pricing_market_schedule_templates_profile_fk
+        FOREIGN KEY (
+            pricing_market_template_id,
+            profile_suffix
+        )
+        REFERENCES public.pricing_market_profile_templates (
+            pricing_market_template_id,
+            profile_suffix
+        )
+        ON DELETE CASCADE,
+
+    CONSTRAINT pricing_market_schedule_templates_day_valid
+        CHECK (
+            day_of_week >= 1
+            AND day_of_week <= 7
+        ),
+
+    CONSTRAINT pricing_market_schedule_templates_period_valid
+        CHECK (
+            end_local_time > start_local_time
+        ),
+
+    CONSTRAINT pricing_market_schedule_templates_suffix_valid
+        CHECK (
+            profile_suffix ~ '^[A-Z0-9_]+$'
+        ),
+
+    CONSTRAINT pricing_market_schedule_templates_period_unique
+        UNIQUE (
+            pricing_market_template_id,
+            day_of_week,
+            start_local_time,
+            end_local_time
+        )
+);
+/* ===================================================================================================================================
+     End PRICING MARKET SCHEDULE TEMPLATES
+====================================================================================================================================== */
+/* =================================================================================================================================
+   PRICING MARKET TAX + ROUNDING TEMPLATES
+
+   Stores starter tax and currency-rounding values for a
+   pricing-market template.
+
+   Important:
+   These values are never used directly for customer pricing.
+
+   When a new country is created:
+   - tax values are copied into public.tax_rules
+   - rounding values are copied into public.currency_rounding_rules
+   - the new country remains review_required
+   - pricing_enabled remains FALSE
+================================================================================================================================= */
+
+CREATE TABLE IF NOT EXISTS public.pricing_market_tax_rounding_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    pricing_market_template_id UUID NOT NULL
+        REFERENCES public.pricing_market_templates(id)
+        ON DELETE CASCADE,
+
+    tax_name TEXT NOT NULL,
+    tax_rate_percentage NUMERIC(5, 2) NOT NULL,
+
+    rounding_increment NUMERIC(12, 4) NOT NULL,
+    rounding_mode TEXT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pricing_market_tax_rounding_templates_template_unique
+        UNIQUE (pricing_market_template_id),
+
+    CONSTRAINT pricing_market_tax_rounding_templates_tax_name_not_empty
+        CHECK (
+            LENGTH(TRIM(tax_name)) > 0
+        ),
+
+    CONSTRAINT pricing_market_tax_rounding_templates_tax_rate_valid
+        CHECK (
+            tax_rate_percentage >= 0
+            AND tax_rate_percentage <= 100
+        ),
+
+    CONSTRAINT pricing_market_tax_rounding_templates_increment_valid
+        CHECK (
+            rounding_increment > 0
+        ),
+
+    CONSTRAINT pricing_market_tax_rounding_templates_mode_valid
+        CHECK (
+            rounding_mode IN (
+                'nearest',
+                'up',
+                'down'
+            )
+        )
+);
+/* ===================================================================================================================================
+     End PRICING MARKET TAX + ROUNDING TEMPLATES
+======================================================================================================================================*/
+
+/* ===================================================================================================================================
    PRICING PROFILES
 
    Stores the identity, version and lifecycle of a pricing
    configuration.
 
    Monetary rates are stored separately in pricing_rates.
-============================================================ */
+================================================================================================================================ */
 
 CREATE TABLE IF NOT EXISTS public.pricing_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -471,9 +853,184 @@ CREATE TABLE IF NOT EXISTS public.pricing_rates (
         )
 );
 
-/*=============================================================
+
+/* ================================================================================================================
+   BELGIAN VERSION 1 PRICING CONFIGURATION
+
+   Reproduces the initial Belgian pricing profiles and rates
+   required by the Belgian weekly pricing schedule below.
+
+   Existing profile versions and pricing-rate rows are not overwritten.
+==================================================================================================================== */
+/* ---------------------------------------------------------------------------------------------------------------
+   BE DAYTIME STANDARD - VERSION 1
+---------------------------------------------------------------------------------------------------------------- */
+
+INSERT INTO public.pricing_profiles (
+    pricing_profile_code,
+    pricing_profile_name,
+    pricing_profile_version,
+    country_code,
+    currency_code,
+    quote_validity_minutes,
+    status,
+    effective_from,
+    effective_until,
+    activated_at
+)
+VALUES (
+    'BE_DAYTIME_STANDARD',
+    'Belgium Daytime Standard',
+    1,
+    'BE',
+    'EUR',
+    20,
+    'active',
+    TIMESTAMPTZ '2026-08-19 16:56:56.332068+00',
+    NULL,
+    TIMESTAMPTZ '2026-08-19 16:56:56.332068+00'
+)
+ON CONFLICT (pricing_profile_code, pricing_profile_version)
+DO NOTHING;
+
+INSERT INTO public.pricing_rates (
+    pricing_profile_id,
+    base_fare_excluding_vat,
+    distance_rate_per_km_excluding_vat,
+    duration_rate_per_minute_excluding_vat,
+    minimum_fare_excluding_vat
+)
+SELECT
+    pricing_profile.id,
+    4.9000,
+    2.0000,
+    0.3500,
+    20.0000
+FROM public.pricing_profiles pricing_profile
+WHERE pricing_profile.pricing_profile_code = 'BE_DAYTIME_STANDARD'
+  AND pricing_profile.pricing_profile_version = 1
+  AND NOT EXISTS (
+      SELECT 1
+      FROM public.pricing_rates pricing_rate
+      WHERE pricing_rate.pricing_profile_id = pricing_profile.id
+  );
+
+
+/* ---------------------------------------------------------------------------------------------------------------
+   BE NIGHT STANDARD - VERSION 1
+---------------------------------------------------------------------------------------------------------------- */
+
+INSERT INTO public.pricing_profiles (
+    pricing_profile_code,
+    pricing_profile_name,
+    pricing_profile_version,
+    country_code,
+    currency_code,
+    quote_validity_minutes,
+    status,
+    effective_from,
+    effective_until,
+    activated_at
+)
+VALUES (
+    'BE_NIGHT_STANDARD',
+    'Belgium Night Standard',
+    1,
+    'BE',
+    'EUR',
+    20,
+    'active',
+    TIMESTAMPTZ '2026-08-19 16:57:47.596382+00',
+    NULL,
+    TIMESTAMPTZ '2026-08-19 16:57:47.596382+00'
+)
+ON CONFLICT (pricing_profile_code, pricing_profile_version)
+DO NOTHING;
+
+INSERT INTO public.pricing_rates (
+    pricing_profile_id,
+    base_fare_excluding_vat,
+    distance_rate_per_km_excluding_vat,
+    duration_rate_per_minute_excluding_vat,
+    minimum_fare_excluding_vat
+)
+SELECT
+    pricing_profile.id,
+    4.5000,
+    2.0000,
+    0.3500,
+    12.0000
+FROM public.pricing_profiles pricing_profile
+WHERE pricing_profile.pricing_profile_code = 'BE_NIGHT_STANDARD'
+  AND pricing_profile.pricing_profile_version = 1
+  AND NOT EXISTS (
+      SELECT 1
+      FROM public.pricing_rates pricing_rate
+      WHERE pricing_rate.pricing_profile_id = pricing_profile.id
+  );
+
+
+/* ---------------------------------------------------------------------------------------------------------------
+   BE WEEKEND STANDARD - VERSION 1
+---------------------------------------------------------------------------------------------------------------- */
+
+INSERT INTO public.pricing_profiles (
+    pricing_profile_code,
+    pricing_profile_name,
+    pricing_profile_version,
+    country_code,
+    currency_code,
+    quote_validity_minutes,
+    status,
+    effective_from,
+    effective_until,
+    activated_at
+)
+VALUES (
+    'BE_WEEKEND_STANDARD',
+    'Belgium Weekend Standard',
+    1,
+    'BE',
+    'EUR',
+    20,
+    'active',
+    TIMESTAMPTZ '2026-08-19 16:58:32.315410+00',
+    NULL,
+    TIMESTAMPTZ '2026-08-19 16:58:32.315410+00'
+)
+ON CONFLICT (pricing_profile_code, pricing_profile_version)
+DO NOTHING;
+
+INSERT INTO public.pricing_rates (
+    pricing_profile_id,
+    base_fare_excluding_vat,
+    distance_rate_per_km_excluding_vat,
+    duration_rate_per_minute_excluding_vat,
+    minimum_fare_excluding_vat
+)
+SELECT
+    pricing_profile.id,
+    3.5000,
+    2.5000,
+    0.5000,
+    20.0000
+FROM public.pricing_profiles pricing_profile
+WHERE pricing_profile.pricing_profile_code = 'BE_WEEKEND_STANDARD'
+  AND pricing_profile.pricing_profile_version = 1
+  AND NOT EXISTS (
+      SELECT 1
+      FROM public.pricing_rates pricing_rate
+      WHERE pricing_rate.pricing_profile_id = pricing_profile.id
+  );
+
+
+/*=====================================================================================================================
+    End BELGIAN VERSION 1 PRICING CONFIGURATION
+=======================================================================================================================*/
+
+/*=====================================================================================================================
 Strat pricing-schedules
-==============================================================*/
+=======================================================================================================================*/
 /*
  * Pricing Version - Process 3
  *
@@ -2267,6 +2824,11 @@ ALTER TABLE public.pricing_schedule_overrides
 
 REVOKE ALL
 ON TABLE
+    public.pricing_markets,
+    public.pricing_market_templates,
+    public.pricing_market_profile_templates,
+    public.pricing_market_schedule_templates,
+    public.pricing_market_tax_rounding_templates,
     public.pricing_profiles,
     public.pricing_rates,
     public.tax_rules,
@@ -2281,6 +2843,11 @@ FROM anon, authenticated;
 /* Preserve trusted server-side service-role access. */
 GRANT ALL
 ON TABLE
+    public.pricing_markets,
+    public.pricing_market_templates,
+    public.pricing_market_profile_templates,
+    public.pricing_market_schedule_templates,
+    public.pricing_market_tax_rounding_templates,
     public.pricing_profiles,
     public.pricing_rates,
     public.tax_rules,
@@ -2295,6 +2862,245 @@ TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE
 ON TABLE public.journey_quote_tax_allocations
 TO service_role;
+
+/* ================================================================================================================
+   INITIAL PRICING MARKETS
+
+   NL and BE already have complete financial configuration
+   and have been verified for journey pricing.
+
+   Future countries normally start as:
+   configuration_status = 'review_required'
+   pricing_enabled = FALSE
+==================================================================================================================== */
+
+INSERT INTO public.pricing_markets (
+    country_code,
+    country_name,
+    currency_code,
+    service_category,
+    time_zone,
+    configuration_status,
+    pricing_enabled
+)
+VALUES
+    (
+        'NL',
+        'Netherlands',
+        'EUR',
+        'passenger_transport',
+        'Europe/Amsterdam',
+        'ready',
+        TRUE
+    ),
+    (
+        'BE',
+        'Belgium',
+        'EUR',
+        'passenger_transport',
+        'Europe/Brussels',
+        'ready',
+        TRUE
+    )
+ON CONFLICT (country_code)
+DO NOTHING;
+/*================================================================================================================
+    End INITIAL PRICING MARKETS
+===================================================================================================================*/
+
+/* ================================================================================================================
+   INITIAL PRICING MARKET TEMPLATE
+
+   This template provides the reusable starting structure for
+   onboarding future pricing markets.
+
+   Important:
+   Template data is never used directly for customer pricing.
+   It is copied into real country financial configuration first.
+==================================================================================================================== */
+
+INSERT INTO public.pricing_market_templates (
+    template_code,
+    template_name,
+    service_category
+)
+VALUES (
+    'STANDARD_PASSENGER_TRANSPORT',
+    'Standard Passenger Transport',
+    'passenger_transport'
+)
+ON CONFLICT (template_code)
+DO NOTHING;
+
+/*================================================================================================================
+    End INITIAL PRICING MARKET TEMPLATE
+===================================================================================================================*/
+
+/* ================================================================================================================
+   INITIAL PRICING MARKET PROFILE TEMPLATES
+
+   Starter pricing blueprints for new passenger-transport markets.
+
+   Important:
+   These values are only copied into newly created country configuration.
+   They are never used directly for customer journey pricing.
+
+   All generated countries begin as:
+   configuration_status = 'review_required'
+   pricing_enabled = FALSE
+
+   The same neutral starter values are deliberately used for all profile
+   types so no night, weekend, holiday or special-event surcharge is assumed.
+==================================================================================================================== */
+
+INSERT INTO public.pricing_market_profile_templates (
+    pricing_market_template_id,
+    profile_suffix,
+    profile_name_suffix,
+    quote_validity_minutes,
+    base_fare_excluding_vat,
+    distance_rate_per_km_excluding_vat,
+    duration_rate_per_minute_excluding_vat,
+    minimum_fare_excluding_vat
+)
+SELECT
+    template.id,
+    profile.profile_suffix,
+    profile.profile_name_suffix,
+    20,
+    4.5000,
+    2.5000,
+    0.4000,
+    15.0000
+FROM public.pricing_market_templates template
+CROSS JOIN (
+    VALUES
+        ('DAYTIME_STANDARD', 'Daytime Standard'),
+        ('NIGHT_STANDARD', 'Night Standard'),
+        ('WEEKEND_STANDARD', 'Weekend Standard'),
+        ('HOLIDAY_STANDARD', 'Holiday Standard'),
+        ('SPECIAL_EVENT_STANDARD', 'Special Event Standard')
+) AS profile (
+    profile_suffix,
+    profile_name_suffix
+)
+WHERE template.template_code = 'STANDARD_PASSENGER_TRANSPORT'
+ON CONFLICT (
+    pricing_market_template_id,
+    profile_suffix
+)
+DO NOTHING;
+/*================================================================================================================
+    End INITIAL PRICING MARKET PROFILE TEMPLATES
+===================================================================================================================*/
+
+/* ================================================================================================================
+   INITIAL PRICING MARKET WEEKLY SCHEDULE TEMPLATE
+
+   Monday-Friday:
+   00:00-06:00 = NIGHT_STANDARD
+   06:00-22:00 = DAYTIME_STANDARD
+   22:00-24:00 = NIGHT_STANDARD
+
+   Saturday-Sunday:
+   00:00-24:00 = WEEKEND_STANDARD
+
+   Holiday and special-event pricing are not part of this recurring
+   weekly schedule. Those use pricing_schedule_overrides.
+==================================================================================================================== */
+
+INSERT INTO public.pricing_market_schedule_templates (
+    pricing_market_template_id,
+    day_of_week,
+    start_local_time,
+    end_local_time,
+    profile_suffix
+)
+SELECT
+    template.id,
+    schedule.day_of_week,
+    schedule.start_local_time,
+    schedule.end_local_time,
+    schedule.profile_suffix
+FROM public.pricing_market_templates template
+CROSS JOIN (
+    VALUES
+        (1, TIME '00:00', TIME '06:00', 'NIGHT_STANDARD'),
+        (1, TIME '06:00', TIME '22:00', 'DAYTIME_STANDARD'),
+        (1, TIME '22:00', TIME '24:00', 'NIGHT_STANDARD'),
+
+        (2, TIME '00:00', TIME '06:00', 'NIGHT_STANDARD'),
+        (2, TIME '06:00', TIME '22:00', 'DAYTIME_STANDARD'),
+        (2, TIME '22:00', TIME '24:00', 'NIGHT_STANDARD'),
+
+        (3, TIME '00:00', TIME '06:00', 'NIGHT_STANDARD'),
+        (3, TIME '06:00', TIME '22:00', 'DAYTIME_STANDARD'),
+        (3, TIME '22:00', TIME '24:00', 'NIGHT_STANDARD'),
+
+        (4, TIME '00:00', TIME '06:00', 'NIGHT_STANDARD'),
+        (4, TIME '06:00', TIME '22:00', 'DAYTIME_STANDARD'),
+        (4, TIME '22:00', TIME '24:00', 'NIGHT_STANDARD'),
+
+        (5, TIME '00:00', TIME '06:00', 'NIGHT_STANDARD'),
+        (5, TIME '06:00', TIME '22:00', 'DAYTIME_STANDARD'),
+        (5, TIME '22:00', TIME '24:00', 'NIGHT_STANDARD'),
+
+        (6, TIME '00:00', TIME '24:00', 'WEEKEND_STANDARD'),
+        (7, TIME '00:00', TIME '24:00', 'WEEKEND_STANDARD')
+) AS schedule (
+    day_of_week,
+    start_local_time,
+    end_local_time,
+    profile_suffix
+)
+WHERE template.template_code = 'STANDARD_PASSENGER_TRANSPORT'
+ON CONFLICT (
+    pricing_market_template_id,
+    day_of_week,
+    start_local_time,
+    end_local_time
+)
+DO NOTHING;
+/*================================================================================================================
+    End INITIAL PRICING MARKET WEEKLY SCHEDULE TEMPLATE
+===================================================================================================================*/
+
+/* ================================================================================================================
+   INITIAL PRICING MARKET TAX + ROUNDING TEMPLATE
+
+   These are deliberately neutral starter values.
+
+   Tax:
+   - 0.00% means no legal tax assumption is made.
+   - The administrator must verify the correct country tax.
+
+   Rounding:
+   - 0.0100 nearest is a generic starter rule.
+   - The administrator must verify the correct currency/country rounding rule.
+
+   These values are never used directly for customer journey pricing.
+==================================================================================================================== */
+
+INSERT INTO public.pricing_market_tax_rounding_templates (
+    pricing_market_template_id,
+    tax_name,
+    tax_rate_percentage,
+    rounding_increment,
+    rounding_mode
+)
+SELECT
+    template.id,
+    'Passenger Transport Tax',
+    0.00,
+    0.0100,
+    'nearest'
+FROM public.pricing_market_templates template
+WHERE template.template_code = 'STANDARD_PASSENGER_TRANSPORT'
+ON CONFLICT (pricing_market_template_id)
+DO NOTHING;
+/*================================================================================================================
+    End INITIAL PRICING MARKET TAX + ROUNDING TEMPLATE
+===================================================================================================================*/
 
 /* ================================================================================================================
    INITIAL VERSION 1 FINANCIAL CONFIGURATION
@@ -3229,6 +4035,17 @@ TO service_role;
 
     Function = what should happen
     Trigger = when it should happen
+
+    So the financial trigger order becomes:
+        pricing_markets
+        pricing_market_templates
+        pricing_market_profile_templates
+        pricing_market_schedule_templates
+        pricing_profiles
+        pricing_rates
+        tax_rules
+        currency_rounding_rules
+        pricing_schedules
 */
 CREATE OR REPLACE FUNCTION update_updated_at_column() /* If this function already exists, replace it with this new version.*/
 RETURNS TRIGGER AS $$ -- trigger function, mot normal function that returns text, number, or table data.
@@ -3280,12 +4097,41 @@ BEFORE UPDATE ON public.assignment_alerts
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
+/* Automatically updates pricing_markets.updated_at. */
+CREATE TRIGGER update_pricing_markets_updated_at
+BEFORE UPDATE ON public.pricing_markets
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+/* Automatically updates pricing_market_templates.updated_at. */
+CREATE TRIGGER update_pricing_market_templates_updated_at
+BEFORE UPDATE ON public.pricing_market_templates
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+/* Automatically updates pricing_market_profile_templates.updated_at. */
+CREATE TRIGGER update_pricing_market_profile_templates_updated_at
+BEFORE UPDATE ON public.pricing_market_profile_templates
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+/* Automatically updates pricing_market_schedule_templates.updated_at. */
+CREATE TRIGGER update_pricing_market_schedule_templates_updated_at
+BEFORE UPDATE ON public.pricing_market_schedule_templates
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+/* Automatically updates pricing_market_tax_rounding_templates.updated_at. */
+CREATE TRIGGER update_pricing_market_tax_rounding_templates_updated_at
+BEFORE UPDATE ON public.pricing_market_tax_rounding_templates
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
 /* Automatically updates pricing_profiles.updated_at. */
 CREATE TRIGGER update_pricing_profiles_updated_at
 BEFORE UPDATE ON public.pricing_profiles
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
-
 
 /* Automatically updates pricing_rates.updated_at. */
 CREATE TRIGGER update_pricing_rates_updated_at
@@ -3293,13 +4139,11 @@ BEFORE UPDATE ON public.pricing_rates
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
-
 /* Automatically updates tax_rules.updated_at. */
 CREATE TRIGGER update_tax_rules_updated_at
 BEFORE UPDATE ON public.tax_rules
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
-
 
 /* Automatically updates currency_rounding_rules.updated_at. */
 CREATE TRIGGER update_currency_rounding_rules_updated_at
@@ -3319,12 +4163,15 @@ BEFORE UPDATE ON public.pricing_schedules
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
-
 /* Automatically updates pricing_schedule_overrides.updated_at. */
 CREATE TRIGGER update_pricing_schedule_overrides_updated_at
 BEFORE UPDATE ON public.pricing_schedule_overrides
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
+/*==============================================================================================================================
+  End Automatically update updated_at columns
+=============================================================================================================================*/
+
 --==============================================================================================================================
 --==============================================================================================================================
 -- ROUTE DISTANCE PER COUNTRY
@@ -4130,6 +4977,19 @@ IS 'Safely deletes one unfinished tax-rule draft while preserving active, archiv
  *     effective_until = NULL
  */
 
+
+/* ================================================================================================================
+   ALLOW FIRST TAX-RULE ACTIVATION
+
+   Purpose:
+   Allows the first approved tax rule of a brand-new country/service
+   family to be activated without requiring an existing predecessor.
+
+   Existing tax-rule families keep the original append-only behavior:
+   the previous open-ended approved rule is closed exactly when the
+   newly approved rule begins.
+==================================================================================================================== */
+
 CREATE OR REPLACE FUNCTION public.activate_tax_rule_draft(
     p_tax_rule_id UUID,
     p_activated_by_user_id UUID
@@ -4144,8 +5004,8 @@ DECLARE
     v_tax_rule public.tax_rules%ROWTYPE;
 
     /*
-     * The final currently approved tax rule in this
-     * country/service timeline.
+     * The latest approved tax rule in this country/service family,
+     * when one already exists.
      */
     v_latest_active_tax_rule public.tax_rules%ROWTYPE;
 
@@ -4159,7 +5019,7 @@ BEGIN
     END IF;
 
 
-    /* The activating admin user is required for financial audit history. */
+    /* The activating administrator is required for financial audit history. */
     IF p_activated_by_user_id IS NULL THEN
         RAISE EXCEPTION
             USING
@@ -4189,11 +5049,7 @@ BEGIN
      * Lock the complete tax-rule family.
      *
      * Example:
-     *
      * BE|passenger_transport
-     *
-     * The same family lock is used by tax draft creation,
-     * cancellation and activation.
      */
     PERFORM pg_advisory_xact_lock(
         hashtextextended(
@@ -4203,10 +5059,7 @@ BEGIN
     );
 
 
-    /*
-     * Reload and lock the exact draft after obtaining
-     * the family lock.
-     */
+    /* Reload and lock the exact draft after obtaining the family lock. */
     SELECT tax_rule.*
     INTO v_tax_rule
     FROM public.tax_rules AS tax_rule
@@ -4231,14 +5084,7 @@ BEGIN
 
 
     /*
-     * This first lifecycle version only supports appending a new
-     * terminal rule.
-     *
-     * A finite effective_until would deliberately create a future
-     * gap unless another approved rule already followed it.
-     *
-     * Inserting rules into the middle of an existing timeline will
-     * be handled separately if that capability is needed later.
+     * This lifecycle supports only an open-ended new terminal rule.
      */
     IF v_tax_rule.effective_until IS NOT NULL THEN
         RAISE EXCEPTION
@@ -4247,13 +5093,11 @@ BEGIN
                 MESSAGE = 'A newly activated terminal tax rule must have no effective-until date.';
     END IF;
 
+
     /*
-    * Normal lifecycle activation must not create a tax rule
-    * retroactively.
-    *
-    * Historical corrections should use a separate controlled
-    * financial-maintenance process if ever required.
-    */
+     * Normal lifecycle activation must not create a tax rule
+     * retroactively.
+     */
     IF v_tax_rule.effective_from <= NOW() THEN
         RAISE EXCEPTION
             USING
@@ -4261,11 +5105,12 @@ BEGIN
                 MESSAGE = 'The new tax rule effective-from date must be in the future.';
     END IF;
 
+
     /*
      * Find and lock the latest approved rule in this tax family.
      *
-     * Multiple status = active rows are valid because each one may
-     * represent a different non-overlapping effective period.
+     * For a brand-new country/service family, no predecessor exists.
+     * That is valid and the first draft can be approved directly.
      */
     SELECT active_tax_rule.*
     INTO v_latest_active_tax_rule
@@ -4277,72 +5122,60 @@ BEGIN
     LIMIT 1
     FOR UPDATE;
 
-    IF NOT FOUND THEN
-        RAISE EXCEPTION
-            USING
-                ERRCODE = 'P0002',
-                MESSAGE = 'No approved tax rule exists for this country and service family.';
-    END IF;
-
 
     /*
-     * The latest approved rule must currently be the open-ended
-     * terminal rule.
+     * Existing family:
+     * validate and close the previous approved terminal rule.
      *
-     * If it already has an effective_until value while no later
-     * approved rule exists, the timeline is incomplete and should
-     * be repaired rather than silently extended.
+     * Brand-new family:
+     * FOUND is false, so this complete block is skipped.
      */
-    IF v_latest_active_tax_rule.effective_until IS NOT NULL THEN
-        RAISE EXCEPTION
-            USING
-                ERRCODE = '22023',
-                MESSAGE = 'The latest approved tax rule is not open-ended.';
+    IF FOUND THEN
+
+        /*
+         * The latest approved rule must be the open-ended
+         * terminal rule.
+         */
+        IF v_latest_active_tax_rule.effective_until IS NOT NULL THEN
+            RAISE EXCEPTION
+                USING
+                    ERRCODE = '22023',
+                    MESSAGE = 'The latest approved tax rule is not open-ended.';
+        END IF;
+
+
+        /*
+         * Append-only protection.
+         *
+         * The new rule must begin strictly after the latest
+         * approved rule began.
+         */
+        IF v_tax_rule.effective_from <= v_latest_active_tax_rule.effective_from THEN
+            RAISE EXCEPTION
+                USING
+                    ERRCODE = '22023',
+                    MESSAGE = 'The new tax rule must start after the latest approved tax rule.';
+        END IF;
+
+
+        /*
+         * Close the previous approved terminal rule exactly
+         * where the new approved rule begins.
+         */
+        UPDATE public.tax_rules
+        SET effective_until = v_tax_rule.effective_from
+        WHERE id = v_latest_active_tax_rule.id;
+
     END IF;
-
-
-    /*
-     * Append-only safety rule.
-     *
-     * The new rule must start strictly after the latest approved
-     * rule started. This prevents inserting a new rule before or
-     * inside an already approved future timeline.
-     */
-    IF v_tax_rule.effective_from <= v_latest_active_tax_rule.effective_from THEN
-        RAISE EXCEPTION
-            USING
-                ERRCODE = '22023',
-                MESSAGE = 'The new tax rule must start after the latest approved tax rule.';
-    END IF;
-
-    /*
-     * Close the previous terminal rule exactly where the new
-     * approved rule begins.
-     *
-     * Because our periods use [start, end):
-     *
-     * previous effective_until = new effective_from
-     *
-     * creates no overlap and no gap.
-     * 
-     * Before changing the draft to status = 'active'. Otherwise PostgreSQL's non-overlap constraint would temporarily see 
-     * two overlapping active periods and reject the transaction.
-     * And because everything happens inside one PostgreSQL function call, if activation fails after 
-     * changing the old rule, the whole statement is rolled back so we don't leave the tax timeline half-modified.
-     */
-    UPDATE public.tax_rules
-    SET effective_until = v_tax_rule.effective_from
-    WHERE id = v_latest_active_tax_rule.id;
 
 
     /*
      * Approve the draft.
      *
-     * IMPORTANT:
-     * effective_from is NOT replaced with NOW().
+     * effective_from remains unchanged:
+     * it determines when journeys begin using the rule.
      *
-     * activated_at records when the administrator approved the rule.
-     * effective_from records when journeys begin using the rule.
+     * activated_at records when the administrator approved it.
      */
     UPDATE public.tax_rules
     SET
@@ -4352,33 +5185,30 @@ BEGIN
     WHERE id = p_tax_rule_id;
 
 
-    /* Return the activated tax-rule UUID to the Next.js admin workflow. */
+    /* Return the activated tax-rule UUID to the Next.js workflow. */
     RETURN p_tax_rule_id;
 
 END;
 $$;
 
 
-/*
- * Browser roles cannot directly activate financial configuration.
- */
+/* Browser roles cannot directly activate financial configuration. */
 REVOKE ALL
 ON FUNCTION public.activate_tax_rule_draft(UUID, UUID)
 FROM PUBLIC, anon, authenticated;
 
 
-/*
- * Trusted Next.js server operations use service_role.
- */
+/* Trusted Next.js server operations use service_role. */
 GRANT EXECUTE
 ON FUNCTION public.activate_tax_rule_draft(UUID, UUID)
 TO service_role;
 
 
 COMMENT ON FUNCTION public.activate_tax_rule_draft(UUID, UUID)
-IS 'Activates one terminal tax-rule draft and atomically closes the previous approved tax period at the new rule effective-from boundary.';
+IS 'Activates a terminal tax-rule draft. Supports the first approved rule of a new tax family and atomically closes the previous approved terminal rule when one exists.';
+
 /* ============================================================================================================================
-   End TAX RULE LIFECYCLE
+   End ALLOW FIRST TAX-RULE ACTIVATION
    ============================================================================================================================*/
 
 /* ============================================================================================================================
@@ -4948,6 +5778,20 @@ IS 'Deletes one unreferenced currency rounding-rule draft while preserving appro
  *                       [2027-01-01 ------- infinity)
  */
 
+
+/* ================================================================================================================
+   ALLOW FIRST CURRENCY-ROUNDING-RULE ACTIVATION
+
+   Purpose:
+   Allows the first approved currency rounding rule of a brand-new
+   country/currency family to be activated without requiring an
+   existing predecessor.
+
+   Existing rounding-rule families keep the original append-only
+   behavior: the previous open-ended approved rule is closed exactly
+   when the newly approved rule begins.
+==================================================================================================================== */
+
 CREATE OR REPLACE FUNCTION public.activate_currency_rounding_rule_draft(
     p_rounding_rule_id UUID,
     p_activated_by_user_id UUID
@@ -4958,15 +5802,26 @@ SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
+    /* The draft that will become approved/active. */
     v_rounding_rule public.currency_rounding_rules%ROWTYPE;
+
+    /*
+     * The latest approved rounding rule in this country/currency
+     * family, when one already exists.
+     */
     v_latest_active_rounding_rule public.currency_rounding_rules%ROWTYPE;
 
 BEGIN
     /* Both IDs are required. */
-    IF p_rounding_rule_id IS NULL OR p_activated_by_user_id IS NULL THEN
-        RAISE EXCEPTION USING ERRCODE = '22023',
-            MESSAGE = 'Rounding rule ID and activating administrator user ID are required.';
+    IF p_rounding_rule_id IS NULL
+        OR p_activated_by_user_id IS NULL
+    THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Rounding rule ID and activating administrator user ID are required.';
     END IF;
+
 
     /*
      * Load the draft first so we know which country/currency
@@ -4978,14 +5833,21 @@ BEGIN
     WHERE rounding_rule.id = p_rounding_rule_id;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION USING ERRCODE = 'P0002',
-            MESSAGE = 'The currency rounding rule could not be found.';
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The currency rounding rule could not be found.';
     END IF;
+
 
     /* Lock the complete country/currency family. */
     PERFORM pg_advisory_xact_lock(
-        hashtextextended(v_rounding_rule.country_code || '|' || v_rounding_rule.currency_code, 0)
+        hashtextextended(
+            v_rounding_rule.country_code || '|' || v_rounding_rule.currency_code,
+            0
+        )
     );
+
 
     /* Reload and lock the exact draft after obtaining the family lock. */
     SELECT rounding_rule.*
@@ -4995,31 +5857,46 @@ BEGIN
     FOR UPDATE;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION USING ERRCODE = 'P0002',
-            MESSAGE = 'The currency rounding rule could not be found.';
+        RAISE EXCEPTION
+            USING
+                ERRCODE = 'P0002',
+                MESSAGE = 'The currency rounding rule could not be found.';
     END IF;
+
 
     /* Only an unfinished draft may be activated. */
     IF v_rounding_rule.status <> 'draft' THEN
-        RAISE EXCEPTION USING ERRCODE = '22023',
-            MESSAGE = 'Only a draft currency rounding rule can be activated.';
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Only a draft currency rounding rule can be activated.';
     END IF;
 
-    /* This version only supports a new open-ended terminal rule. */
+
+    /* This lifecycle supports only a new open-ended terminal rule. */
     IF v_rounding_rule.effective_until IS NOT NULL THEN
-        RAISE EXCEPTION USING ERRCODE = '22023',
-            MESSAGE = 'A newly activated terminal rounding rule must have no effective-until date.';
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'A newly activated terminal rounding rule must have no effective-until date.';
     END IF;
+
 
     /* Normal activation must not create a rule retroactively. */
     IF v_rounding_rule.effective_from <= NOW() THEN
-        RAISE EXCEPTION USING ERRCODE = '22023',
-            MESSAGE = 'The new rounding rule effective-from date must be in the future.';
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The new rounding rule effective-from date must be in the future.';
     END IF;
+
 
     /*
      * Find and lock the latest approved rule in this
      * country/currency family.
+     *
+     * For a brand-new country/currency family, no predecessor
+     * exists. That is valid.
      */
     SELECT active_rounding_rule.*
     INTO v_latest_active_rounding_rule
@@ -5031,67 +5908,90 @@ BEGIN
     LIMIT 1
     FOR UPDATE;
 
-    IF NOT FOUND THEN
-        RAISE EXCEPTION USING ERRCODE = 'P0002',
-            MESSAGE = 'No approved currency rounding rule exists for this country and currency.';
-    END IF;
-
-    /* The latest approved rule must be the current open-ended terminal rule. */
-    IF v_latest_active_rounding_rule.effective_until IS NOT NULL THEN
-        RAISE EXCEPTION USING ERRCODE = '22023',
-            MESSAGE = 'The latest approved currency rounding rule is not open-ended.';
-    END IF;
-
-    /* Append-only protection. */
-    IF v_rounding_rule.effective_from <= v_latest_active_rounding_rule.effective_from THEN
-        RAISE EXCEPTION USING ERRCODE = '22023',
-            MESSAGE = 'The new currency rounding rule must start after the latest approved rule.';
-    END IF;
 
     /*
-     * Close the previous approved terminal rule exactly when
-     * the newly approved rule begins.
+     * Existing family:
+     * validate and close the previous approved terminal rule.
      *
-     * This happens before changing the draft to active so the
-     * active-period non-overlap constraint is never violated.
+     * Brand-new family:
+     * FOUND is false, so this complete block is skipped.
      */
-    UPDATE public.currency_rounding_rules
-    SET effective_until = v_rounding_rule.effective_from
-    WHERE id = v_latest_active_rounding_rule.id;
+    IF FOUND THEN
+
+        /* The latest approved rule must be open-ended. */
+        IF v_latest_active_rounding_rule.effective_until IS NOT NULL THEN
+            RAISE EXCEPTION
+                USING
+                    ERRCODE = '22023',
+                    MESSAGE = 'The latest approved currency rounding rule is not open-ended.';
+        END IF;
+
+
+        /*
+         * Append-only protection.
+         *
+         * The new rule must start strictly after the latest
+         * approved rule started.
+         */
+        IF v_rounding_rule.effective_from <= v_latest_active_rounding_rule.effective_from THEN
+            RAISE EXCEPTION
+                USING
+                    ERRCODE = '22023',
+                    MESSAGE = 'The new currency rounding rule must start after the latest approved rule.';
+        END IF;
+
+
+        /*
+         * Close the previous approved terminal rule exactly when
+         * the newly approved rule begins.
+         */
+        UPDATE public.currency_rounding_rules
+        SET effective_until = v_rounding_rule.effective_from
+        WHERE id = v_latest_active_rounding_rule.id;
+
+    END IF;
+
 
     /*
-     * Activate the draft.
+     * Approve the draft.
      *
-     * effective_from stays unchanged because it records when
-     * the rule starts applying.
+     * effective_from remains unchanged because it determines when
+     * journeys begin using this rounding rule.
      *
      * activated_at records when the administrator approved it.
      */
     UPDATE public.currency_rounding_rules
-    SET status = 'active',
+    SET
+        status = 'active',
         activated_by_user_id = p_activated_by_user_id,
         activated_at = NOW()
     WHERE id = p_rounding_rule_id;
 
+
+    /* Return the activated rounding-rule UUID. */
     RETURN p_rounding_rule_id;
+
 END;
 $$;
+
 
 /* Browser roles cannot directly activate financial configuration. */
 REVOKE ALL
 ON FUNCTION public.activate_currency_rounding_rule_draft(UUID, UUID)
 FROM PUBLIC, anon, authenticated;
 
+
 /* Trusted Next.js server operations use service_role. */
 GRANT EXECUTE
 ON FUNCTION public.activate_currency_rounding_rule_draft(UUID, UUID)
 TO service_role;
 
+
 COMMENT ON FUNCTION public.activate_currency_rounding_rule_draft(UUID, UUID)
-IS 'Activates one terminal currency rounding-rule draft and atomically closes the previous approved rounding period at the new effective-from boundary.';
+IS 'Activates a terminal currency rounding-rule draft. Supports the first approved rule of a new country/currency family and atomically closes the previous approved terminal rule when one exists.';
 
 /* ============================================================================================================================
-   End CURRENCY ROUNDING RULE LIFECYCLE
+   End ALLOW FIRST CURRENCY-ROUNDING-RULE ACTIVATION
    ============================================================================================================================*/
 
 --============================create_pricing_profile_family=====================================================================
@@ -5317,9 +6217,534 @@ COMMENT ON FUNCTION public.create_pricing_profile_family(
 )
 IS 'Creates Version 1 of a new pricing-profile family as an editable draft with zero initial rates.';
 
+/* ================================================================================================================
+   CREATE PRICING MARKET
+
+   Purpose:
+   Atomically creates a new pricing market and, in the following
+   sections of this function, generates its initial financial
+   configuration from a selected pricing-market template.
+
+   New markets always start as:
+   configuration_status = 'review_required'
+   pricing_enabled = FALSE
+
+   The complete operation is atomic:
+   if any generated financial configuration fails, PostgreSQL
+   rolls back the complete market creation.
+==================================================================================================================== */
+
+CREATE OR REPLACE FUNCTION public.create_pricing_market(
+    p_country_code TEXT,
+    p_country_name TEXT,
+    p_currency_code TEXT,
+    p_time_zone TEXT,
+    p_template_code TEXT,
+    p_planned_effective_from TIMESTAMPTZ,
+    p_created_by_user_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+    /* Normalized country-specific input. */
+    v_country_code TEXT;
+    v_country_name TEXT;
+    v_currency_code TEXT;
+    v_time_zone TEXT;
+    v_template_code TEXT;
+
+    /* Selected reusable onboarding template. */
+    v_template public.pricing_market_templates%ROWTYPE;
+
+    /* Template-completeness checks. */
+    v_profile_template_count INTEGER;
+    v_schedule_template_count INTEGER;
+    v_tax_rounding_template_count INTEGER;
+
+    /* UUID of the newly created pricing market. */
+    v_new_pricing_market_id UUID;
+
+    /* Current pricing-profile template being copied. */
+    v_profile_template public.pricing_market_profile_templates%ROWTYPE;
+
+    /* UUID of each generated real pricing profile. */
+    v_new_pricing_profile_id UUID;
+
+    /* Tax + rounding starter configuration selected from the template. */
+    v_tax_rounding_template public.pricing_market_tax_rounding_templates%ROWTYPE;
+
+BEGIN
+    /* -----------------------------------------------------------------------------------------------------------
+       NORMALIZE INPUT
+    ----------------------------------------------------------------------------------------------------------- */
+
+    v_country_code := UPPER(TRIM(p_country_code));
+    v_country_name := TRIM(p_country_name);
+    v_currency_code := UPPER(TRIM(p_currency_code));
+    v_time_zone := TRIM(p_time_zone);
+    v_template_code := UPPER(TRIM(p_template_code));
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+       REQUIRED VALUES
+    ----------------------------------------------------------------------------------------------------------- */
+
+    IF p_country_code IS NULL
+        OR p_country_name IS NULL
+        OR p_currency_code IS NULL
+        OR p_time_zone IS NULL
+        OR p_template_code IS NULL
+        OR p_planned_effective_from IS NULL
+        OR p_created_by_user_id IS NULL
+        OR v_country_code = ''
+        OR v_country_name = ''
+        OR v_currency_code = ''
+        OR v_time_zone = ''
+        OR v_template_code = ''
+    THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'Pricing market information is incomplete.';
+    END IF;
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+       COUNTRY + CURRENCY FORMAT
+    ----------------------------------------------------------------------------------------------------------- */
+
+    IF v_country_code !~ '^[A-Z]{2}$'
+        OR v_currency_code !~ '^[A-Z]{3}$'
+    THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The country or currency code is invalid.';
+    END IF;
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+       TEMPLATE CODE FORMAT
+    ----------------------------------------------------------------------------------------------------------- */
+
+    IF v_template_code !~ '^[A-Z0-9_]+$' THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The pricing-market template code is invalid.';
+    END IF;
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+       TIME ZONE
+
+       PostgreSQL's pg_timezone_names contains the supported IANA
+       time-zone names, for example Europe/Amsterdam or Europe/Berlin.
+    ----------------------------------------------------------------------------------------------------------- */
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_timezone_names
+        WHERE name = v_time_zone
+    ) THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The pricing-market time zone is invalid.';
+    END IF;
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+       PLANNED EFFECTIVE DATE
+
+       A newly onboarded country must begin with a future planned
+       financial start date so its generated drafts can be reviewed.
+    ----------------------------------------------------------------------------------------------------------- */
+
+    IF p_planned_effective_from <= NOW() THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The planned effective date must be in the future.';
+    END IF;
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+       LOAD TEMPLATE
+
+       service_category is deliberately derived from this trusted
+       template instead of being supplied separately by the browser.
+    ----------------------------------------------------------------------------------------------------------- */
+
+    SELECT *
+    INTO v_template
+    FROM public.pricing_market_templates
+    WHERE template_code = v_template_code;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The pricing-market template does not exist.';
+    END IF;
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+       TEMPLATE COMPLETENESS
+
+       A country must never be generated from a partial template.
+    ----------------------------------------------------------------------------------------------------------- */
+
+    SELECT COUNT(*)
+    INTO v_profile_template_count
+    FROM public.pricing_market_profile_templates
+    WHERE pricing_market_template_id = v_template.id;
+
+    IF v_profile_template_count <> 5 THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The pricing-market template must contain exactly five pricing-profile templates.';
+    END IF;
+
+
+    SELECT COUNT(*)
+    INTO v_schedule_template_count
+    FROM public.pricing_market_schedule_templates
+    WHERE pricing_market_template_id = v_template.id;
+
+    IF v_schedule_template_count <> 17 THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The pricing-market template must contain exactly seventeen weekly schedule rows.';
+    END IF;
+
+
+    SELECT COUNT(*)
+    INTO v_tax_rounding_template_count
+    FROM public.pricing_market_tax_rounding_templates
+    WHERE pricing_market_template_id = v_template.id;
+
+    IF v_tax_rounding_template_count <> 1 THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '22023',
+                MESSAGE = 'The pricing-market template must contain exactly one tax and rounding template.';
+    END IF;
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+       COUNTRY CREATION LOCK
+
+       Prevents two administrators from creating the same country
+       at the same moment.
+
+       The prefix keeps this advisory-lock namespace separate from
+       other financial locks in the platform.
+    ----------------------------------------------------------------------------------------------------------- */
+
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended('pricing_market|' || v_country_code, 0)
+    );
+
+
+    /* The country code identifies one pricing market. */
+    IF EXISTS (
+        SELECT 1
+        FROM public.pricing_markets
+        WHERE country_code = v_country_code
+    ) THEN
+        RAISE EXCEPTION
+            USING
+                ERRCODE = '23505',
+                MESSAGE = 'This pricing market already exists.';
+    END IF;
+
+    /* -----------------------------------------------------------------------------------------------------------
+    CREATE PRICING MARKET
+
+    New markets always begin under administrator review.
+
+    Public pricing remains disabled until the complete generated
+    financial configuration has been reviewed and marked ready.
+    ----------------------------------------------------------------------------------------------------------- */
+
+    INSERT INTO public.pricing_markets (
+        country_code,
+        country_name,
+        currency_code,
+        service_category,
+        time_zone,
+        configuration_status,
+        pricing_enabled,
+        planned_effective_from
+    )
+    VALUES (
+        v_country_code,
+        v_country_name,
+        v_currency_code,
+        v_template.service_category,
+        v_time_zone,
+        'review_required',
+        FALSE,
+        p_planned_effective_from
+    )
+    RETURNING id
+    INTO v_new_pricing_market_id;
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+    GENERATE PRICING PROFILE DRAFTS + RATES
+
+    Each reusable profile template becomes one real Version 1
+    pricing-profile family for the new country.
+
+    Example:
+    country = DE
+    profile_suffix = DAYTIME_STANDARD
+
+    Generated code:
+    DE_DAYTIME_STANDARD
+
+    Generated name:
+    Germany Daytime Standard
+    ----------------------------------------------------------------------------------------------------------- */
+
+    FOR v_profile_template IN
+        SELECT *
+        FROM public.pricing_market_profile_templates
+        WHERE pricing_market_template_id = v_template.id
+        ORDER BY profile_suffix
+    LOOP
+        INSERT INTO public.pricing_profiles (
+            pricing_profile_code,
+            pricing_profile_name,
+            pricing_profile_version,
+            country_code,
+            currency_code,
+            quote_validity_minutes,
+            status,
+            effective_from,
+            effective_until,
+            created_by_user_id
+        )
+        VALUES (
+            v_country_code || '_' || v_profile_template.profile_suffix,
+            v_country_name || ' ' || v_profile_template.profile_name_suffix,
+            1,
+            v_country_code,
+            v_currency_code,
+            v_profile_template.quote_validity_minutes,
+            'draft',
+            p_planned_effective_from,
+            NULL,
+            p_created_by_user_id
+        )
+        RETURNING id
+        INTO v_new_pricing_profile_id;
+
+
+        /*
+        * Copy the template's starter monetary values into the
+        * editable real pricing-rate record.
+        */
+        INSERT INTO public.pricing_rates (
+            pricing_profile_id,
+            base_fare_excluding_vat,
+            distance_rate_per_km_excluding_vat,
+            duration_rate_per_minute_excluding_vat,
+            minimum_fare_excluding_vat
+        )
+        VALUES (
+            v_new_pricing_profile_id,
+            v_profile_template.base_fare_excluding_vat,
+            v_profile_template.distance_rate_per_km_excluding_vat,
+            v_profile_template.duration_rate_per_minute_excluding_vat,
+            v_profile_template.minimum_fare_excluding_vat
+        );
+    END LOOP;
+
+    /* -----------------------------------------------------------------------------------------------------------
+    GENERATE WEEKLY PRICING SCHEDULE
+
+    Copies the reusable weekly schedule into the real
+    public.pricing_schedules table.
+
+    Example:
+    template profile suffix = DAYTIME_STANDARD
+    country                 = DE
+
+    Generated profile code:
+    DE_DAYTIME_STANDARD
+    ----------------------------------------------------------------------------------------------------------- */
+
+    INSERT INTO public.pricing_schedules (
+        country_code,
+        service_category,
+        day_of_week,
+        start_local_time,
+        end_local_time,
+        pricing_profile_code
+    )
+    SELECT
+        v_country_code,
+        v_template.service_category,
+        schedule_template.day_of_week,
+        schedule_template.start_local_time,
+        schedule_template.end_local_time,
+        v_country_code || '_' || schedule_template.profile_suffix
+    FROM public.pricing_market_schedule_templates schedule_template
+    WHERE schedule_template.pricing_market_template_id = v_template.id;
+
+    /* -----------------------------------------------------------------------------------------------------------
+    LOAD TAX + ROUNDING TEMPLATE
+
+    One pricing-market template has exactly one starter tax
+    and rounding configuration.
+    ----------------------------------------------------------------------------------------------------------- */
+
+    SELECT *
+    INTO v_tax_rounding_template
+    FROM public.pricing_market_tax_rounding_templates
+    WHERE pricing_market_template_id = v_template.id;
+
+
+    /* -----------------------------------------------------------------------------------------------------------
+    GENERATE TAX-RULE DRAFT
+
+    The starter tax value is copied into a real country tax-rule draft.
+
+    Important:
+    The template currently uses 0.00% deliberately.
+    This is NOT an approved country tax rate.
+
+    The new market remains review_required and pricing remains disabled
+    until an administrator verifies the correct tax configuration.
+    ----------------------------------------------------------------------------------------------------------- */
+
+    INSERT INTO public.tax_rules (
+        country_code,
+        tax_name,
+        service_category,
+        tax_rate_percentage,
+        status,
+        effective_from,
+        effective_until,
+        created_by_user_id
+    )
+    VALUES (
+        v_country_code,
+        v_tax_rounding_template.tax_name,
+        v_template.service_category,
+        v_tax_rounding_template.tax_rate_percentage,
+        'draft',
+        p_planned_effective_from,
+        NULL,
+        p_created_by_user_id
+    );
+
+    /* -----------------------------------------------------------------------------------------------------------
+    GENERATE CURRENCY-ROUNDING-RULE DRAFT
+
+    The starter rounding configuration is copied into a real
+    country currency-rounding-rule draft.
+
+    Important:
+    0.0100 nearest is only a generic starter configuration.
+    The administrator must verify whether it is correct for the
+    new country's currency and financial requirements.
+    ----------------------------------------------------------------------------------------------------------- */
+
+    INSERT INTO public.currency_rounding_rules (
+        country_code,
+        currency_code,
+        rounding_increment,
+        rounding_mode,
+        status,
+        effective_from,
+        effective_until,
+        created_by_user_id
+    )
+    VALUES (
+        v_country_code,
+        v_currency_code,
+        v_tax_rounding_template.rounding_increment,
+        v_tax_rounding_template.rounding_mode,
+        'draft',
+        p_planned_effective_from,
+        NULL,
+        p_created_by_user_id
+    );
+
+        /* -----------------------------------------------------------------------------------------------------------
+        RETURN NEW PRICING MARKET
+
+        If execution reaches this point, the market and its complete
+        starter financial configuration were created successfully.
+
+        PostgreSQL keeps the whole function call atomic, so any earlier
+        failure would have rolled back all generated rows.
+        ----------------------------------------------------------------------------------------------------------- */
+
+        RETURN v_new_pricing_market_id;
+
+    END;
+    $$;
+
+    /* ============================================================
+    FUNCTION PERMISSIONS
+
+    Browser roles cannot create pricing markets directly.
+
+    The Next.js Admin Server Action will first verify the
+    administrator and then call this function through supabaseAdmin.
+    ============================================================ */
+
+    REVOKE ALL
+    ON FUNCTION public.create_pricing_market(
+        TEXT,
+        TEXT,
+        TEXT,
+        TEXT,
+        TEXT,
+        TIMESTAMPTZ,
+        UUID
+    )
+    FROM PUBLIC, anon, authenticated;
+
+    GRANT EXECUTE
+    ON FUNCTION public.create_pricing_market(
+        TEXT,
+        TEXT,
+        TEXT,
+        TEXT,
+        TEXT,
+        TIMESTAMPTZ,
+        UUID
+    )
+    TO service_role;
+
+    COMMENT ON FUNCTION public.create_pricing_market(
+        TEXT,
+        TEXT,
+        TEXT,
+        TEXT,
+        TEXT,
+        TIMESTAMPTZ,
+        UUID
+    )
+    IS 'Atomically creates a review-required pricing market and generates its initial pricing profiles, rates, weekly schedule, tax-rule draft and currency-rounding-rule draft from a selected market template.';
+
+/* ============================================================================================================================
+   End CREATE PRICING MARKET
+--==============================================================================================================================/*
+
 --============================Pricing profile draft management==================================================================
---==============================================================================================================================
-/*
+--==============================================================================================================================/*
  * Pricing Version - Pricing lifecycle correction
  *
  * Prevents multiple draft versions from being created for the
