@@ -9,6 +9,8 @@ type DraftPricingNavigationGuardProps = {
     formId: string;
     saveAndReturnButtonId: string;
     saveButtonId: string;
+    returnPath: string;
+    returnLabel: string;
 };
 /**
  * PURPOSE: PROTECT UNSAVED PRICING-DRAFT CHANGES
@@ -23,8 +25,8 @@ type DraftPricingNavigationGuardProps = {
  * a hidden submit button that tells the server action to return
  * to /admin/pricing after saving.
  */
-export default function DraftPricingNavigationGuard({formId, saveAndReturnButtonId, saveButtonId,}: DraftPricingNavigationGuardProps) {
-
+export default function DraftPricingNavigationGuard({formId, saveAndReturnButtonId, saveButtonId, returnPath, returnLabel,}: DraftPricingNavigationGuardProps) 
+{
     const router = useRouter();
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [showWarning, setShowWarning] = useState(false);
@@ -49,12 +51,7 @@ export default function DraftPricingNavigationGuard({formId, saveAndReturnButton
         const draftForm = form;
         const originalSnapshot = createFormSnapshot(draftForm);
 
-        function checkForChanges() {
-            setHasUnsavedChanges(
-                createFormSnapshot(draftForm) !== originalSnapshot
-            );
-        }
-
+        function checkForChanges() {setHasUnsavedChanges(createFormSnapshot(draftForm) !== originalSnapshot );}
         function handleSubmit() {setIsSaving(true); setHasUnsavedChanges(false);}
 
         draftForm.addEventListener("input", checkForChanges);
@@ -67,7 +64,6 @@ export default function DraftPricingNavigationGuard({formId, saveAndReturnButton
             draftForm.removeEventListener("submit", handleSubmit);
         };
     }, [formId]);
-
 
     /**
      * Also protects against refreshing or closing the browser tab
@@ -83,9 +79,7 @@ export default function DraftPricingNavigationGuard({formId, saveAndReturnButton
 
         window.addEventListener("beforeunload", handleBeforeUnload);
 
-        return () => {
-            window.removeEventListener("beforeunload", handleBeforeUnload);
-        };
+        return () => { window.removeEventListener("beforeunload", handleBeforeUnload); };
     }, [hasUnsavedChanges]);
 
     /**
@@ -99,36 +93,19 @@ export default function DraftPricingNavigationGuard({formId, saveAndReturnButton
     useEffect(() => {
         const saveButton = document.getElementById(saveButtonId);
 
-        if (!(saveButton instanceof HTMLButtonElement)) {
-            return;
-        }
-
-        if (isSaving) {
-            saveButton.textContent = "Saving...";
-            saveButton.disabled = true;
-            return;
-        }
-
-        if (hasUnsavedChanges) {
-            saveButton.textContent = "Save draft pricing";
-            saveButton.disabled = false;
-            return;
-        }
+        if (!(saveButton instanceof HTMLButtonElement)) { return;}
+        if (isSaving) { saveButton.textContent = "Saving...";  saveButton.disabled = true; return;}
+        if (hasUnsavedChanges) { saveButton.textContent = "Save draft pricing"; saveButton.disabled = false; return;}
 
         saveButton.textContent = "Saved";
         saveButton.disabled = true;
     }, [hasUnsavedChanges, isSaving, saveButtonId]);
 
-    // Handle Back To Pricing
+    // Handle Back To main page
     function handleBackToPricing() {
-        if (!hasUnsavedChanges) {
-            router.push("/admin/pricing");
-            return;
-        }
-
+        if (!hasUnsavedChanges) {router.push(returnPath); return; }
         setShowWarning(true);
     }
-
 
     function handleSaveAndReturn() {
         const form = document.getElementById(formId);
@@ -136,46 +113,34 @@ export default function DraftPricingNavigationGuard({formId, saveAndReturnButton
 
         if (!(form instanceof HTMLFormElement)) { return; }
         if (!(saveAndReturnButton instanceof HTMLButtonElement)) { return; }
-
-        if (!form.reportValidity()) {
-            setShowWarning(false);
-            return;
-        }
+        if (!form.reportValidity()) { setShowWarning(false); return; }
 
         setShowWarning(false);
         form.requestSubmit(saveAndReturnButton);
     }
 
-
     function handleDiscardAndReturn() {
         setHasUnsavedChanges(false);
         setShowWarning(false);
-        router.push("/admin/pricing");
+        router.push(returnPath);
     }
-
 
     return (
         <>
-            <button
-                type="button"
-                onClick={handleBackToPricing}
-                className={formStyles.link}
-            >
-                Back to pricing
+            {/**
+             * normal pricing page → /admin/pricing
+             * country review     → /admin/pricing/countries/DE 
+             */}
+            <button type="button" onClick={handleBackToPricing} className={formStyles.link}>
+                {returnLabel}
             </button>
 
             {showWarning ? (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="unsaved-pricing-title"
-                        className="w-full max-w-lg rounded-2xl border border-yellow-400/40 bg-slate-950 p-6 shadow-2xl"
+                    <div role="dialog" aria-modal="true" aria-labelledby="unsaved-pricing-title"
+                        className="w-full max-w-lg rounded-2xl border border-yellow-400/40 bg-slate-950 p-6 shadow-2xl" 
                     >
-                        <h2
-                            id="unsaved-pricing-title"
-                            className="text-lg font-semibold text-yellow-200"
-                        >
+                        <h2 id="unsaved-pricing-title" className="text-lg font-semibold text-yellow-200">
                             Unsaved pricing changes
                         </h2>
 
@@ -184,27 +149,17 @@ export default function DraftPricingNavigationGuard({formId, saveAndReturnButton
                         </p>
 
                         <div className="mt-6 flex flex-wrap gap-3">
-                            <button
-                                type="button"
-                                onClick={handleSaveAndReturn}
-                                className={formStyles.smallButton}
-                            >
+                            <button type="button" onClick={handleSaveAndReturn} className={formStyles.smallButton}>
                                 Save changes & return
                             </button>
 
-                            <button
-                                type="button"
-                                onClick={handleDiscardAndReturn}
-                                className="rounded-lg border border-red-400/40 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-400/10"
-                            >
+                            <button type="button" onClick={handleDiscardAndReturn}
+                                className="rounded-lg border border-red-400/40 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-400/10" >
                                 Discard changes & return
                             </button>
 
-                            <button
-                                type="button"
-                                onClick={() => setShowWarning(false)}
-                                className="rounded-lg border border-slate-500/50 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5"
-                            >
+                            <button type="button" onClick={() => setShowWarning(false)}
+                                className="rounded-lg border border-slate-500/50 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5">
                                 Stay on page
                             </button>
                         </div>

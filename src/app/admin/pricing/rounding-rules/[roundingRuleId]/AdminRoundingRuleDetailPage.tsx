@@ -9,7 +9,7 @@ import DateTimeInputWithClear from "../../DateTimeInputWithClear";
 
 type AdminRoundingRuleDetailPageProps = {
     params: Promise<{ roundingRuleId: string }>;
-    searchParams: Promise<{ country?: string; error?: string }>;
+    searchParams: Promise<{ country?: string; error?: string; returnTo?: string }>;
 };
 
 type RoundingRuleRow = {
@@ -63,7 +63,18 @@ export default async function AdminRoundingRuleDetailPage({ params, searchParams
 
     const roundingRule = data as RoundingRuleRow;
     const countryCode = String(pageSearchParams.country || roundingRule.country_code).trim().toUpperCase();
+    /* ===== Return navigation ===== */
+    const returnToCountryReview =
+        pageSearchParams.returnTo === "country-review" &&
+        countryCode === roundingRule.country_code;
 
+    const returnPath = returnToCountryReview
+        ? `/admin/pricing/countries/${roundingRule.country_code}`
+        : `/admin/pricing/rounding-rules?country=${countryCode}`;
+
+    const returnLabel = returnToCountryReview
+        ? `Back to ${roundingRule.country_code} review`
+        : "Back to rounding rules";
 
     /**
      * Purpose:
@@ -137,13 +148,22 @@ export default async function AdminRoundingRuleDetailPage({ params, searchParams
 
         const roundingRuleId = String(formData.get("roundingRuleId") || "").trim();
         const countryCode = String(formData.get("countryCode") || "").trim().toUpperCase();
+
+        /* ===== Return navigation ===== */
+        const returnToCountryReview = String(formData.get("returnTo") || "") === "country-review";
+        const returnQuery = returnToCountryReview ? "&returnTo=country-review" : "";
+
+        const returnPath = returnToCountryReview
+            ? `/admin/pricing/countries/${countryCode}`
+            : `/admin/pricing/rounding-rules?country=${countryCode}`;
+
         const roundingIncrement = Number(formData.get("roundingIncrement"));
         const roundingMode = String(formData.get("roundingMode") || "").trim();
         const effectiveFrom = String(formData.get("effectiveFrom") || "").trim();
         const effectiveUntil = String(formData.get("effectiveUntil") || "").trim();
 
         if (effectiveUntil && effectiveUntil <= effectiveFrom) {
-            redirect(`/admin/pricing/rounding-rules/${roundingRuleId}?country=${countryCode}&error=effective-until-before-start`);
+            redirect(`/admin/pricing/rounding-rules/${roundingRuleId}?country=${countryCode}${returnQuery}&error=effective-until-before-start`);
         }
 
         const { error } = await supabaseAdmin.rpc("update_currency_rounding_rule_draft", {
@@ -156,10 +176,10 @@ export default async function AdminRoundingRuleDetailPage({ params, searchParams
 
         if (error) {
             console.error("Could not update currency rounding-rule draft:", error);
-            redirect(`/admin/pricing/rounding-rules/${roundingRuleId}?country=${countryCode}`);
+            redirect(`/admin/pricing/rounding-rules/${roundingRuleId}?country=${countryCode}${returnQuery}`);
         }
 
-        redirect(`/admin/pricing/rounding-rules?country=${countryCode}`);
+        redirect(returnPath);
     }
 
     /**
@@ -179,6 +199,13 @@ export default async function AdminRoundingRuleDetailPage({ params, searchParams
 
         const roundingRuleId = String(formData.get("roundingRuleId") || "").trim();
         const countryCode = String(formData.get("countryCode") || "").trim().toUpperCase();
+        /* ===== Return navigation ===== */
+        const returnToCountryReview = String(formData.get("returnTo") || "") === "country-review";
+        const returnQuery = returnToCountryReview ? "&returnTo=country-review" : "";
+
+        const returnPath = returnToCountryReview
+            ? `/admin/pricing/countries/${countryCode}`
+            : `/admin/pricing/rounding-rules?country=${countryCode}`;
 
         const { error } = await supabaseAdmin.rpc("cancel_currency_rounding_rule_draft", {
             p_rounding_rule_id: roundingRuleId,
@@ -186,16 +213,49 @@ export default async function AdminRoundingRuleDetailPage({ params, searchParams
 
         if (error) {
             console.error("Could not delete currency rounding-rule draft:", error);
-            redirect(`/admin/pricing/rounding-rules/${roundingRuleId}?country=${countryCode}`);
+            redirect(`/admin/pricing/rounding-rules/${roundingRuleId}?country=${countryCode}${returnQuery}`);
         }
 
-        redirect(`/admin/pricing/rounding-rules?country=${countryCode}`);
+        redirect(returnPath);
+    }
+
+    /* ===== Activate currency rounding-rule draft ===== */
+    async function activateRoundingRuleDraft(formData: FormData) {
+        "use server";
+
+        const adminUser = await requireAdminUser();
+
+        const roundingRuleId = String(formData.get("roundingRuleId") || "").trim();
+        const countryCode = String(formData.get("countryCode") || "").trim().toUpperCase();
+        const returnToCountryReview = String(formData.get("returnTo") || "") === "country-review";
+
+        const returnPath = returnToCountryReview
+            ? `/admin/pricing/countries/${countryCode}`
+            : `/admin/pricing/rounding-rules?country=${countryCode}`;
+
+        const returnQuery = returnToCountryReview ? "&returnTo=country-review" : "";
+
+        if (!roundingRuleId) { redirect(returnPath); }
+
+        const { error } = await supabaseAdmin.rpc("activate_currency_rounding_rule_draft", {
+            p_rounding_rule_id: roundingRuleId,
+            p_activated_by_user_id: adminUser.id,
+        });
+
+        if (error) {
+            console.error("Could not activate currency rounding-rule draft:", error);
+            redirect(`/admin/pricing/rounding-rules/${roundingRuleId}?country=${countryCode}${returnQuery}&error=activate-draft-failed`);
+        }
+
+        redirect(returnPath);
     }
 
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
-                <Link href={`/admin/pricing/rounding-rules?country=${countryCode}`} className={formStyles.link}>Back to rounding rules</Link>
+                <Link href={returnPath} className={formStyles.link}>
+                    {returnLabel}
+                </Link>
 
                 <p className={pageStyles.pageLabelUpper}>Financial configuration</p>
                 <h1 className={pageStyles.pageTitle}>Currency rounding rule details</h1>
@@ -210,6 +270,7 @@ export default async function AdminRoundingRuleDetailPage({ params, searchParams
                         <form action={updateRoundingRuleDraft} className="mt-6 max-w-2xl rounded-xl border border-cyan-400/20 bg-slate-900 p-5">
                             <input type="hidden" name="roundingRuleId" value={roundingRule.id}/>
                             <input type="hidden" name="countryCode" value={roundingRule.country_code}/>
+                            <input type="hidden" name="returnTo" value={returnToCountryReview ? "country-review" : ""}/>
 
                             <p className="mb-4"><span className="font-medium text-cyan-300">Country: </span>{roundingRule.country_code}</p>
                             <p className="mb-4"><span className="font-medium text-cyan-300">Currency: </span>{roundingRule.currency_code}</p>
@@ -241,11 +302,40 @@ export default async function AdminRoundingRuleDetailPage({ params, searchParams
                             </label>
 
                             <div className="flex flex-wrap gap-3">
-                                <button type="submit" className={formStyles.smallButton}>Save draft</button>
-                                <Link href={`/admin/pricing/rounding-rules?country=${roundingRule.country_code}`} className={formStyles.smallButton}>Cancel</Link>
-                                <button type="submit" formAction={deleteRoundingRuleDraft} formNoValidate className={formStyles.smallButton}>Delete draft</button>
+                                <button type="submit" className={formStyles.smallButton}>
+                                    Save draft
+                                </button>
+                                <Link href={returnPath} className={formStyles.smallButton}>
+                                    Cancel
+                                </Link>
+                                <button type="submit" formAction={deleteRoundingRuleDraft} formNoValidate className={formStyles.smallButton}>
+                                    Delete draft
+                                </button>
                             </div>
                         </form>
+                        
+                        {/* ===== Approve currency rounding-rule draft ===== */}
+                        <section className="mt-6 max-w-2xl rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-5">
+                            <h2 className="text-lg font-semibold text-yellow-200">Approve rounding rule</h2>
+
+                            <p className="mt-2 text-sm text-slate-300">
+                                Activating this draft approves the currency rounding configuration.
+                                It does not enable the pricing market.
+                            </p>
+
+                            {/* ===== Rounding-rule activation error ===== */}
+                            {pageSearchParams.error === "activate-draft-failed" && (
+                                <p className={`${pageStyles.errorMsg} mt-4`}>Could not activate this currency rounding-rule draft.</p>
+                            )}
+
+                            <form action={activateRoundingRuleDraft} className="mt-4">
+                                <input type="hidden" name="roundingRuleId" value={roundingRule.id}/>
+                                <input type="hidden" name="countryCode" value={roundingRule.country_code}/>
+                                <input type="hidden" name="returnTo" value={returnToCountryReview ? "country-review" : ""}/>
+
+                                <button type="submit" className={formStyles.smallButton}>Activate draft</button>
+                            </form>
+                        </section>
                     </>
                 ) : (
                     <div className="mt-6 max-w-2xl rounded-xl border border-cyan-400/20 bg-slate-900 p-5">

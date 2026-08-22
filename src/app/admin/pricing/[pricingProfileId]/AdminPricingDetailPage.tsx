@@ -11,7 +11,7 @@ import CancelPricingDraftButton from "./CancelPricingDraftButton";
 
 type AdminPricingDetailPageProps = {
     params: Promise<{ pricingProfileId: string }>;
-    searchParams: Promise<{ success?: string }>;
+    searchParams: Promise<{ success?: string; error?: string; country?: string }>;
 };
 
 type PricingProfileRow = {
@@ -134,6 +134,10 @@ async function updateDraftPricingVersion(formData: FormData) {
 
     const pricingProfileId = String(formData.get("pricingProfileId") || "");
     const saveAction = String(formData.get("saveAction") || "");
+    const returnCountry = String(formData.get("returnCountry") || "").trim().toUpperCase();
+    const validReturnCountry = /^[A-Z]{2}$/.test(returnCountry) ? returnCountry : "";
+    const returnQuery = validReturnCountry ? `?country=${validReturnCountry}` : "";
+    const returnPath = validReturnCountry ? `/admin/pricing/countries/${validReturnCountry}` : "/admin/pricing";
     const pricingProfileName = String(formData.get("pricingProfileName") || "").trim();
     const quoteValidityText = String(formData.get("quoteValidityMinutes") || "").trim();
     const baseFareText = String(formData.get("baseFareExcludingVat") || "").trim();
@@ -193,8 +197,8 @@ async function updateDraftPricingVersion(formData: FormData) {
 
     revalidatePath("/admin/pricing");
     revalidatePath(`/admin/pricing/${pricingProfileId}`);
-    if (saveAction === "save-and-return") {redirect("/admin/pricing");}
-    redirect(`/admin/pricing/${updatedPricingProfileId}`);
+    if (saveAction === "save-and-return") {redirect(returnPath);}
+    redirect(`/admin/pricing/${updatedPricingProfileId}${returnQuery}`);
 }
 
 /*=========================================================
@@ -225,6 +229,9 @@ async function activateDraftPricingVersion(formData: FormData) {
 
     const adminUser = await requireAdminUser();
     const pricingProfileId = String(formData.get("pricingProfileId") || "");
+    const returnCountry = String(formData.get("returnCountry") || "").trim().toUpperCase();
+    const validReturnCountry = /^[A-Z]{2}$/.test(returnCountry) ? returnCountry : "";
+    const returnQuery = validReturnCountry ? `?country=${validReturnCountry}` : "";
     if (!pricingProfileId) { redirect("/admin/pricing?error=missing-profile"); }
 
     const { data: activatedPricingProfileId, error } = await supabaseAdmin.rpc(
@@ -247,8 +254,7 @@ async function activateDraftPricingVersion(formData: FormData) {
 
     revalidatePath("/admin/pricing");
     revalidatePath(`/admin/pricing/${pricingProfileId}`);
-
-    redirect(`/admin/pricing/${activatedPricingProfileId}`);
+    redirect(`/admin/pricing/${activatedPricingProfileId}${returnQuery}`);
 }
 
 /**
@@ -366,7 +372,7 @@ async function createPricingScheduleOverride(formData: FormData) {
 export default async function AdminPricingDetailPage({ params, searchParams}: AdminPricingDetailPageProps) {
 
     const { pricingProfileId } = await params;
-    const { success } = await searchParams;
+    const { success, country } = await searchParams;
     const { data: profileData, error: profileError } = await supabaseAdmin
         .from("pricing_profiles")
         .select(`
@@ -403,6 +409,14 @@ export default async function AdminPricingDetailPage({ params, searchParams}: Ad
     }
 
     const pricingProfile = profileData as PricingProfileRow;
+    /* ===== Return navigation ===== */
+    const returnToCountryReview = country?.toUpperCase() === pricingProfile.country_code;
+    const returnPath = returnToCountryReview
+        ? `/admin/pricing/countries/${pricingProfile.country_code}`
+        : "/admin/pricing";
+    const returnLabel = returnToCountryReview
+        ? `Back to ${pricingProfile.country_code} review`
+        : "Back to pricing";
     const serviceCategory = "passenger_transport";
     const applicableAt = pricingProfile.effective_from;
 
@@ -479,10 +493,15 @@ export default async function AdminPricingDetailPage({ params, searchParams}: Ad
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
                 {pricingProfile.status === "draft"
-                    ? (<DraftPricingNavigationGuard formId="draft-pricing-form" saveAndReturnButtonId="draft-save-and-return" saveButtonId="draft-save-button"/> )
+
+                    ?  (<DraftPricingNavigationGuard  formId="draft-pricing-form" saveAndReturnButtonId="draft-save-and-return"
+                            saveButtonId="draft-save-button"
+                            returnPath={returnPath}
+                            returnLabel={returnLabel}
+                        />)
                     : (
                         <Link href="/admin/pricing" className={formStyles.link}>
-                            Back to pricing
+                            {returnLabel}
                         </Link>)
                 }
 
@@ -540,6 +559,7 @@ export default async function AdminPricingDetailPage({ params, searchParams}: Ad
                     <>
                         <form id="draft-pricing-form" action={updateDraftPricingVersion} className={formStyles.form}>
                             <input type="hidden" name="pricingProfileId" value={pricingProfile.id} />
+                            <input type="hidden" name="returnCountry" value={returnToCountryReview ? pricingProfile.country_code : ""} />
                             <button id="draft-save-and-return" type="submit" name="saveAction" value="save-and-return" className="hidden">
                                 Save and return
                             </button>
@@ -648,12 +668,15 @@ export default async function AdminPricingDetailPage({ params, searchParams}: Ad
                         <h2 className="text-lg font-semibold text-yellow-200">Activate pricing version</h2>
 
                         <p className="mt-2 text-sm text-slate-300">
-                            Activating Version {pricingProfile.pricing_profile_version} will make these prices active for new customer quotes.
-                            The current active version will automatically be archived.
+                            Activating Version {pricingProfile.pricing_profile_version} approves this pricing version.
+                            It can be used for customer quotes only when the pricing market itself is enabled.
+                            If an older active version exists, it will automatically be archived.
                         </p>
 
                         <form action={activateDraftPricingVersion} className="mt-4">
                             <input type="hidden" name="pricingProfileId" value={pricingProfile.id} />
+                            <input type="hidden" name="returnCountry" value={returnToCountryReview ? pricingProfile.country_code : ""} />
+
                             <button type="submit" className={formStyles.smallButton}>
                                 Activate Version {pricingProfile.pricing_profile_version}
                             </button>

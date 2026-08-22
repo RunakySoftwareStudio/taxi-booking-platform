@@ -8,7 +8,7 @@ import DateTimeInputWithClear from "../../DateTimeInputWithClear";
 
 type AdminTaxRuleDetailPageProps = {
     params: Promise<{ taxRuleId: string }>;
-    searchParams: Promise<{ country?: string; error?: string }>;
+    searchParams: Promise<{ country?: string; error?: string; returnTo?: string }>;
 };
 
 type TaxRuleRow = {
@@ -58,6 +58,39 @@ async function createTaxRuleDraft(formData: FormData) {
     redirect(`/admin/pricing/tax-rules/${draftTaxRuleId}?country=${countryCode}`);
 }
 
+/* ===== Activate tax-rule draft ===== */
+async function activateTaxRuleDraft(formData: FormData) {
+    "use server";
+
+    const adminUser = await requireAdminUser();
+
+    const taxRuleId = String(formData.get("taxRuleId") || "").trim();
+    const countryCode = String(formData.get("countryCode") || "").trim().toUpperCase();
+    const returnToCountryReview = String(formData.get("returnTo") || "") === "country-review";
+
+    const returnPath = returnToCountryReview
+        ? `/admin/pricing/countries/${countryCode}`
+        : `/admin/pricing/tax-rules?country=${countryCode}`;
+
+    const returnQuery = returnToCountryReview
+        ? "&returnTo=country-review"
+        : "";
+
+    if (!taxRuleId) { redirect(returnPath); }
+
+    const { error } = await supabaseAdmin.rpc("activate_tax_rule_draft", {
+        p_tax_rule_id: taxRuleId,
+        p_activated_by_user_id: adminUser.id,
+    });
+
+    if (error) {
+        console.error("Could not activate tax-rule draft:", error);
+        redirect(`/admin/pricing/tax-rules/${taxRuleId}?country=${countryCode}${returnQuery}&error=activate-draft-failed`);
+    }
+
+    redirect(returnPath);
+}
+
 async function updateTaxRuleDraft(formData: FormData) {
     "use server";
 
@@ -65,6 +98,14 @@ async function updateTaxRuleDraft(formData: FormData) {
 
     const taxRuleId = String(formData.get("taxRuleId") || "").trim();
     const countryCode = String(formData.get("countryCode") || "").trim().toUpperCase();
+    const returnToCountryReview = String(formData.get("returnTo") || "") === "country-review";
+
+    const returnQuery = returnToCountryReview ? "&returnTo=country-review" : "";
+
+    const returnPath = returnToCountryReview
+        ? `/admin/pricing/countries/${countryCode}`
+        : `/admin/pricing/tax-rules?country=${countryCode}`;
+
     const taxName = String(formData.get("taxName") || "").trim();
     const taxRatePercentage = Number(formData.get("taxRatePercentage"));
     const effectiveFrom = String(formData.get("effectiveFrom") || "").trim();
@@ -72,7 +113,7 @@ async function updateTaxRuleDraft(formData: FormData) {
 
     // check if effectiveUntil <= effectiveFrom
     if (effectiveUntil && effectiveUntil <= effectiveFrom) {
-        redirect(`/admin/pricing/tax-rules/${taxRuleId}?country=${countryCode}&error=effective-until-before-start`);
+        redirect(`/admin/pricing/tax-rules/${taxRuleId}?country=${countryCode}${returnQuery}&error=effective-until-before-start`);
     }
 
     const { error } = await supabaseAdmin.rpc("update_tax_rule_draft", {
@@ -86,10 +127,10 @@ async function updateTaxRuleDraft(formData: FormData) {
     if (error) {
         console.error("Could not update tax-rule draft:", error);
         // stay in the same page if erro happens
-        redirect(`/admin/pricing/tax-rules/${taxRuleId}?country=${countryCode}`);
+        redirect(`/admin/pricing/tax-rules/${taxRuleId}?country=${countryCode}${returnQuery}`);
     }
-    // go back to main page after saving
-    redirect(`/admin/pricing/tax-rules?country=${countryCode}`);
+    // Return to the page from which this tax rule was reviewed.
+    redirect(returnPath);
 }
 
 async function cancelTaxRuleDraft(formData: FormData) {
@@ -99,14 +140,19 @@ async function cancelTaxRuleDraft(formData: FormData) {
 
     const taxRuleId = String(formData.get("taxRuleId") || "").trim();
     const countryCode = String(formData.get("countryCode") || "").trim().toUpperCase();
+    const returnToCountryReview = String(formData.get("returnTo") || "") === "country-review";
+    const returnQuery = returnToCountryReview ? "&returnTo=country-review" : "";
+    const returnPath = returnToCountryReview
+        ? `/admin/pricing/countries/${countryCode}`
+        : `/admin/pricing/tax-rules?country=${countryCode}`;
     const { error } = await supabaseAdmin.rpc("cancel_tax_rule_draft", { p_tax_rule_id: taxRuleId });
 
     if (error) {
         console.error("Could not cancel tax-rule draft:", error);
-        redirect(`/admin/pricing/tax-rules/${taxRuleId}?country=${countryCode}`);
+        redirect(`/admin/pricing/tax-rules/${taxRuleId}?country=${countryCode}${returnQuery}`);
     }
 
-    redirect(`/admin/pricing/tax-rules?country=${countryCode}`);
+    redirect(returnPath);
 }
 
 /**
@@ -144,10 +190,23 @@ export default async function AdminTaxRuleDetailPage({ params, searchParams }: A
     const taxRule = data as TaxRuleRow;
     const countryCode = String(pageSearchParams.country || taxRule.country_code).trim().toUpperCase();
 
+    /* ===== Return navigation ===== */
+    const returnToCountryReview =
+        pageSearchParams.returnTo === "country-review" &&
+        countryCode === taxRule.country_code;
+
+    const returnPath = returnToCountryReview
+        ? `/admin/pricing/countries/${taxRule.country_code}`
+        : `/admin/pricing/tax-rules?country=${countryCode}`;
+
+    const returnLabel = returnToCountryReview
+        ? `Back to ${taxRule.country_code} review`
+        : "Back to tax rules";
+
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
-                <Link href={`/admin/pricing/tax-rules?country=${countryCode}`} className={formStyles.link}>Back to tax rules</Link>
+                <Link href={returnPath} className={formStyles.link}>{returnLabel}</Link>
                 {taxRule.status === "draft" ? (
                     <>
                         {/*Show error message*/} 
@@ -157,6 +216,7 @@ export default async function AdminTaxRuleDetailPage({ params, searchParams }: A
                         <form action={updateTaxRuleDraft} className="mt-6 max-w-2xl rounded-xl border border-cyan-400/20 bg-slate-900 p-5">
                             <input type="hidden" name="taxRuleId" value={taxRule.id}/>
                             <input type="hidden" name="countryCode" value={taxRule.country_code}/>
+                            <input type="hidden" name="returnTo" value={returnToCountryReview ? "country-review" : ""}/>
 
                             <p className="mb-4"><span className="font-medium text-cyan-300">Country: </span>{taxRule.country_code}</p>
                             <p className="mb-4"><span className="font-medium text-cyan-300">Service: </span>{taxRule.service_category}</p>
@@ -195,9 +255,10 @@ export default async function AdminTaxRuleDetailPage({ params, searchParams }: A
                                     Save draft
                                 </button>
 
-                                <Link href={`/admin/pricing/tax-rules?country=${taxRule.country_code}`} className={formStyles.smallButton}>
+                                <Link href={returnPath} className={formStyles.smallButton}>
                                     Cancel
                                 </Link>
+
                                 {/**
                                  * Because the Cancel button is inside the same form as required fields, 
                                  * the browser may otherwise block cancellation if one of the editable fields is temporarily invalid or empty. 
@@ -210,6 +271,29 @@ export default async function AdminTaxRuleDetailPage({ params, searchParams }: A
                                 </button>
                             </div>
                         </form>
+                        
+                        {/* ===== Approve tax-rule draft ===== */}
+                        <section className="mt-6 max-w-2xl rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-5">
+                            <h2 className="text-lg font-semibold text-yellow-200">Approve tax rule</h2>
+
+                            <p className="mt-2 text-sm text-slate-300">
+                                Activating this draft approves the tax rule configuration.
+                                It does not enable the pricing market.
+                            </p>
+
+                            {/* ===== Tax-rule activation error ===== */}
+                            {pageSearchParams.error === "activate-draft-failed" && (
+                                <p className={`${pageStyles.errorMsg} mt-4`}>Could not activate this tax-rule draft.</p>
+                            )}
+
+                            <form action={activateTaxRuleDraft} className="mt-4">
+                                <input type="hidden" name="taxRuleId" value={taxRule.id}/>
+                                <input type="hidden" name="countryCode" value={taxRule.country_code}/>
+                                <input type="hidden" name="returnTo" value={returnToCountryReview ? "country-review" : ""}/>
+
+                                <button type="submit" className={formStyles.smallButton}>Activate draft</button>
+                            </form>
+                        </section>
                     </>
                 ) : (
                     <div className="mt-6 max-w-2xl rounded-xl border border-cyan-400/20 bg-slate-900 p-5">
