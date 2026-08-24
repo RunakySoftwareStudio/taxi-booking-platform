@@ -105,8 +105,13 @@ export default async function AdminPricingMarketsPage({ searchParams }: AdminPri
                         <div className="space-y-4 lg:hidden">
                             {pricingMarkets.map((pricingMarket) => (
                                 <div key={pricingMarket.id} className={tableStyles.DivCyanList}>
-                                    <p><span className="font-medium text-cyan-300">Country: </span> {pricingMarket.country_name} ({pricingMarket.country_code}) </p>
-
+                                    {/* ===== Open pricing (by click on the country name) market review ===== */}
+                                    <p>
+                                        <span className="font-medium text-cyan-300">Country: </span>
+                                        <Link href={`/admin/pricing/countries/${pricingMarket.country_code}`} className={formStyles.link}>
+                                            {pricingMarket.country_name} ({pricingMarket.country_code})
+                                        </Link>
+                                    </p>
                                     {/* ===== Pricing market configuration status ===== */}
                                     <p>
                                         <span className="font-medium text-cyan-300">Configuration: </span>
@@ -124,6 +129,12 @@ export default async function AdminPricingMarketsPage({ searchParams }: AdminPri
                                         <span className="font-medium text-cyan-300">Planned effective date: </span>
                                         {formatDate(pricingMarket.planned_effective_from)}
                                     </p>
+                                    {/* ===== Open pricing market details ===== */}
+                                    <div className="mt-3 flex justify-end">
+                                        <Link href={`/admin/pricing/countries/${pricingMarket.country_code}`} className={formStyles.smallButton}>
+                                            Edit
+                                        </Link>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -140,15 +151,20 @@ export default async function AdminPricingMarketsPage({ searchParams }: AdminPri
                                         <th className={tableStyles.cellCaption}>Time zone</th>
                                         <th className={tableStyles.cellCaption}>Pricing enabled</th>
                                         <th className={tableStyles.cellCaption}>Planned effective</th>
+                                        <th className={tableStyles.cellCaption}>Action</th>
                                     </tr>
                                 </thead>
 
                                 <tbody>
                                     {pricingMarkets.map((pricingMarket) => (
                                         <tr key={pricingMarket.id} className={tableStyles.rowCyan}>
+                                            {/* ===== Open pricing (by click on the country name) market review ===== */}
                                             <td className={tableStyles.cell}>
-                                                {pricingMarket.country_name} ({pricingMarket.country_code})
+                                                <Link href={`/admin/pricing/countries/${pricingMarket.country_code}`} className={formStyles.link}>
+                                                    {pricingMarket.country_name} ({pricingMarket.country_code})
+                                                </Link>
                                             </td>
+
                                             {/* ===== Pricing market configuration status ===== */}
                                             <td className={tableStyles.cell}>
                                                 {pricingMarket.configuration_status === "ready" ? (
@@ -162,6 +178,12 @@ export default async function AdminPricingMarketsPage({ searchParams }: AdminPri
                                             <td className={tableStyles.cell}>{pricingMarket.time_zone}</td>
                                             <td className={tableStyles.cell}>{pricingMarket.pricing_enabled ? "Yes" : "No"}</td>
                                             <td className={tableStyles.cell}>{formatDate(pricingMarket.planned_effective_from)}</td>
+                                            {/* ===== Open pricing market review ===== */}
+                                            <td className={tableStyles.cell}>
+                                                <Link href={`/admin/pricing/countries/${pricingMarket.country_code}`} className={formStyles.smallButton}>
+                                                    Edit
+                                                </Link>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

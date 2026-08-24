@@ -200,6 +200,37 @@ export default async function AdminPricingMarketDetailPage({ params, searchParam
     /* ===== Match each pricing profile with its rates ===== */
     const rateByProfileId = new Map(pricingRates.map((pricingRate) => [pricingRate.pricing_profile_id, pricingRate]));
 
+    /* ===== Unique pricing-profile families for weekly schedule ===== */
+    const pricingProfileOptions: PricingProfileRow[] = [];
+
+    /** Do we already have a profile option with this same pricing_profile_code?”
+     * Example
+     * V3 DAYTIME
+        not yet added → add ✓
+
+        V2 DAYTIME
+        already added → skip
+
+        V1 DAYTIME
+        already added → skip
+
+        V2 NIGHT
+        not yet added → add ✓
+
+        V1 NIGHT
+        already added → skip
+    */
+
+    for (const pricingProfile of pricingProfiles) {
+        const profileAlreadyAdded = pricingProfileOptions.some(
+            (profileOption) => profileOption.pricing_profile_code === pricingProfile.pricing_profile_code
+        );
+
+        if (!profileAlreadyAdded) {
+            pricingProfileOptions.push(pricingProfile);
+        }
+    }
+
     /* ===== Load weekly schedule ===== */
     const { data: pricingScheduleData, error: pricingScheduleError } = await supabaseAdmin
         .from("pricing_schedules")
@@ -211,6 +242,37 @@ export default async function AdminPricingMarketDetailPage({ params, searchParam
 
     if (pricingScheduleError) { console.error("Could not load pricing schedule:", pricingScheduleError); }
     const pricingSchedules = (pricingScheduleData ?? []) as PricingScheduleRow[];
+
+    /* ===== Group weekly schedule periods by day =====
+    Our database still contains individual rows:
+        Monday 00:00–06:00
+        Monday 06:00–22:00
+        Monday 22:00–24:00
+        Tuesday 00:00–06:00
+        ...
+
+        This new variable(pricingSchedulesByDay) reorganizes them for the UI into:
+
+        Monday
+            period 1
+            period 2
+            period 3
+
+        Tuesday
+            period 1
+            period 2
+            period 3
+     */
+    const pricingSchedulesByDay = Array.from({ length: 7 }, (_, dayIndex) => {
+        const dayOfWeek = dayIndex + 1;
+
+        return {
+            dayOfWeek,
+            dayName: formatDayOfWeek(dayOfWeek),
+            periods: pricingSchedules.filter((pricingSchedule) => pricingSchedule.day_of_week === dayOfWeek),
+        };
+    }).filter((scheduleDay) => scheduleDay.periods.length > 0);
+
 
     /* ===== Load tax rules ===== */
     const { data: taxRuleData, error: taxRuleError } = await supabaseAdmin
@@ -248,7 +310,7 @@ export default async function AdminPricingMarketDetailPage({ params, searchParam
                 <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">
                     <Link href="/admin" className={formStyles.link}>← Back to admin</Link>
                     <span className="text-slate-600">|</span>
-                    <Link href="/admin/pricing/countries" className={formStyles.link}>Pricing markets</Link>
+                    <Link href="/admin/pricing/countries" className={formStyles.link}>Countries</Link>
                 </div>
 
                 {/* ===== Page title and description ===== */}
@@ -259,15 +321,92 @@ export default async function AdminPricingMarketDetailPage({ params, searchParam
                     Review the generated financial configuration before this pricing market is marked ready.
                 </p>
 
-                {/* ===== Market information ===== */}
-                <section className="mt-6">
-                    <h2 className="mb-3 text-lg font-semibold text-cyan-300">Market information</h2>
-                    <p>Currency: {pricingMarket.currency_code}</p>
-                    <p>Service: {pricingMarket.service_category}</p>
-                    <p>Time zone: {pricingMarket.time_zone}</p>
-                    <p>Configuration: {pricingMarket.configuration_status}</p>
-                    <p>Pricing enabled: {pricingMarket.pricing_enabled ? "Yes" : "No"}</p>
-                </section>
+                {/* ===== Market information and readiness ===== */}
+                <div className="mt-6 grid gap-6 lg:grid-cols-2">
+
+                    {/* ===== Market information ===== */}
+                    <section>
+                        <h2 className="mb-3 text-lg font-semibold text-cyan-300">Market information</h2>
+
+                        <div className={tableStyles.DivCyanList}>
+                            <p>Currency: {pricingMarket.currency_code}</p>
+                            <p>Service: {pricingMarket.service_category}</p>
+                            <p>Time zone: {pricingMarket.time_zone}</p>
+                            <p>Configuration: {pricingMarket.configuration_status}</p>
+                            <p>Pricing enabled: {pricingMarket.pricing_enabled ? "Yes" : "No"}</p>
+                        </div>
+                    </section>
+
+                    {/* ===== Readiness ===== */}
+                    <section>
+                        <h2 className="mb-3 text-lg font-semibold text-cyan-300">Readiness</h2>
+
+                        <div className={tableStyles.DivCyanList}>
+                            {/* ===== Pricing profile readiness ===== */}
+                            <p>
+                                <span className="font-medium text-cyan-300">Pricing profiles: </span>
+                                {draftPricingProfileCount === 0 && activePricingProfileCount > 0 ? (
+                                    <span className="font-semibold text-emerald-300">✓ {activePricingProfileCount} approved</span>
+                                ) : (
+                                    <span className="font-semibold text-yellow-300">⚠ {draftPricingProfileCount} draft / {activePricingProfileCount} approved</span>
+                                )}
+                            </p>
+
+                            {/* ===== Weekly schedule readiness ===== */}
+                            <p>
+                                <span className="font-medium text-cyan-300">Weekly schedule: </span>
+                                {pricingSchedules.length > 0 ? (
+                                    <span className="font-semibold text-emerald-300">✓ {pricingSchedules.length} schedule rows</span>
+                                ) : (
+                                    <span className="font-semibold text-yellow-300">⚠ Missing schedule</span>
+                                )}
+                            </p>
+
+                            {/* ===== Tax readiness ===== */}
+                            <p>
+                                <span className="font-medium text-cyan-300">Tax rule: </span>
+                                {hasApprovedTaxRule ? (
+                                    <span className="font-semibold text-emerald-300">✓ Approved</span>
+                                ) : (
+                                    <span className="font-semibold text-yellow-300">⚠ Review required</span>
+                                )}
+                            </p>
+
+                            {/* ===== Rounding readiness ===== */}
+                            <p>
+                                <span className="font-medium text-cyan-300">Currency rounding rule: </span>
+                                {hasApprovedRoundingRule ? (
+                                    <span className="font-semibold text-emerald-300">✓ Approved</span>
+                                ) : (
+                                    <span className="font-semibold text-yellow-300">⚠ Review required</span>
+                                )}
+                            </p>
+
+                            {/* ===== Market status ===== */}
+                            <p>
+                                <span className="font-medium text-cyan-300">Market status: </span>
+                                {pricingMarket.configuration_status === "ready" ? (
+                                    <span className="font-semibold text-emerald-300">✓ Ready</span>
+                                ) : (
+                                    <span className="font-semibold text-yellow-300">⚠ Review required</span>
+                                )}
+                            </p>
+                        </div>
+
+                        {/* ===== Mark pricing market ready ===== */}
+                        {pricingMarket.configuration_status === "review_required" && (
+                            <form action={markPricingMarketReady} className="mt-3">
+                                <input type="hidden" name="countryCode" value={selectedCountryCode} />
+                                <button type="submit" className={formStyles.smallButton}>Mark ready</button>
+                            </form>
+                        )}
+
+                        {/* ===== Readiness action error ===== */}
+                        {pageSearchParams.error && (
+                            <p className={`mt-3 ${pageStyles.errorMsg}`}>Could not complete the requested pricing-market action.</p>
+                        )}
+                    </section>
+                </div>
 
                 {/* ===== Pricing profiles ===== */}
                 <section className="mt-8">
@@ -353,45 +492,64 @@ export default async function AdminPricingMarketDetailPage({ params, searchParam
                     <p className="mb-4 text-sm text-slate-400">
                         Review which pricing profile is selected for each recurring day and time period.
                     </p>
-
-                    {pricingSchedules.length === 0 ? (
-                        <p className={tableStyles.cellEmpty}>No weekly pricing schedule was found for this market.</p>
-                    ) : (
+                    {/* ===== Ready weekly schedule information ===== */}
+                    {pricingMarket.configuration_status === "ready" && (
+                        <div className="mb-4 rounded-md border border-yellow-400/30 bg-yellow-400/10 px-4 py-3 text-sm text-yellow-100">
+                            <p className="font-semibold text-yellow-300">
+                                Note: this section is not editable
+                            </p>
+                            <p className="mt-1">
+                                This weekly schedule belongs to a ready pricing market and cannot be changed directly.
+                                To make changes, a new schedule version must be created, reviewed, and activated.
+                            </p>
+                        </div>
+                    )}
+                    {/* ===== Edit weekly schedule ===== */}
+                    {pricingMarket.configuration_status === "review_required" && (
+                        <div className="mb-4">
+                            <Link href={`/admin/pricing/countries/${selectedCountryCode}/weekly-schedule`} className={formStyles.smallButton}>
+                                Edit weekly schedule
+                            </Link>
+                        </div>
+                    )}
+                    {/* ===== No weekly pricing ===== */}
+                    {pricingSchedules.length === 0
+                    ? (<p className={tableStyles.cellEmpty}>No weekly pricing schedule was found for this market.</p>)
+                    : (
                         <>
-                            {/* ===== Mobile weekly schedule list ===== */}
-                            <div className="space-y-3 lg:hidden">
-                                {pricingSchedules.map((pricingSchedule) => (
-                                    <div key={pricingSchedule.id} className={tableStyles.DivCyanList}>
-                                        <p><span className="font-medium text-cyan-300">Day: </span>{formatDayOfWeek(pricingSchedule.day_of_week)}</p>
-                                        <p><span className="font-medium text-cyan-300">Time: </span>{formatTime(pricingSchedule.start_local_time)} - {formatTime(pricingSchedule.end_local_time)}</p>
-                                        <p><span className="font-medium text-cyan-300">Profile: </span>{pricingSchedule.pricing_profile_code}</p>
+                            {/* ===== Weekly schedule grouped by day ===== */}
+                            <div className="space-y-4">
+                                {pricingSchedulesByDay.map((scheduleDay) => (
+                                    <div
+                                        key={scheduleDay.dayOfWeek}
+                                        className="rounded-xl border border-cyan-400/20 bg-slate-950/40 p-3"
+                                    >
+                                        {/* ===== Day heading ===== */}
+                                        <h3 className="mb-3 font-semibold text-cyan-300">
+                                            {scheduleDay.dayName}
+                                        </h3>
+
+                                        {/* ===== Pricing periods for this day ===== */}
+                                        <div className="grid gap-3 md:grid-cols-3">
+                                            {scheduleDay.periods.map((pricingSchedule) => (
+                                                <div
+                                                    key={pricingSchedule.id}
+                                                    className="rounded-lg border border-cyan-400/20 bg-slate-900/60 p-3"
+                                                >
+                                                    <p className="font-medium text-cyan-200">
+                                                        {pricingSchedule.pricing_profile_code}
+                                                    </p>
+
+                                                    <p className="mt-1 text-sm text-slate-300">
+                                                        {formatTime(pricingSchedule.start_local_time)}
+                                                        <span className="mx-2 text-cyan-400">→</span>
+                                                        {formatTime(pricingSchedule.end_local_time)}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 ))}
-                            </div>
-
-                            {/* ===== Desktop weekly schedule table ===== */}
-                            <div className="hidden lg:block">
-                                <table className={tableStyles.table1000}>
-                                    <thead className={tableStyles.tableHeaderCyan}>
-                                        <tr>
-                                            <th className={tableStyles.cellCaption}>Day</th>
-                                            <th className={tableStyles.cellCaption}>From</th>
-                                            <th className={tableStyles.cellCaption}>Until</th>
-                                            <th className={tableStyles.cellCaption}>Pricing profile</th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody>
-                                        {pricingSchedules.map((pricingSchedule) => (
-                                            <tr key={pricingSchedule.id} className={tableStyles.rowCyan}>
-                                                <td className={tableStyles.cell}>{formatDayOfWeek(pricingSchedule.day_of_week)}</td>
-                                                <td className={tableStyles.cell}>{formatTime(pricingSchedule.start_local_time)}</td>
-                                                <td className={tableStyles.cell}>{formatTime(pricingSchedule.end_local_time)}</td>
-                                                <td className={tableStyles.cell}>{pricingSchedule.pricing_profile_code}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
                             </div>
                         </>
                     )}
@@ -571,81 +729,6 @@ export default async function AdminPricingMarketDetailPage({ params, searchParam
                         </>
                     )}
                 </section>
-
-                {/* ===== Readiness ===== */}
-                <section className="mt-8">
-                    <h2 className="mb-3 text-lg font-semibold text-cyan-300">Readiness</h2>
-
-                    <p className="mb-4 text-sm text-slate-400">
-                        Review the financial configuration that must be completed before this pricing market can be marked ready.
-                    </p>
-
-                    <div className={tableStyles.DivCyanList}>
-
-                        {/* ===== Pricing profile readiness ===== */}
-                        <p>
-                            <span className="font-medium text-cyan-300">Pricing profiles: </span>
-                            {draftPricingProfileCount === 0 && activePricingProfileCount > 0 ? (
-                                <span className="font-semibold text-emerald-300">✓ {activePricingProfileCount} approved</span>
-                            ) : (
-                                <span className="font-semibold text-yellow-300">⚠ {draftPricingProfileCount} draft / {activePricingProfileCount} approved</span>
-                            )}
-                        </p>
-
-                        {/* ===== Weekly schedule readiness ===== */}
-                        <p>
-                            <span className="font-medium text-cyan-300">Weekly schedule: </span>
-                            {pricingSchedules.length > 0 ? (
-                                <span className="font-semibold text-emerald-300">✓ {pricingSchedules.length} schedule rows</span>
-                            ) : (
-                                <span className="font-semibold text-yellow-300">⚠ Missing schedule</span>
-                            )}
-                        </p>
-
-                        {/* ===== Tax readiness ===== */}
-                        <p>
-                            <span className="font-medium text-cyan-300">Tax rule: </span>
-                            {hasApprovedTaxRule ? (
-                                <span className="font-semibold text-emerald-300">✓ Approved</span>
-                            ) : (
-                                <span className="font-semibold text-yellow-300">⚠ Review required</span>
-                            )}
-                        </p>
-
-                        {/* ===== Rounding readiness ===== */}
-                        <p>
-                            <span className="font-medium text-cyan-300">Currency rounding rule: </span>
-                            {hasApprovedRoundingRule ? (
-                                <span className="font-semibold text-emerald-300">✓ Approved</span>
-                            ) : (
-                                <span className="font-semibold text-yellow-300">⚠ Review required</span>
-                            )}
-                        </p>
-
-                        {/* ===== Market status ===== */}
-                        <p>
-                            <span className="font-medium text-cyan-300">Market status: </span>
-                            {pricingMarket.configuration_status === "ready" ? (
-                                <span className="font-semibold text-emerald-300">✓ Ready</span>
-                            ) : (
-                                <span className="font-semibold text-yellow-300">⚠ Review required</span>
-                            )}
-                        </p>
-
-                    </div>
-                </section>
-
-                {/* ===== Page error messages ===== */}
-                {pageSearchParams.error && (
-                    <p className={pageStyles.errorMsg}>Could not complete the requested pricing-market action.</p>
-                )}
-                {/* ===== Mark pricing market ready action ===== */}
-                {pricingMarket.configuration_status === "review_required" && (
-                    <form action={markPricingMarketReady} className="mt-4">
-                        <input type="hidden" name="countryCode" value={selectedCountryCode} />
-                        <button type="submit" className={formStyles.smallButton}>Mark ready</button>
-                    </form>
-                )}
             </div>
         </main>
     );
