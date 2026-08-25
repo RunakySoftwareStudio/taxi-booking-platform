@@ -184,8 +184,17 @@ export default async function AdminTaxRuleDetailPage({ params, searchParams }: A
         .eq("id", taxRuleId)
         .maybeSingle();
 
-    if (error) { console.error("Could not load tax rule:", error); }
-    if (error || !data) { notFound(); }
+    /* ===== Handle tax rule lookup result ===== */
+    if (error) {
+        console.error("Could not load tax rule:", {
+            taxRuleId,
+            error,
+        });
+
+        throw new Error("Could not load tax rule.");
+    }
+
+    if (!data) { notFound(); }
 
     const taxRule = data as TaxRuleRow;
     const countryCode = String(pageSearchParams.country || taxRule.country_code).trim().toUpperCase();

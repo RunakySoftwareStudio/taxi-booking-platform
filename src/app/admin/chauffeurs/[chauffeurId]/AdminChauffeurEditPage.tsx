@@ -16,9 +16,20 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
     .from("chauffeurs")
     .select('id, name, email, phone, service_area, account_status, accepts_pets ,operational_status, status_reason, status_changed_at')
     .eq("id", chauffeurId)
-    .single();
+    .maybeSingle();
 
-  if (error || !chauffeurRow) {  notFound(); }
+  /* ===== Handle chauffeur lookup result ===== */
+  if (error) {
+      console.error("Could not load chauffeur for admin edit:", {
+          chauffeurId,
+          error,
+      });
+
+      throw new Error("Could not load chauffeur for admin edit.");
+  }
+
+  if (!chauffeurRow) { notFound(); }
+
 
   const { data: accountStatuses, error: statusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status" });
   if (statusError) { console.error("Could not load chauffeur account statuses:", statusError); }

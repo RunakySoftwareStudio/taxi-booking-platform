@@ -99,7 +99,16 @@ export default async function AdminWeeklySchedulePage({ params, searchParams }: 
         .eq("country_code", selectedCountryCode)
         .maybeSingle();
 
-    if (pricingMarketError) { console.error("Could not load pricing market:", pricingMarketError); }
+    /* ===== Handle pricing market lookup result ===== */
+    if (pricingMarketError) {
+        console.error("Could not load pricing market for weekly schedule:", {
+            selectedCountryCode,
+            pricingMarketError,
+        });
+
+        throw new Error("Could not load pricing market for weekly schedule.");
+    }
+
     if (!pricingMarketData) { notFound(); }
 
     const pricingMarket = pricingMarketData as PricingMarketRow;
@@ -113,7 +122,15 @@ export default async function AdminWeeklySchedulePage({ params, searchParams }: 
         .order("day_of_week", { ascending: true })
         .order("start_local_time", { ascending: true });
 
-    if (pricingScheduleError) { console.error("Could not load pricing schedule:", pricingScheduleError); }
+    /* ===== Handle weekly schedule load error ===== */
+    if (pricingScheduleError) {
+        console.error("Could not load pricing schedule:", {
+            selectedCountryCode,
+            pricingScheduleError,
+        });
+
+        throw new Error("Could not load pricing schedule.");
+    }
 
     const pricingSchedules = (pricingScheduleData ?? []) as PricingScheduleRow[];
 
@@ -126,7 +143,15 @@ export default async function AdminWeeklySchedulePage({ params, searchParams }: 
         .order("pricing_profile_code", { ascending: true })
         .order("pricing_profile_version", { ascending: false });
 
-    if (pricingProfileError) { console.error("Could not load pricing profiles:", pricingProfileError); }
+    /* ===== Handle pricing profile load error ===== */
+    if (pricingProfileError) {
+        console.error("Could not load pricing profiles:", {
+            selectedCountryCode,
+            pricingProfileError,
+        });
+
+        throw new Error("Could not load pricing profiles.");
+    }
 
     const pricingProfiles = (pricingProfileData ?? []) as PricingProfileRow[];
 

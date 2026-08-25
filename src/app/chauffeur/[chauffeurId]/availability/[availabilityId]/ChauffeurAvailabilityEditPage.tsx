@@ -16,9 +16,19 @@ export default async function ChauffeurAvailabilityEditPage({ params}: Chauffeur
     .from("chauffeurs")
     .select("id, name")
     .eq("id", chauffeurId)
-    .single();
+    .maybeSingle();
 
-  if (chauffeurError || !chauffeurRow) { notFound(); }
+  /* ===== Handle chauffeur lookup result ===== */
+  if (chauffeurError) {
+    console.error("Could not load chauffeur for availability edit:", {
+      chauffeurId,
+      chauffeurError,
+    });
+
+    throw new Error("Could not load chauffeur for availability edit.");
+  }
+
+  if (!chauffeurRow) { notFound(); }
 
   const { data: availabilityRow, error: availabilityError } =
     await supabaseAdmin
@@ -26,9 +36,20 @@ export default async function ChauffeurAvailabilityEditPage({ params}: Chauffeur
       .select("id, chauffeur_id, available_date, start_time, end_time, status, notes")
       .eq("id", availabilityId)
       .eq("chauffeur_id", chauffeurId)
-      .single();
+      .maybeSingle();
 
-  if (availabilityError || !availabilityRow) { notFound(); }
+  /* ===== Handle availability lookup result ===== */
+  if (availabilityError) {
+    console.error("Could not load chauffeur availability for edit:", {
+      chauffeurId,
+      availabilityId,
+      availabilityError,
+    });
+
+    throw new Error("Could not load chauffeur availability for edit.");
+  }
+
+  if (!availabilityRow) { notFound(); }
 
   const { data: availabilityStatuses, error: statusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "availability_status", });
 

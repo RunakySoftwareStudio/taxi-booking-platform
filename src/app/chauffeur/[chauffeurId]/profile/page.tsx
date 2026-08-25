@@ -30,10 +30,20 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
     const { data: chauffeurRow, error } = await supabaseAdmin
         .from("chauffeurs")
         .select("id, name, email, phone, company_name, license_number, service_area, account_status, accepts_pets, bio, profile_photo_path")
-        .eq("id", chauffeurId).single();
+        .eq("id", chauffeurId)
+        .maybeSingle();
 
-    // Stops the page when the chauffeur record cannot be found.
-    if (error || !chauffeurRow) { console.error("Could not load chauffeur profile:", error); notFound(); }
+    // Separates a real database/query error from a missing chauffeur record.
+    if (error) {
+        console.error("Could not load chauffeur profile:", {
+            chauffeurId,
+            error,
+        });
+
+        throw new Error("Could not load chauffeur profile.");
+    }
+
+    if (!chauffeurRow) { notFound(); }
 
     // Converts the stored Storage path into a public image URL.
     const profilePhotoUrl = chauffeurRow.profile_photo_path ? supabaseAdmin.storage

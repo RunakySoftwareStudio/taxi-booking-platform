@@ -17,9 +17,19 @@ export default async function AdminVehicleEditPage({params}: AdminVehicleEditPag
                     wheelchair_capacity, mobility_aid_storage, extra_large_luggage,
                     vehicle_status, is_default_vehicle, status_reason, status_changed_at`)
         .eq("id", vehicleId)
-        .single();
+        .maybeSingle();
 
-    if (error || !vehicleRow) { notFound(); }
+    /* ===== Handle vehicle lookup result ===== */
+    if (error) {
+        console.error("Could not load vehicle for admin edit:", {
+            vehicleId,
+            error,
+        });
+
+        throw new Error("Could not load vehicle for admin edit.");
+    }
+
+    if (!vehicleRow) { notFound(); }
 
     const { data: chauffeurs, error: chauffeursError } = await supabaseAdmin
         .from("chauffeurs")

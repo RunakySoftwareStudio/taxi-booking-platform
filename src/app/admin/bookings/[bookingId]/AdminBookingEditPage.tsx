@@ -23,12 +23,20 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
                 clients(name, email, phone)
             `)
         .eq("id", bookingId)
-        .single();
+        .maybeSingle();
 
-    if (error || !bookingRow) {
-        console.error("Could not load booking for edit:", error);
-        notFound();
+    /* ===== Handle booking lookup result ===== */
+    if (error) {
+        console.error("Could not load booking for edit:", {
+            bookingId,
+            error,
+        });
+
+        throw new Error("Could not load booking for edit.");
     }
+
+    if (!bookingRow) { notFound(); }
+
     const clientRow = Array.isArray(bookingRow.clients)  ? bookingRow.clients[0] ?? null  : bookingRow.clients;
     const bookingForEdit = {  ...bookingRow,  clients: clientRow,  };
     

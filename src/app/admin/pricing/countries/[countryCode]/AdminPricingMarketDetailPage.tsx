@@ -148,7 +148,16 @@ export default async function AdminPricingMarketDetailPage({ params, searchParam
         .eq("country_code", selectedCountryCode)
         .maybeSingle();
 
-    if (pricingMarketError) { console.error("Could not load pricing market:", pricingMarketError); }
+    /* ===== Handle pricing market lookup result ===== */
+    if (pricingMarketError) {
+        console.error("Could not load pricing market:", {
+            selectedCountryCode,
+            pricingMarketError,
+        });
+
+        throw new Error("Could not load pricing market.");
+    }
+
     if (!pricingMarketData) { notFound(); }
 
     const pricingMarket = pricingMarketData as PricingMarketRow;

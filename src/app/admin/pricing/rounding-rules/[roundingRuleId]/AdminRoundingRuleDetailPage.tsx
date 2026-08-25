@@ -58,8 +58,17 @@ export default async function AdminRoundingRuleDetailPage({ params, searchParams
         .eq("id", roundingRuleId)
         .maybeSingle();
 
-    if (error) { console.error("Could not load currency rounding rule:", error); }
-    if (error || !data) { notFound(); }
+    /* ===== Handle rounding rule lookup result ===== */
+    if (error) {
+        console.error("Could not load currency rounding rule:", {
+            roundingRuleId,
+            error,
+        });
+
+        throw new Error("Could not load currency rounding rule.");
+    }
+
+    if (!data) { notFound(); }
 
     const roundingRule = data as RoundingRuleRow;
     const countryCode = String(pageSearchParams.country || roundingRule.country_code).trim().toUpperCase();
