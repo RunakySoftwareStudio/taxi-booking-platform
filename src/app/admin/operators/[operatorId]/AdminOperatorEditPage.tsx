@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { requireAdminUser } from "@/lib/auth/requireAdminUser";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles } from "@/styles/classNames";
+import AdminOperatorEditForm from "@/components/AdminOperatorEditForm";
+import AdminOperatorVerificationControls from "@/components/AdminOperatorVerificationControls";
 
 type AdminOperatorEditPageProps = {
     params: Promise<{ operatorId: string }>;
@@ -49,30 +50,15 @@ function formatDateTime(dateValue: string | null) {
 }
 
 /**
- * getOperatorStatusClass
- *
- * Gives the verification status a clear visual meaning.
- */
-function getOperatorStatusClass(verificationStatus: string) {
-    if (verificationStatus === "verified") { return "text-green-300"; }
-    if (verificationStatus === "pending_verification") { return "text-yellow-300"; }
-    if (verificationStatus === "suspended") { return "text-red-300"; }
-    if (verificationStatus === "inactive") { return "text-slate-400"; }
-
-    return "text-white";
-}
-
-/**
  * AdminOperatorEditPage
  *
- * Displays one taxi operator.
+ * Loads and displays one taxi operator for administrator review.
  *
- * This first version is intentionally read-only.
- * Editing and verification actions will be added after the
- * operator detail data has been verified.
+ * Normal operator details are edited separately from verification
+ * actions so verification status can only change through the
+ * protected verification RPC.
  */
 export default async function AdminOperatorEditPage({ params }: AdminOperatorEditPageProps) {
-    await requireAdminUser();
 
     const { operatorId } = await params;
 
@@ -132,93 +118,15 @@ export default async function AdminOperatorEditPage({ params }: AdminOperatorEdi
                     Review the taxi operator business details and verification information.
                 </p>
 
-                {/* ===== Verification status ===== */}
-                <section className="mt-8 rounded-xl border border-cyan-400/40 bg-slate-900/70 p-5">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Verification status
-                    </p>
+                {/* ===== Verification controls ===== */}
+                <AdminOperatorVerificationControls
+                    operatorId={operator.id}
+                    verificationStatus={operator.verification_status}
+                    verificationStatusReason={operator.verification_status_reason}
+                />
 
-                    <p className={`mt-2 text-lg font-semibold ${getOperatorStatusClass(operator.verification_status)}`}>
-                        {operator.verification_status}
-                    </p>
-
-                    {operator.verification_status_reason && (
-                        <p className="mt-2 text-sm text-slate-300">
-                            {operator.verification_status_reason}
-                        </p>
-                    )}
-                </section>
-
-                {/* ===== Business details ===== */}
-                <section className="mt-6 rounded-xl border border-white/10 bg-slate-900/70 p-5">
-                    <h2 className="text-lg font-semibold text-cyan-300">Business details</h2>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Operator ID</p>
-                            <p className="mt-1 break-all text-sm text-white">{operator.id}</p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Company</p>
-                            <p className="mt-1 text-sm text-white">{operator.company_name}</p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">KvK</p>
-                            <p className="mt-1 text-sm text-white">{operator.kvk_number}</p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">VAT number</p>
-                            <p className="mt-1 text-sm text-white">{operator.vat_number || "-"}</p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">P-number</p>
-                            <p className="mt-1 text-sm text-white">{operator.p_number || "Not provided"}</p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Country</p>
-                            <p className="mt-1 text-sm text-white">{operator.country_code}</p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* ===== Contact and address ===== */}
-                <section className="mt-6 rounded-xl border border-white/10 bg-slate-900/70 p-5">
-                    <h2 className="text-lg font-semibold text-cyan-300">Contact and address</h2>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Email</p>
-                            <p className="mt-1 break-all text-sm text-white">{operator.contact_email}</p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Phone</p>
-                            <p className="mt-1 text-sm text-white">{operator.contact_phone}</p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Street</p>
-                            <p className="mt-1 text-sm text-white">
-                                {[operator.street, operator.house_number].filter(Boolean).join(" ") || "-"}
-                            </p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Postal code</p>
-                            <p className="mt-1 text-sm text-white">{operator.postal_code || "-"}</p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">City</p>
-                            <p className="mt-1 text-sm text-white">{operator.city || "-"}</p>
-                        </div>
-                    </div>
-                </section>
+                {/* ===== Editable operator details ===== */}
+                <AdminOperatorEditForm operator={operator} />
 
                 {/* ===== Verification history ===== */}
                 <section className="mt-6 rounded-xl border border-white/10 bg-slate-900/70 p-5">
@@ -253,8 +161,8 @@ export default async function AdminOperatorEditPage({ params }: AdminOperatorEdi
                             </p>
                         </div>
                     </div>
+                    
                 </section>
-
             </div>
         </main>
     );

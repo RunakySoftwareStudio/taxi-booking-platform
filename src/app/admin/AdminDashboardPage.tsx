@@ -100,6 +100,7 @@ export default async function AdminDashboardPage() {
         totalChauffeurs,
         approvedChauffeurs,
         totalVehicles,
+        totalOperators,
     ] = await Promise.all([
         getTableCount("bookings"),
         getPendingBookingsCount(),
@@ -107,6 +108,7 @@ export default async function AdminDashboardPage() {
         getTableCount("chauffeurs"),
         getApprovedChauffeursCount(),
         getTableCount("vehicles"),
+        getTableCount("taxi_operators"),
     ]);
 
     /*
@@ -125,6 +127,11 @@ export default async function AdminDashboardPage() {
             title: `Chauffeurs (${totalChauffeurs})`,
             description: `Active chauffeurs: ${approvedChauffeurs}`,
             href: "/admin/chauffeurs",
+        },
+        {
+            title: `Taxi operators (${totalOperators})`,
+            description: "Manage taxi operator business details and verification status.",
+            href: "/admin/operators",
         },
         {
             title: `Clients (${totalClients})`,
