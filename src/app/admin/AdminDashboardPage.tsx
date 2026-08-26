@@ -30,7 +30,14 @@ async function getTableCount(tableName: string) {
         .select("*", { count: "exact", head: true });
 
     if (error) {
-        console.error(`Could not count ${tableName}:`, error);
+        console.error(`Could not count ${tableName}:`, {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            rawError: error,
+        });
+
         return 0;
     }
 
