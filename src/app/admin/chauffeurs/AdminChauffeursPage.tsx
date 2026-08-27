@@ -20,6 +20,11 @@ type ChauffeurRow = {
     email: string;
     phone: string;
     company_name: string | null;
+    operator_id: string | null;
+    taxi_operators: {
+        company_name: string;
+        verification_status: string;
+    } | null;
     license_number: string | null;
     service_area: string | null;
     account_status: string;
@@ -165,17 +170,38 @@ async function addChauffeur(formData: FormData) {
     const email = String(formData.get("email") || "").trim().toLowerCase();
     const phone = String(formData.get("phone") || "").trim();
     const companyName = String(formData.get("companyName") || "").trim();
+    const operatorId = String(formData.get("operatorId") || "").trim();
     const licenseNumber = String(formData.get("licenseNumber") || "").trim();
     const serviceArea = String(formData.get("serviceArea") || "").trim();
     const acceptsPets = formData.get("acceptsPets") === "on";
 
     if (!name || !email || !phone) {  redirect("/admin/chauffeurs?error=missing-fields");}
 
+    /* Validate the optional taxi operator before creating the chauffeur. */
+    if (operatorId) {
+        const { data: operatorRow, error: operatorError } = await supabaseAdmin
+            .from("taxi_operators")
+            .select("id")
+            .eq("id", operatorId)
+            .maybeSingle();
+
+        if (operatorError) {
+            console.error("Could not validate taxi operator:", operatorError);
+            redirect("/admin/chauffeurs?error=operator-validation-failed");
+        }
+
+        if (!operatorRow) {
+            redirect("/admin/chauffeurs?error=operator-not-found");
+        }
+    }
+
+    /* Create the chauffeur. */
     const { error } = await supabaseAdmin.from("chauffeurs").insert({
         name,
         email,
         phone,
         company_name: companyName || null,
+        operator_id: operatorId || null,
         license_number: licenseNumber || null,
         service_area: serviceArea || null,
         account_status: "pending_approval",
@@ -202,39 +228,26 @@ async function addChauffeur(formData: FormData) {
     redirect("/admin/chauffeurs?success=chauffeur-added");
 }
 
-async function updateChauffeurStatus(formData: FormData) {
-
-  "use server"; // this function(updateChauffeurStatus) is a Server Action; Called directly through a form:
-
-    const chauffeurId = String(formData.get("chauffeurId") || "");
-    const accountStatus = String(formData.get("accountStatus") || "");
-
-    if (!chauffeurId || !accountStatus) { redirect("/admin/chauffeurs?error=missing-fields");}
-
-    const { error } = await supabaseAdmin
-    .from("chauffeurs")
-    .update({ account_status: accountStatus })
-    .eq("id", chauffeurId);
-
-    if (error) { 
-        console.error("Could not update chauffeur status:", error);
-        redirect("/admin/chauffeurs?error=status-update-failed");
-    }
-
-    /* Rechecks assignments affected by the chauffeur account change. */
-    await syncChauffeurBookingAlerts(chauffeurId);
-
-    revalidatePath("/admin/chauffeurs");
-    redirect("/admin/chauffeurs?success=status-updated");
-}
-
 export default async function AdminChauffeursPage({ searchParams}: AdminChauffeursPageProps) {
     const pageMessage = await searchParams;
     
     const { data: chauffeurs, error } = await supabaseAdmin
         .from("chauffeurs")
-        .select( ` id, name, email, phone, company_name, license_number, operational_status, status_reason, service_area, account_status, rating, accepts_pets, created_at`)
+        .select(`id, name, email, phone, company_name, operator_id, license_number,
+            operational_status, status_reason, service_area, account_status,
+            rating, accepts_pets, created_at,
+            taxi_operators (company_name, verification_status)`)
         .order("created_at", { ascending: false });
+
+        /* Load taxi operators for the Add chauffeur form. */
+        const { data: taxiOperators, error: taxiOperatorsError } = await supabaseAdmin
+            .from("taxi_operators")
+            .select("id, company_name, verification_status")
+            .order("company_name", { ascending: true });
+
+        if (taxiOperatorsError) {
+            console.error("Could not load taxi operators:", taxiOperatorsError);
+        }
 
     const chauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
 
@@ -266,10 +279,6 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
             return firstChauffeur.name.localeCompare(secondChauffeur.name);
         }
     );
-      
-    const { data: chauffeurStatuses, error: chauffeurStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status",  });
-    if (chauffeurStatusError) { console.error("Could not load chauffeur statuses:", chauffeurStatusError); }
-    const chauffeurStatusOptions = (chauffeurStatuses ?? []) as string[];
 
     return (
         <main className={pageStyles.main}>
@@ -312,6 +321,18 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                             <span className={formStyles.span}> Service area </span>
                             <input name="serviceArea" placeholder="Service area" className={formStyles.selectWFull}/>
                         </label>
+                        <label className="block">
+                            <span className={formStyles.span}> Taxi operator </span>
+                            <select name="operatorId" defaultValue="" className={formStyles.selectWFull}>
+                                <option value="">No taxi operator assigned</option>
+
+                                {(taxiOperators ?? []).map((operator) => (
+                                    <option key={operator.id} value={operator.id}>
+                                        {operator.company_name} ({operator.verification_status})
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
                         <label className="flex items-center gap-3 text-sm text-white">                       
                                 <span className="h-5 w-5"> <input type="checkbox" name="acceptsPets"  />  </span> 
                                 Accepts pets     
@@ -349,6 +370,18 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                     <span className= {mobileStyle.inforCaption}>Phone: </span>
                                     <span className= {mobileStyle.infoValue} >{chauffeur.phone}</span>
                                 </p>
+                                <p className="mt-1">
+                                    <span className={mobileStyle.inforCaption}>Taxi operator: </span>
+                                    <span className={mobileStyle.infoValue}>
+                                        {chauffeur.taxi_operators?.company_name || "Not assigned"}
+                                    </span>
+
+                                    {chauffeur.taxi_operators && (
+                                        <span className="ml-2 text-xs text-slate-400">
+                                            ({chauffeur.taxi_operators.verification_status})
+                                        </span>
+                                    )}
+                                </p>
                                 <div className="mt-2">
                                     <span className={mobileStyle.inforCaption}>
                                         Operational status:{" "}
@@ -378,26 +411,17 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                         {chauffeur.accepts_pets ? " Yes ✓ " : " No ✕ "}
                                     </span>
                                 </div>        
-                                <form  id={`status-form-${chauffeur.id}`} action={updateChauffeurStatus}  className="mt-1">
-                                    <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                                    <div className="grid grid-cols-2">
-                                        <span>
-                                            <label htmlFor={`status-${chauffeur.id}`} className={mobileStyle.inforCaption}> Status: </label>
-                                        </span>
-                                        <span>
-                                            <select  id={`status-${chauffeur.id}`}  name="accountStatus"  defaultValue={chauffeur.account_status} className={mobileStyle.selectOption} >
-                                                {chauffeurStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
-                                            </select>
-                                        </span>
-                                    </div>
-                                </form>
+                                <div className="col-span-2 mt-1">
+                                    <span className={mobileStyle.inforCaption}>Account status: </span>
+                                    <span className={mobileStyle.infoValue}>
+                                        {chauffeur.account_status}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div className="mt-3 flex flex-wrap items-center gap-3">  
                             <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>  Details  </Link>
 
-                            {/*explanation: save button submits this form: <form id={`status-form-${chauffeur.id}`} action={updateChauffeurStatus}>*/}
-                            <button  type="submit" form={`status-form-${chauffeur.id}`} className={formStyles.smallButton} >  Save  </button>
                             <form action={changeChauffeurActiveStatus}>
                                 <input type="hidden" name="chauffeurId" value={chauffeur.id} />
                                 <input type="hidden" name="currentAccountStatus"  value={chauffeur.account_status} />
@@ -416,11 +440,23 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 {/* =================Desktop chauffeur table ==========================*/}
                 <div className={`${tableStyles.DivCyanList} hidden lg:block`}>
                     <table className={tableStyles.table1000}>
+                        {/*These add up to 100% and deliberately give more room to: Name,Taxi operator,Actions*/}
+                        {/* Desktop column widths: Name, Phone, Taxi operator, Service area, Rating, Pet, Status, Actions */}
+                        <colgroup><col className="w-[20%]" />
+                        <col className="w-[11%]" />
+                        <col className="w-[17%]" />
+                        <col className="w-[10%]" />
+                        <col className="w-[6%]" />
+                        <col className="w-[6%]" />
+                        <col className="w-[12%]" />
+                        <col className="w-[18%]" />
+                        </colgroup>
+
                         <thead className={tableStyles.tableHeaderCyan}>
                             <tr>
                                 <th className={tableStyles.cellCaption}>Name</th>
-                               
                                 <th className={tableStyles.cellCaption}>Phone</th>
+                                <th className={tableStyles.cellCaption}>Taxi operator</th>
                                 <th className={tableStyles.cellCaption}>Service area</th>
                                 <th className={tableStyles.cellCaption}>Rating</th>
                                 <th className ={tableStyles.cellCaption}> pet </th>
@@ -450,6 +486,15 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                     }
                                     </td>
                                     <td className={tableStyles.cell}>{chauffeur.phone}</td>
+                                    <td className={tableStyles.cell}>
+                                        <div>{chauffeur.taxi_operators?.company_name || "Not assigned"}</div>
+
+                                        {chauffeur.taxi_operators && (
+                                            <div className="mt-1 text-xs text-slate-400">
+                                                {chauffeur.taxi_operators.verification_status}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className={tableStyles.cell}> {chauffeur.service_area || "-"} </td>
                                     <td className={tableStyles.cell}>{chauffeur.rating}</td>                                   
                                     <td className={tableStyles.cell}>
@@ -458,24 +503,12 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                         </span>
                                     </td>
 
-                                    <td className={tableStyles.cellCaption}>
-                                        <form action={updateChauffeurStatus} className="flex items-center gap-2">
-                                            <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                                            <select name="accountStatus" defaultValue={chauffeur.account_status} className={formStyles.selectForm}>
-                                                {/* This is normal selection of status options
-                                                    <option value="pending_approval">pending_approval</option> 
-                                                    <option value="approved">approved</option>
-                                                    <option value="suspended">suspended</option>
-                                                    <option value="inactive">inactive</option>
-                                                */} 
-                                                {chauffeurStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
-                                            </select>
-
-                                            <button type="submit" className={formStyles.smallButton}>
-                                                Save
-                                            </button>
-                                        </form>
-                                    </td>     
+                                    <td className={tableStyles.cell}>
+                                        <span className="font-semibold text-slate-200">
+                                            {chauffeur.account_status}
+                                        </span>
+                                    </td>   
+                                    
                                     <td className={tableStyles.cellCaption}>
                                         <div className="flex flex-wrap items-center gap-3">
                                             <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
@@ -494,7 +527,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                 </tr>
                             ))}
 
-                            {chauffeurRows.length === 0 && (<tr><td className={tableStyles.cell} colSpan={7}> No chauffeurs found yet. </td></tr>)}
+                            {chauffeurRows.length === 0 && (<tr><td className={tableStyles.cell} colSpan={8}> No chauffeurs found yet. </td></tr>)}
 
                         </tbody>
                     </table>

@@ -14,7 +14,7 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
 
   const { data: chauffeurRow, error } = await supabaseAdmin
     .from("chauffeurs")
-    .select('id, name, email, phone, service_area, account_status, accepts_pets ,operational_status, status_reason, status_changed_at')
+    .select('id, name, email, phone, operator_id, service_area, account_status, accepts_pets, operational_status, status_reason, status_changed_at')
     .eq("id", chauffeurId)
     .maybeSingle();
 
@@ -33,6 +33,14 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
 
   const { data: accountStatuses, error: statusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status" });
   if (statusError) { console.error("Could not load chauffeur account statuses:", statusError); }
+
+  /* ===== Load taxi operators for chauffeur assignment ===== */
+  const { data: taxiOperators, error: operatorsError } = await supabaseAdmin
+    .from("taxi_operators")
+    .select("id, company_name, verification_status")
+    .order("company_name", { ascending: true });
+
+  if (operatorsError) {console.error("Could not load taxi operators:", operatorsError);}
 
   return (
     <main className={pageStyles.main}>
@@ -57,8 +65,11 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
           <p className="mt-2 break-all font-mono text-sm text-slate-200"> {chauffeurRow.id} </p>
           <p className="mt-2 text-xs text-slate-400"> <TranslatedText sectionName="adminChauffeurEditPage" textKey="chauffeurReferenceDescription" /> </p>
         </div>
-
-        <AdminChauffeurEditForm chauffeur={chauffeurRow} accountStatusOptions={(accountStatuses ?? []) as string[]} />
+        <AdminChauffeurEditForm
+          chauffeur={chauffeurRow}
+          accountStatusOptions={(accountStatuses ?? []) as string[]}
+          taxiOperatorOptions={taxiOperators ?? []}
+        />
       </div>
     </main>
   );

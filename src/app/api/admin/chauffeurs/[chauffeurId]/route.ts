@@ -25,6 +25,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const name = String(body.name || "").trim();
     const email = String(body.email || "").trim();
     const phone = String(body.phone || "").trim();
+    const operatorId = String(body.operatorId || "").trim();
     const serviceArea = String(body.serviceArea || "").trim();
     const accountStatus = String(body.accountStatus || "").trim();
     const acceptsPets = Boolean(body.acceptsPets);
@@ -36,6 +37,31 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         { message: "Please fill in all required fields." },
         { status: 400 }
       );
+    }
+
+    /* ===== Validate taxi operator assignment ===== */
+    if (operatorId) {
+        const { data: operatorRow, error: operatorError } = await supabaseAdmin
+            .from("taxi_operators")
+            .select("id")
+            .eq("id", operatorId)
+            .maybeSingle();
+
+        if (operatorError) {
+            console.error("Could not validate taxi operator assignment:", operatorError);
+
+            return NextResponse.json(
+                { message: "Could not validate taxi operator." },
+                { status: 500 }
+            );
+        }
+
+        if (!operatorRow) {
+            return NextResponse.json(
+                { message: "Selected taxi operator was not found." },
+                { status: 400 }
+            );
+        }
     }
 
     const { data: allowedStatuses } = await supabaseAdmin.rpc("get_enum_values", {  p_enum_type_name: "chauffeur_account_status",  });
@@ -63,10 +89,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       Loads the current status so an email is sent only after a real status change.
       This prevents another grouped email when the admin only edits the chauffeur’s name, phone or email while the chauffeur is already sick.
     */
-    const {
-      data: currentChauffeur,
-      error: currentChauffeurError,
-    } = await supabaseAdmin
+    const {data: currentChauffeur,error: currentChauffeurError,} = await supabaseAdmin
       .from("chauffeurs")
       .select("operational_status")
       .eq("id", chauffeurId)
@@ -83,13 +106,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     const operationalStatusChanged = currentChauffeur.operational_status !== operationalStatus;
 
-    /* Update chauffeur data. */
+    /*============ Update chauffeur data.=============== */
     const { error } = await supabaseAdmin
       .from("chauffeurs")
       .update({
         name,
         email,
         phone,
+        operator_id: operatorId || null,
         service_area: serviceArea || null,
         account_status: accountStatus,
         accepts_pets: acceptsPets,
