@@ -4,6 +4,7 @@ import AdminChauffeurEditForm from "@/components/AdminChauffeurEditForm";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles } from "@/styles/classNames";
 import { TranslatedText } from "@/components/TranslatedText";
+import AdminChauffeurCompliancePanel from "@/components/AdminChauffeurCompliancePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,54 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
 
   if (operatorsError) {console.error("Could not load taxi operators:", operatorsError);}
 
+  /* ===== Load chauffeur compliance information ===== */
+  const { data: complianceRow, error: complianceError } = await supabaseAdmin
+    .from("chauffeur_compliance")
+    .select(`
+      chauffeur_id,
+      driving_license_valid_until,
+      driving_license_checked_at,
+      chauffeur_card_number,
+      chauffeur_card_valid_until,
+      chauffeur_card_checked_at,
+      verification_status,
+      verification_status_reason,
+      verification_status_changed_at,
+      verified_at
+    `)
+    .eq("chauffeur_id", chauffeurId)
+    .maybeSingle();
+
+  if (complianceError) {
+    console.error("Could not load chauffeur compliance:", complianceError);
+    throw new Error("Could not load chauffeur compliance.");
+  }
+
+  /* ===== Load uploaded chauffeur compliance documents ===== */
+  const { data: chauffeurDocuments, error: documentsError } = await supabaseAdmin
+    .from("chauffeur_documents")
+    .select(`
+      id,
+      document_type,
+      original_file_name,
+      mime_type,
+      file_size_bytes,
+      valid_from,
+      valid_until,
+      verification_status,
+      verification_reason,
+      verification_status_changed_at,
+      verified_at,
+      uploaded_at
+    `)
+    .eq("chauffeur_id", chauffeurId)
+    .order("uploaded_at", { ascending: false });
+
+  if (documentsError) {
+    console.error("Could not load chauffeur documents:", documentsError);
+    throw new Error("Could not load chauffeur documents.");
+  }
+
   return (
     <main className={pageStyles.main}>
       <div className={pageStyles.containerMedium}>
@@ -65,10 +114,18 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
           <p className="mt-2 break-all font-mono text-sm text-slate-200"> {chauffeurRow.id} </p>
           <p className="mt-2 text-xs text-slate-400"> <TranslatedText sectionName="adminChauffeurEditPage" textKey="chauffeurReferenceDescription" /> </p>
         </div>
+        
+        {/* Chauffeur details/edit form. */}
         <AdminChauffeurEditForm
           chauffeur={chauffeurRow}
           accountStatusOptions={(accountStatuses ?? []) as string[]}
           taxiOperatorOptions={taxiOperators ?? []}
+        />
+
+        {/* Shows chauffeur verification and uploaded compliance documents. */}
+        <AdminChauffeurCompliancePanel
+          compliance={complianceRow}
+          documents={chauffeurDocuments ?? []}
         />
       </div>
     </main>

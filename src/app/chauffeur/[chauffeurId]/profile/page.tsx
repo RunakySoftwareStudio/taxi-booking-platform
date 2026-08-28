@@ -8,6 +8,7 @@ import { formStyles, pageStyles } from "@/styles/classNames";
 import { defaultLanguage, isLanguageCode } from "@/lib/i18n/languages";
 // Displays and uploads the chauffeur's public profile photo.
 import ChauffeurProfilePhotoForm from "@/components/ChauffeurProfilePhotoForm";
+import ChauffeurComplianceDocumentsForm from "@/components/ChauffeurComplianceDocumentsForm";
 
 // Defines the chauffeur ID received from the dynamic URL.
 type ChauffeurProfilePageProps = { params: Promise<{ chauffeurId: string }> };
@@ -44,6 +45,17 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
     }
 
     if (!chauffeurRow) { notFound(); }
+
+    /* Loads private document metadata for this chauffeur. */
+    const { data: uploadedDocuments, error: documentsError } = await supabaseAdmin
+        .from("chauffeur_documents")
+        .select("id, document_type, original_file_name, verification_status, uploaded_at, valid_until")
+        .eq("chauffeur_id", chauffeurId)
+        .order("uploaded_at", { ascending: false });
+
+    if (documentsError) {
+        console.error("Could not load chauffeur documents:", documentsError);
+    }
 
     // Converts the stored Storage path into a public image URL.
     const profilePhotoUrl = chauffeurRow.profile_photo_path ? supabaseAdmin.storage
@@ -108,6 +120,8 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
                     </div>
                 </section>
 
+                {/* Allows the chauffeur to upload private compliance documents for admin review. */}
+                <ChauffeurComplianceDocumentsForm chauffeurId={chauffeurId}  uploadedDocuments={uploadedDocuments ?? []} />
 
                 {/* Shows the current public photo and allows a secure replacement. */}
                 <ChauffeurProfilePhotoForm chauffeurId={chauffeurId} currentPhotoUrl={profilePhotoUrl} />
