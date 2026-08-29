@@ -144,6 +144,36 @@ CREATE TYPE chauffeur_operational_status AS ENUM (
   'unavailable'
 );
 
+/* Chauffeur professional/compliance verification status. */
+CREATE TYPE chauffeur_verification_status AS ENUM (
+  'pending_verification',
+  'verified',
+  'suspended',
+  'inactive'
+);
+
+/* Types of private chauffeur compliance documents. */
+CREATE TYPE chauffeur_document_type AS ENUM (
+  'identity_document',
+  'driving_license',
+  'chauffeur_card',
+  'taxi_diploma',
+  'vog',
+  'medical_certificate',
+  'residence_permit',
+  'work_authorization',
+  'employment_contract',
+  'other'
+);
+
+/* Admin review status for uploaded chauffeur documents. */
+CREATE TYPE chauffeur_document_verification_status AS ENUM (
+  'pending_review',
+  'verified',
+  'rejected',
+  'superseded'
+);
+
 -- Chauffeurs who can receive taxi bookings
 CREATE TABLE chauffeurs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -175,6 +205,80 @@ CREATE TABLE chauffeurs (
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
+/* ============================================================
+   CHAUFFEUR COMPLIANCE
+
+   Stores sensitive chauffeur compliance and verification data.
+   One chauffeur can have only one compliance record.
+============================================================ */
+CREATE TABLE chauffeur_compliance (
+  chauffeur_id UUID PRIMARY KEY REFERENCES chauffeurs(id) ON DELETE CASCADE,
+
+  bsn TEXT UNIQUE CHECK (bsn IS NULL OR bsn ~ '^[0-9]{9}$'),
+
+  driving_license_valid_until DATE,
+  driving_license_checked_at TIMESTAMPTZ,
+
+  chauffeur_card_number TEXT UNIQUE,
+  chauffeur_card_valid_until DATE,
+  chauffeur_card_checked_at TIMESTAMPTZ,
+
+  date_of_birth DATE,
+  nationality_country_code TEXT CHECK (
+    nationality_country_code IS NULL OR
+    (nationality_country_code = upper(nationality_country_code) AND length(nationality_country_code) = 2)
+  ),
+
+  identity_document_type TEXT,
+  identity_document_number TEXT,
+  identity_document_issuing_country_code TEXT CHECK (
+    identity_document_issuing_country_code IS NULL OR
+    (identity_document_issuing_country_code = upper(identity_document_issuing_country_code)
+      AND length(identity_document_issuing_country_code) = 2)
+  ),
+  identity_document_valid_until DATE,
+  identity_checked_at TIMESTAMPTZ,
+
+  residence_permit_required BOOLEAN,
+  residence_permit_type TEXT,
+  residence_permit_valid_until DATE,
+  residence_permit_checked_at TIMESTAMPTZ,
+
+  work_authorization_required BOOLEAN,
+  work_authorization_type TEXT,
+  work_authorization_valid_until DATE,
+  work_authorization_checked_at TIMESTAMPTZ,
+
+  vog_issued_on DATE,
+  vog_checked_at TIMESTAMPTZ,
+
+  medical_certificate_issued_on DATE,
+  medical_checked_at TIMESTAMPTZ,
+
+  employment_relationship_type TEXT,
+  employment_confirmed BOOLEAN,
+  employment_checked_at TIMESTAMPTZ,
+  employment_start_date DATE,
+  employment_end_date DATE,
+
+  verification_status chauffeur_verification_status NOT NULL DEFAULT 'pending_verification',
+  verification_status_reason TEXT,
+  verification_status_changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  verification_status_changed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+
+  verified_at TIMESTAMPTZ,
+  verified_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CHECK (
+    employment_end_date IS NULL OR
+    employment_start_date IS NULL OR
+    employment_end_date >= employment_start_date
+  )
+);
+
 -- Stores chauffeur requests for changes to administrator-controlled information.
 create table if not exists public.chauffeur_change_requests (
     id uuid primary key default gen_random_uuid(),
@@ -191,6 +295,49 @@ create table if not exists public.chauffeur_change_requests (
     reviewed_at timestamptz
 );
 
+/* ===== Chauffeur documents ===== */
+CREATE TABLE chauffeur_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  chauffeur_id UUID NOT NULL REFERENCES chauffeurs(id) ON DELETE CASCADE,
+
+  document_type chauffeur_document_type NOT NULL,
+
+  storage_path TEXT NOT NULL UNIQUE CHECK (length(trim(storage_path)) > 0),
+  original_file_name TEXT NOT NULL CHECK (length(trim(original_file_name)) > 0),
+  mime_type TEXT NOT NULL CHECK (length(trim(mime_type)) > 0),
+  file_size_bytes BIGINT NOT NULL CHECK (file_size_bytes > 0),
+
+  valid_from DATE,
+  valid_until DATE,
+  CHECK (valid_until IS NULL OR valid_from IS NULL OR valid_until >= valid_from),
+
+  verification_status chauffeur_document_verification_status NOT NULL DEFAULT 'pending_review',
+  verification_reason TEXT,
+  verification_status_changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  verification_status_changed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+
+  verified_at TIMESTAMPTZ,
+  verified_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+
+  uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  uploaded_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+/* ===== Chauffeur compliance indexes ===== */
+CREATE INDEX chauffeur_compliance_verification_status_idx ON chauffeur_compliance(verification_status);
+CREATE INDEX chauffeur_compliance_driving_license_expiry_idx ON chauffeur_compliance(driving_license_valid_until);
+CREATE INDEX chauffeur_compliance_chauffeur_card_expiry_idx ON chauffeur_compliance(chauffeur_card_valid_until);
+CREATE INDEX chauffeur_compliance_residence_permit_expiry_idx ON chauffeur_compliance(residence_permit_valid_until);
+CREATE INDEX chauffeur_compliance_work_authorization_expiry_idx ON chauffeur_compliance(work_authorization_valid_until);
+
+/* ===== Chauffeur document indexes ===== */
+CREATE INDEX chauffeur_documents_chauffeur_idx ON chauffeur_documents(chauffeur_id);
+CREATE INDEX chauffeur_documents_type_idx ON chauffeur_documents(document_type);
+CREATE INDEX chauffeur_documents_verification_status_idx ON chauffeur_documents(verification_status);
+CREATE INDEX chauffeur_documents_valid_until_idx ON chauffeur_documents(valid_until);
 
 -- Vehicle types available on the platform
 CREATE TYPE vehicle_type AS ENUM (
@@ -4160,6 +4307,39 @@ CREATE TRIGGER update_chauffeurs_updated_at
 BEFORE UPDATE ON chauffeurs
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
+
+/* Apply updated_at trigger to chauffeur compliance */
+CREATE TRIGGER update_chauffeur_compliance_updated_at
+BEFORE UPDATE ON chauffeur_compliance
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+/* Apply updated_at trigger to chauffeur documents */
+CREATE TRIGGER update_chauffeur_documents_updated_at
+BEFORE UPDATE ON chauffeur_documents
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+/* Automatically creates one compliance record for every new chauffeur. */
+CREATE OR REPLACE FUNCTION public.create_chauffeur_compliance_record()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  INSERT INTO public.chauffeur_compliance (chauffeur_id)
+  VALUES (NEW.id)
+  ON CONFLICT (chauffeur_id) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER create_chauffeur_compliance_after_insert
+AFTER INSERT ON chauffeurs
+FOR EACH ROW
+EXECUTE FUNCTION public.create_chauffeur_compliance_record();
 
 /* Apply updated_at trigger to vehicles */
 CREATE TRIGGER update_vehicles_updated_at
@@ -8851,6 +9031,8 @@ ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE taxi_operators ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chauffeurs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chauffeur_compliance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chauffeur_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chauffeur_availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chauffeur_change_requests ENABLE ROW LEVEL SECURITY;
