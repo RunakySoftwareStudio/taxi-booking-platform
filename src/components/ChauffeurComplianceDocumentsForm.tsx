@@ -63,6 +63,9 @@ export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedD
     const [isUploading, setIsUploading] = useState(false);
     const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
 
+    /* Stores which private document is currently being opened. */
+    const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
+
     /* Connects the styled file-selection button to the hidden browser input. */
     const documentInputId = `chauffeur-document-${chauffeurId}`;
 
@@ -139,6 +142,60 @@ export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedD
             setErrorMessage("Could not upload the document.");
         } finally {
             setIsUploading(false);
+        }
+    }
+
+    /* ============================================================
+    VIEW PRIVATE UPLOADED DOCUMENT
+
+    Opens one document belonging to the logged-in chauffeur.
+
+    The document remains private:
+    - the browser asks the protected chauffeur API for access;
+    - the API verifies chauffeur ownership;
+    - Supabase returns a temporary signed URL;
+    - the private Storage path is never exposed directly.
+
+    A blank tab is opened before the async request so the browser
+    does not block the document as an unwanted popup.
+    ============================================================ */
+    async function handleViewDocument(documentId: string) {
+        setSuccessMessage("");
+        setErrorMessage("");
+        setViewingDocumentId(documentId);
+
+        const documentWindow = window.open("about:blank", "_blank");
+
+        if (!documentWindow) {
+            setViewingDocumentId(null);
+            setErrorMessage("The browser blocked the document window. Please allow popups.");
+            return;
+        }
+
+        documentWindow.opener = null;
+
+        try {
+            const response = await fetch(
+                `/api/chauffeur/${chauffeurId}/documents?documentId=${documentId}`
+            );
+
+            const result = await response.json();
+
+            if (!response.ok || !result.signedUrl) {
+                documentWindow.close();
+                setErrorMessage(result.message || "Could not open the document.");
+                return;
+            }
+
+            documentWindow.location.href = result.signedUrl;
+        }
+        catch (error) {
+            documentWindow.close();
+            console.error("Could not open chauffeur compliance document:", error);
+            setErrorMessage("Could not open the document.");
+        }
+        finally {
+            setViewingDocumentId(null);
         }
     }
 
@@ -282,16 +339,34 @@ export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedD
                                             Valid until: {document.valid_until}
                                         </p>
                                     )}
-                                    {/* Remove only not approved documents */}
-                                    {document.verification_status === "pending_review" && (
-                                        <div className="mt-3">
+                                    {/* ============================================================
+                                        CHAUFFEUR DOCUMENT ACTIONS
+
+                                        View document:
+                                        - available for every uploaded document;
+                                        - opens the chauffeur's own private file through a temporary
+                                        signed URL created by the protected chauffeur API.
+
+                                        Delete:
+                                        - available only while the document is pending review;
+                                        - verified, rejected and superseded documents remain stored
+                                        as compliance history and cannot be deleted by chauffeur.
+                                    ============================================================ */}
+                                    <div className="mt-3 flex flex-wrap gap-3">
+                                        <button type="button" onClick={() => handleViewDocument(document.id)} disabled={viewingDocumentId === document.id}
+                                            className="rounded-xl border border-cyan-400/40 px-3 py-1.5 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {viewingDocumentId === document.id ? "Opening..." : "View document"}
+                                        </button>
+
+                                        {document.verification_status === "pending_review" && (
                                             <button type="button" onClick={() => handleDeleteDocument(document.id)} disabled={deletingDocumentId === document.id}
                                                 className="rounded-xl border border-red-400/40 px-3 py-1.5 text-sm font-semibold text-red-200 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 {deletingDocumentId === document.id ? "Deleting..." : "Delete"}
                                             </button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>

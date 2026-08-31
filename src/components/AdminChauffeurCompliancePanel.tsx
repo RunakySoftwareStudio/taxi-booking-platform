@@ -1,6 +1,7 @@
 
 import { formStyles } from "@/styles/classNames";
 import AdminChauffeurDocumentViewButton from "@/components/AdminChauffeurDocumentViewButton";
+import AdminChauffeurDocumentReviewControls from "@/components/AdminChauffeurDocumentReviewControls";
 
 /* Defines the chauffeur compliance information shown to the administrator. */
 type ChauffeurComplianceRow = {
@@ -189,6 +190,23 @@ export default function AdminChauffeurCompliancePanel({
                                                 documentId={document.id}
                                             />
                                         </div>
+                                        {/* ============================================================
+                                            ADMIN DOCUMENT REVIEW CONTROLS
+
+                                            Shows Verify / Reject controls only while the uploaded
+                                            chauffeur document is still waiting for Admin review.
+
+                                            The actual status change is sent to the protected Admin API
+                                            route, which calls the review_chauffeur_document database RPC.
+                                            Verified, rejected, and superseded documents no longer show these review controls.
+                                        ============================================================ */}
+                                        {compliance?.chauffeur_id && (
+                                            <AdminChauffeurDocumentReviewControls
+                                                chauffeurId={compliance.chauffeur_id}
+                                                documentId={document.id}
+                                                verificationStatus={document.verification_status}
+                                            />
+                                        )}
                                     </div>
 
                                     <span className="rounded-full border border-yellow-400/30 px-3 py-1 text-xs font-semibold text-yellow-200">

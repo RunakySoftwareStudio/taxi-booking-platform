@@ -158,6 +158,94 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
 }
 
+/* ============================================================
+   VIEW PRIVATE CHAUFFEUR DOCUMENT
+
+   Allows the logged-in chauffeur to open one of their own
+   uploaded compliance documents.
+
+   Security:
+   - The user must be logged in as a chauffeur.
+   - The chauffeur ID in user_profiles must match the URL.
+   - The document must belong to that same chauffeur.
+   - The private Storage path is never returned directly.
+   - Supabase creates a temporary signed URL valid for 5 minutes.
+============================================================ */
+export async function GET(request: Request, { params }: RouteContext) {
+    /* Reads the chauffeur ID and currently logged-in user. */
+    const { chauffeurId } = await params;
+    const authSupabase = await createClient();
+    const { data: { user } } = await authSupabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json(
+            { message: "Not logged in." },
+            { status: 401 }
+        );
+    }
+
+    /* Confirms that this logged-in chauffeur owns the profile being viewed. */
+    const { data: profile, error: profileError } = await authSupabase
+        .from("user_profiles")
+        .select("role, chauffeur_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (
+        profileError ||
+        profile?.role !== "chauffeur" ||
+        profile.chauffeur_id !== chauffeurId
+    ) {
+        return NextResponse.json(
+            { message: "Not allowed." },
+            { status: 403 }
+        );
+    }
+
+    /* Reads the requested document ID from the URL query string. */
+    const documentId = new URL(request.url).searchParams.get("documentId");
+
+    if (!documentId) {
+        return NextResponse.json(
+            { message: "Document ID is required." },
+            { status: 400 }
+        );
+    }
+
+    /* Loads only the private Storage path and confirms document ownership. */
+    const { data: documentRow, error: documentError } = await supabaseAdmin
+        .from("chauffeur_documents")
+        .select("storage_path")
+        .eq("id", documentId)
+        .eq("chauffeur_id", chauffeurId)
+        .maybeSingle();
+
+    if (documentError || !documentRow) {
+        return NextResponse.json(
+            { message: "Document could not be found." },
+            { status: 404 }
+        );
+    }
+
+    /* Creates a temporary private URL instead of exposing a public document URL. */
+    const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
+        .from(bucketName)
+        .createSignedUrl(documentRow.storage_path, 5 * 60);
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+        console.error("Could not create chauffeur document signed URL:", signedUrlError);
+
+        return NextResponse.json(
+            { message: "Could not open the document." },
+            { status: 500 }
+        );
+    }
+
+    return NextResponse.json({
+        signedUrl: signedUrlData.signedUrl
+    });
+}
+
 /* Deletes one pending-review document owned by the logged-in chauffeur. */
 export async function DELETE(request: Request, { params }: RouteContext) {
     /* Reads the chauffeur ID and logged-in Supabase user. */
