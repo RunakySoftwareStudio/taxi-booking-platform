@@ -6,6 +6,9 @@ import AdminChauffeurDocumentReviewControls from "@/components/AdminChauffeurDoc
 /* Defines the chauffeur compliance information shown to the administrator. */
 type ChauffeurComplianceRow = {
     chauffeur_id: string;
+
+    /* Structured Driving licence details shown in the Admin compliance summary. */
+    driving_license_number: string | null;
     driving_license_valid_until: string | null;
     driving_license_checked_at: string | null;
     chauffeur_card_number: string | null;
@@ -121,6 +124,19 @@ export default function AdminChauffeurCompliancePanel({
                     </p>
                 </div>
 
+                {/* ============================================================
+                    DRIVING LICENCE SUMMARY
+
+                    Shows the structured licence number stored when Admin
+                    verifies the chauffeur's Driving licence document.
+                ============================================================ */}
+                <div>
+                    <p className="text-sm text-cyan-300">Driving licence number</p>
+                    <p className="mt-1 text-slate-200">
+                        {compliance?.driving_license_number || "---"}
+                    </p>
+                </div>
+
                 <div>
                     <p className="text-sm text-cyan-300">Driving licence valid until</p>
                     <p className="mt-1 text-slate-200">
@@ -136,7 +152,7 @@ export default function AdminChauffeurCompliancePanel({
                 </div>
 
                 <div>
-                    <p className="text-sm text-cyan-300">Verified at</p>
+                    <p className="text-sm text-cyan-300">Chauffeur verified at</p>
                     <p className="mt-1 text-slate-200">
                         {formatDateTime(compliance?.verified_at || null)}
                     </p>
@@ -204,6 +220,7 @@ export default function AdminChauffeurCompliancePanel({
                                             <AdminChauffeurDocumentReviewControls
                                                 chauffeurId={compliance.chauffeur_id}
                                                 documentId={document.id}
+                                                documentType={document.document_type}
                                                 verificationStatus={document.verification_status}
                                             />
                                         )}

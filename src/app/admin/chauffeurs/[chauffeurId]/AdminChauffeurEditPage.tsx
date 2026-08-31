@@ -48,6 +48,7 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
     .from("chauffeur_compliance")
     .select(`
       chauffeur_id,
+      driving_license_number,
       driving_license_valid_until,
       driving_license_checked_at,
       chauffeur_card_number,

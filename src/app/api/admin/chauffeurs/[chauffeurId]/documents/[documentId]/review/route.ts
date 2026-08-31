@@ -55,8 +55,26 @@ export async function POST(request: Request, { params }: RouteContext) {
     /* ===== Read requested document review ===== */
     const body = await request.json();
 
+    /* ============================================================
+    READ DOCUMENT REVIEW DETAILS
+
+    Reads the Admin decision together with any structured
+    compliance information required for the document type.
+
+    Chauffeurskaart:
+    - card number
+    - valid-until date
+
+    Driving licence:
+    - valid-until date
+    ============================================================ */
     const verificationStatus = String(body.verificationStatus || "").trim();
     const statusReason = String(body.statusReason || "").trim();
+    const chauffeurCardNumber = String(body.chauffeurCardNumber || "").trim();
+    const chauffeurCardValidUntil = String(body.chauffeurCardValidUntil || "").trim();
+
+    const drivingLicenseNumber = String(body.drivingLicenseNumber || "").trim();
+    const drivingLicenseValidUntil = String(body.drivingLicenseValidUntil || "").trim();
 
     if (
         verificationStatus !== "verified" &&
@@ -84,6 +102,20 @@ export async function POST(request: Request, { params }: RouteContext) {
             p_verification_status: verificationStatus,
             p_status_reason: statusReason || null,
             p_changed_by_user_id: user.id,
+
+            /* Structured Chauffeurskaart values are validated again inside the RPC. */
+            p_chauffeur_card_number: chauffeurCardNumber || null,
+            p_chauffeur_card_valid_until: chauffeurCardValidUntil || null,
+
+            /* ============================================================
+            STRUCTURED DRIVING LICENCE DETAILS
+
+            Sends the licence number and expiry date to the database RPC.
+            The RPC performs the final validation and stores them together
+            with the verified document in one transaction.
+            ============================================================ */
+            p_driving_license_number: drivingLicenseNumber || null,
+            p_driving_license_valid_until: drivingLicenseValidUntil || null,
         }
     );
 
