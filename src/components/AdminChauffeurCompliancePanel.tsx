@@ -2,6 +2,7 @@
 import { formStyles } from "@/styles/classNames";
 import AdminChauffeurDocumentViewButton from "@/components/AdminChauffeurDocumentViewButton";
 import AdminChauffeurDocumentReviewControls from "@/components/AdminChauffeurDocumentReviewControls";
+import AdminChauffeurVerificationControls from "@/components/AdminChauffeurVerificationControls";
 
 /* Defines the chauffeur compliance information shown to the administrator. */
 type ChauffeurComplianceRow = {
@@ -75,10 +76,13 @@ function formatDateTime(value: string | null) {
 }
 
 /* Displays chauffeur verification and uploaded compliance documents. */
-export default function AdminChauffeurCompliancePanel({
-    compliance,
-    documents
-}: AdminChauffeurCompliancePanelProps) {
+export default function AdminChauffeurCompliancePanel({compliance, documents}: AdminChauffeurCompliancePanelProps) {
+
+    /* Groups uploaded documents by type while preserving their existing newest-first order. */
+    const groupedDocuments = documents.reduce<Record<string, ChauffeurDocumentRow[]>>((groups, document) => {
+        (groups[document.document_type] ??= []).push(document);
+        return groups;
+    }, {});
 
     return (
         <section className={`${formStyles.sectionCardBorder4} mt-8`}>
@@ -167,76 +171,103 @@ export default function AdminChauffeurCompliancePanel({
                 </div>
             )}
 
+            {/* ============================================================
+                WHOLE-CHAUFFEUR VERIFICATION CONTROLS
+
+                Allows Admin to verify, suspend or deactivate the chauffeur.
+                Individual document verification remains independent.
+            ============================================================ */}
+            {compliance && (
+                <AdminChauffeurVerificationControls chauffeurId={compliance.chauffeur_id} verificationStatus={compliance.verification_status} />
+            )}
+
             {/* Shows uploaded private document metadata. */}
+
+            {/* ============================================================
+                GROUPED CHAUFFEUR DOCUMENTS
+
+                Groups uploaded documents into expandable categories.
+                Each category preserves the existing document history
+                and the individual Admin document review controls.
+            ============================================================ */}
             <div className="mt-8 border-t border-cyan-400/20 pt-6">
-                <h3 className="text-lg font-semibold text-white">
-                    Uploaded documents
-                </h3>
+                <h3 className="text-lg font-semibold text-white">Uploaded documents</h3>
+                <p className="mt-2 text-sm text-slate-400">Select a category to view its uploaded documents.</p>
 
                 {documents.length === 0 ? (
-                    <p className="mt-3 text-sm text-slate-400">
-                        No compliance documents uploaded yet.
-                    </p>
+                    <p className="mt-4 text-sm text-slate-400">No compliance documents uploaded yet.</p>
                 ) : (
                     <div className="mt-4 grid gap-3">
-                        {documents.map((document) => (
-                            <div key={document.id} className="rounded-xl border border-cyan-400/20 bg-slate-950/40 p-4" >
-                                <div className="flex flex-wrap items-start justify-between gap-4">
-                                    <div>
-                                        <p className="font-semibold text-white">
-                                            {getDocumentTypeLabel(document.document_type)}
-                                        </p>
 
-                                        <p className="mt-1 text-sm text-slate-300 break-all">
-                                            {document.original_file_name}
-                                        </p>
+                        {/* Display one expandable section for each document category. */}
+                        {Object.entries(groupedDocuments).map(([documentType, categoryDocuments]) => (
+                            <details key={documentType} className="group rounded-xl border border-cyan-400/20 bg-slate-950/40">
 
-                                        <p className="mt-2 text-xs text-slate-400">
-                                            Uploaded: {formatDateTime(document.uploaded_at)}
-                                        </p>
-                                        {/*=============================================
-                                            Chauffeurskaart                  pending_review
-                                            puzzle.png
-                                            Uploaded: 28/08/2026 17:59
-                                            [ View document ]
-                                        ==================================================*/}
-                                        <div className="mt-3">
-                                            <AdminChauffeurDocumentViewButton
-                                                chauffeurId={compliance?.chauffeur_id || ""}
-                                                documentId={document.id}
-                                            />
-                                        </div>
-                                        {/* ============================================================
-                                            ADMIN DOCUMENT REVIEW CONTROLS
-
-                                            Shows Verify / Reject controls only while the uploaded
-                                            chauffeur document is still waiting for Admin review.
-
-                                            The actual status change is sent to the protected Admin API
-                                            route, which calls the review_chauffeur_document database RPC.
-                                            Verified, rejected, and superseded documents no longer show these review controls.
-                                        ============================================================ */}
-                                        {compliance?.chauffeur_id && (
-                                            <AdminChauffeurDocumentReviewControls
-                                                chauffeurId={compliance.chauffeur_id}
-                                                documentId={document.id}
-                                                documentType={document.document_type}
-                                                verificationStatus={document.verification_status}
-                                            />
-                                        )}
+                                {/* Category header: document type, count and pending-review indicator. */}
+                                <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4 text-slate-200">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-cyan-300 group-open:rotate-90">▶</span>
+                                        <span className="font-semibold">{getDocumentTypeLabel(documentType)}</span>
                                     </div>
 
-                                    <span className="rounded-full border border-yellow-400/30 px-3 py-1 text-xs font-semibold text-yellow-200">
-                                        {document.verification_status}
-                                    </span>
-                                </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-xs text-slate-400">
+                                            {categoryDocuments.length} {categoryDocuments.length === 1 ? "document" : "documents"}
+                                        </span>
 
-                                {document.verification_reason && (
-                                    <p className="mt-3 text-sm text-red-300">
-                                        Reason: {document.verification_reason}
-                                    </p>
-                                )}
-                            </div>
+                                        {categoryDocuments.some((document) => document.verification_status === "pending_review") && (
+                                            <span className="rounded-full border border-yellow-400/30 px-3 py-1 text-xs text-yellow-200">
+                                                Pending review
+                                            </span>
+                                        )}
+                                    </div>
+                                </summary>
+
+                                {/* Uploaded documents within this category, newest first. */}
+                                <div className="grid gap-3 border-t border-cyan-400/20 p-4">
+                                    {categoryDocuments.map((document) => (
+                                        <div key={document.id} className="rounded-xl border border-cyan-400/20 bg-slate-900/60 p-4">
+                                            <div className="flex flex-wrap items-start justify-between gap-4">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="break-all font-semibold text-white">{document.original_file_name}</p>
+                                                    <p className="mt-2 text-xs text-slate-400"> Uploaded: {formatDateTime(document.uploaded_at)} </p>
+
+                                                    {document.valid_until && (
+                                                        <p className="mt-1 text-xs text-slate-400"> Valid until: {document.valid_until} </p>
+                                                    )}
+
+                                                    {/* Opens the selected document through the existing private Admin API. */}
+                                                    <div className="mt-3">
+                                                        <AdminChauffeurDocumentViewButton
+                                                            chauffeurId={compliance?.chauffeur_id || ""}
+                                                            documentId={document.id}
+                                                        />
+                                                    </div>
+
+                                                    {/* Preserves the existing Verify / Reject controls for pending documents. */}
+                                                    {compliance?.chauffeur_id && (
+                                                        <AdminChauffeurDocumentReviewControls
+                                                            chauffeurId={compliance.chauffeur_id}
+                                                            documentId={document.id}
+                                                            documentType={document.document_type}
+                                                            verificationStatus={document.verification_status}
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <span className="rounded-full border border-yellow-400/30 px-3 py-1 text-xs font-semibold text-yellow-200">
+                                                    {document.verification_status}
+                                                </span>
+                                            </div>
+
+                                            {/* Preserve the administrator's previous rejection or review explanation. */}
+                                            {document.verification_reason && (
+                                                <p className="mt-3 text-sm text-red-300"> Reason: {document.verification_reason} </p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </details>
                         ))}
                     </div>
                 )}

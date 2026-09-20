@@ -142,7 +142,7 @@ async function updateAssignedBookingStatus(formData: FormData) {
     // Confirms that the booking belongs to the authorized chauffeur.
     const { data: assignedBooking, error: bookingCheckError } = await supabaseAdmin
         .from("bookings")
-        .select("id")
+        .select("id, vehicle_id")
         .eq("id", bookingId)
         .eq("chauffeur_id", authorizedChauffeurId)
         .maybeSingle();
@@ -156,13 +156,18 @@ async function updateAssignedBookingStatus(formData: FormData) {
     const { error } = await supabaseAdmin.rpc("update_booking_admin_assignment", {
         p_booking_id: bookingId,
         p_chauffeur_id: authorizedChauffeurId,
+        p_vehicle_id: assignedBooking.vehicle_id,
         p_status: status,
     });
 
     // 23P01 is the PostgreSQL error code for the overlapping-time exclusion constraint.
+    /* Shows the specific compliance error while retaining existing error handling. */
     if (error) {
         console.error("Could not update chauffeur booking status:", error);
-        if (error.code === "23P01") { redirect(`/chauffeur/${authorizedChauffeurId}?error=booking-time-conflict`);  }
+        if (error.code === "23P01") { redirect(`/chauffeur/${authorizedChauffeurId}?error=booking-time-conflict`); }
+        if (error.code === "22023" && error.message.includes("Chauffeur compliance is not valid for this booking pickup date.")) {
+            redirect(`/chauffeur/${authorizedChauffeurId}?error=chauffeur-compliance-invalid`);
+        }
         redirect(`/chauffeur/${authorizedChauffeurId}?error=status-update-failed`);
     }
 
@@ -275,6 +280,8 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 {pageMessage.success === "status-updated" && (<p className={pageStyles.successMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdatedSuccess" /> </p>)}
                 {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="missingFieldsError" /> </p>)}
                 {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdateFailedError" /> </p>)}
+                {/* Explains when chauffeur compliance prevents accepting a booking. */}
+                {pageMessage.error === "chauffeur-compliance-invalid" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="chauffeurComplianceInvalidError" /> </p>)}
                 {pageMessage.error === "booking-time-conflict" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingTimeConflictError" /> </p> )}
                 {/* Aligns labels with the active language while keeping email and phone characters left-to-right. */}
                 <div className={`${formStyles.info} mt-8 grid gap-4 sm:grid-cols-3`}>

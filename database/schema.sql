@@ -10195,6 +10195,289 @@ TO service_role;
      End REVIEW CHAUFFEUR DOCUMENT - DRIVING LICENCE NUMBER AND VALIDITY
  =================================================================================================*/
 
+/* ========================================================================================================================================
+   WHOLE-CHAUFFEUR COMPLIANCE VERIFICATION
+
+   Purpose:
+    Allows Admin to verify, suspend or deactivate a chauffeur's
+    professional compliance approval.
+    The function changes only the whole-chauffeur compliance status.
+    It enforces the two required qualifications in the database, so the Admin interface cannot bypass them simply by sending a verification request.
+    It also preserves the existing distinction between document verification and whole-chauffeur verification.
+
+    Document verification remains independent.
+    Account and operational statuses are never changed.
+=================================================================================================================================================== */
+
+CREATE OR REPLACE FUNCTION public.update_chauffeur_compliance_verification(
+    p_chauffeur_id UUID,
+    p_verification_status public.chauffeur_verification_status,
+    p_status_reason TEXT,
+    p_changed_by_user_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = ''
+AS $$
+DECLARE
+    v_current_status public.chauffeur_verification_status;
+BEGIN
+
+    /* =========================================================
+       ADMIN AUTHORIZATION
+
+       Only a registered Admin may change chauffeur compliance.
+       Execution permission is restricted to service_role below.
+    ========================================================= */
+
+    IF p_changed_by_user_id IS NULL
+    OR NOT EXISTS (
+        SELECT 1
+        FROM public.user_profiles
+        WHERE user_id = p_changed_by_user_id
+          AND role = 'admin'
+    ) THEN
+        RAISE EXCEPTION 'Only an administrator can change chauffeur compliance.'
+        USING ERRCODE = '42501';
+    END IF;
+
+    /* =========================================================
+       CHAUFFEUR COMPLIANCE LOOKUP
+
+       Lock the compliance record during this status change.
+    ========================================================= */
+
+    SELECT verification_status
+    INTO v_current_status
+    FROM public.chauffeur_compliance
+    WHERE chauffeur_id = p_chauffeur_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Chauffeur compliance record was not found.'
+        USING ERRCODE = 'P0002';
+    END IF;
+
+    /* =========================================================
+       REQUESTED STATUS VALIDATION
+
+       Admin can verify, suspend or deactivate a chauffeur.
+       Pending verification is not an Admin action.
+    ========================================================= */
+
+    IF p_verification_status IS NULL
+    OR p_verification_status NOT IN ('verified', 'suspended', 'inactive') THEN
+        RAISE EXCEPTION 'Invalid chauffeur verification status.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* Avoid recording a status change when nothing has changed. */
+    IF v_current_status = p_verification_status THEN
+        RAISE EXCEPTION 'Chauffeur already has the requested verification status.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* =========================================================
+       SUSPENSION AND DEACTIVATION REASON
+
+       Both actions require an explanation for the audit record.
+    ========================================================= */
+
+    IF p_verification_status IN ('suspended', 'inactive')
+    AND NULLIF(trim(COALESCE(p_status_reason, '')), '') IS NULL THEN
+        RAISE EXCEPTION 'A reason is required for suspension or deactivation.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* =========================================================
+       REQUIRED QUALIFICATIONS
+
+       Voya V1 requires two currently verified documents:
+       1. Driving licence
+       2. Chauffeurskaart
+
+       Expiry dates must be present and cannot be in the past.
+       These checks also apply when restoring a suspended or
+       inactive chauffeur to verified status.
+    ========================================================= */
+
+    IF p_verification_status = 'verified' THEN
+
+        /* Check the currently verified driving licence. */
+        IF NOT EXISTS (
+            SELECT 1
+            FROM public.chauffeur_documents
+            WHERE chauffeur_id = p_chauffeur_id
+              AND document_type = 'driving_license'
+              AND verification_status = 'verified'
+              AND valid_until >= CURRENT_DATE
+        ) THEN
+            RAISE EXCEPTION 'A valid verified driving licence is required.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        /* Check the currently verified Chauffeurskaart. */
+        IF NOT EXISTS (
+            SELECT 1
+            FROM public.chauffeur_documents
+            WHERE chauffeur_id = p_chauffeur_id
+              AND document_type = 'chauffeur_card'
+              AND verification_status = 'verified'
+              AND valid_until >= CURRENT_DATE
+        ) THEN
+            RAISE EXCEPTION 'A valid verified Chauffeurskaart is required.'
+            USING ERRCODE = '22023';
+        END IF;
+
+    END IF;
+
+    /* =========================================================
+       UPDATE WHOLE-CHAUFFEUR COMPLIANCE
+
+       Record every actual status change and the responsible Admin.
+
+       Successful verification updates verified_at and verified_by.
+       Suspension or deactivation preserves the last successful
+       verification details for reference.
+
+       No chauffeur account or operational fields are modified.
+    ========================================================= */
+
+    UPDATE public.chauffeur_compliance
+    SET
+        verification_status = p_verification_status,
+
+        verification_status_reason = CASE
+            WHEN p_verification_status = 'verified' THEN NULL
+            ELSE trim(p_status_reason)
+        END,
+
+        verification_status_changed_at = now(),
+        verification_status_changed_by = p_changed_by_user_id,
+
+        verified_at = CASE
+            WHEN p_verification_status = 'verified' THEN now()
+            ELSE verified_at
+        END,
+
+        verified_by = CASE
+            WHEN p_verification_status = 'verified' THEN p_changed_by_user_id
+            ELSE verified_by
+        END
+
+    WHERE chauffeur_id = p_chauffeur_id;
+
+END;
+$$;
+
+/* ============================================================
+   FUNCTION SECURITY
+
+   Browser roles cannot execute this RPC directly.
+   Only the protected server-side Admin API may call it using
+   the service_role database credentials.
+============================================================ */
+
+REVOKE ALL
+ON FUNCTION public.update_chauffeur_compliance_verification(
+    UUID,
+    public.chauffeur_verification_status,
+    TEXT,
+    UUID
+)
+FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE
+ON FUNCTION public.update_chauffeur_compliance_verification(
+    UUID,
+    public.chauffeur_verification_status,
+    TEXT,
+    UUID
+)
+TO service_role;
+
+/* =================================================================================================
+     End WHOLE-CHAUFFEUR COMPLIANCE VERIFICATION
+ =================================================================================================*/
+
+/* ============================================================
+   CHAUFFEUR COMPLIANCE ELIGIBILITY
+
+   Purpose:
+   Checks whether a chauffeur meets the compliance requirements
+   for receiving or claiming a booking.
+
+   Required:
+   - Overall compliance status is verified.
+   - Driving licence is verified and valid.
+   - Chauffeurskaart is verified and valid.
+
+   Both documents must be valid today and on the pickup date.
+
+   This function does not modify any chauffeur or booking data.
+============================================================ */
+
+CREATE OR REPLACE FUNCTION public.is_chauffeur_compliance_eligible(
+    p_chauffeur_id UUID,
+    p_pickup_date DATE
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+VOLATILE
+SECURITY INVOKER
+SET search_path = ''
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.chauffeur_compliance AS cc
+        WHERE cc.chauffeur_id = p_chauffeur_id
+          AND p_pickup_date IS NOT NULL
+          AND cc.verification_status = 'verified'
+
+          /* ===== Driving licence eligibility ===== */
+          AND EXISTS (
+              SELECT 1
+              FROM public.chauffeur_documents AS d
+              WHERE d.chauffeur_id = cc.chauffeur_id
+                AND d.document_type = 'driving_license'
+                AND d.verification_status = 'verified'
+                AND d.valid_until >= CURRENT_DATE
+                AND d.valid_until >= p_pickup_date
+          )
+
+          /* ===== Chauffeurskaart eligibility ===== */
+          AND EXISTS (
+              SELECT 1
+              FROM public.chauffeur_documents AS d
+              WHERE d.chauffeur_id = cc.chauffeur_id
+                AND d.document_type = 'chauffeur_card'
+                AND d.verification_status = 'verified'
+                AND d.valid_until >= CURRENT_DATE
+                AND d.valid_until >= p_pickup_date
+          )
+    );
+$$;
+
+/* ============================================================
+   FUNCTION SECURITY
+
+   Prevent direct execution through ordinary browser roles.
+   The trusted database booking functions will reuse this check.
+============================================================ */
+
+REVOKE ALL
+ON FUNCTION public.is_chauffeur_compliance_eligible(UUID, DATE)
+FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE
+ON FUNCTION public.is_chauffeur_compliance_eligible(UUID, DATE)
+TO service_role;
+
+/* =================================================================================================
+     End CHAUFFEUR COMPLIANCE ELIGIBILITY
+ =================================================================================================*/
+
 /* =================================================================================================
    FUNCTION PURPOSE
 
@@ -10231,7 +10514,12 @@ DECLARE
        v_ means "variable".
        They exist only while this function is running.
     -----------------------------------------------------------*/
-
+    /* Stores the chauffeur assigned before the booking is updated.
+    Used to distinguish a new assignment from an existing one. */
+    v_existing_chauffeur_id UUID;
+    /* Stores the booking status before the requested update.
+    Used to detect when an existing booking becomes active. */
+    v_existing_status public.booking_status;
     -- Stores the booking pickup date.
     v_pickup_date DATE;
     -- Stores the booking pickup time.
@@ -10250,11 +10538,18 @@ BEGIN
        FOR UPDATE locks this booking row until the transaction  finishes.
        This prevents two admin actions from changing the same  booking simultaneously.
     ----------------------------------------------------------- */
+
+    /* Read and lock the existing booking, including its current status.
+    The original status allows us to detect booking reactivation. */
     SELECT
+        chauffeur_id,
+        status,
         pickup_date,
         pickup_time,
         estimated_duration_minutes
     INTO
+        v_existing_chauffeur_id,
+        v_existing_status,
         v_pickup_date,
         v_pickup_time,
         v_duration_minutes
@@ -10302,6 +10597,53 @@ BEGIN
         )
     ) THEN
         RAISE EXCEPTION 'The selected vehicle does not belong to the chauffeur.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* ============================================================
+    NEW CHAUFFEUR ASSIGNMENT - COMPLIANCE ELIGIBILITY
+
+    Checks compliance when a chauffeur is assigned for the first
+    time or replaces the previously assigned chauffeur.
+
+    The chauffeur must have verified compliance and both required
+    documents must be valid today and on the booking pickup date.
+
+    Existing assignments are preserved during unrelated edits.
+    Cancellation and rejection remain possible.
+    ============================================================ */
+
+    IF p_chauffeur_id IS NOT NULL
+    AND p_status NOT IN ('cancelled', 'rejected')
+    AND v_existing_chauffeur_id IS DISTINCT FROM p_chauffeur_id
+    AND NOT public.is_chauffeur_compliance_eligible(p_chauffeur_id, v_pickup_date)
+    THEN
+        RAISE EXCEPTION
+            'Chauffeur compliance is not valid for this booking pickup date.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* ============================================================
+    BOOKING ACTIVATION - CHAUFFEUR COMPLIANCE
+
+    Rechecks compliance when an existing booking becomes active,
+    even if its chauffeur and pickup date have not changed.
+
+    Covers pending, cancelled, rejected and completed bookings
+    transitioning to accepted or confirmed.
+
+    Unrelated edits and completion of existing journeys remain
+    possible without triggering this check.
+
+    ============================================================ */
+
+    IF p_chauffeur_id IS NOT NULL
+    AND p_status IN ('accepted', 'confirmed')
+    AND v_existing_status NOT IN ('accepted', 'confirmed')
+    AND NOT public.is_chauffeur_compliance_eligible(p_chauffeur_id, v_pickup_date)
+    THEN
+        RAISE EXCEPTION
+            'Chauffeur compliance is not valid for this booking pickup date.'
         USING ERRCODE = '22023';
     END IF;
 
@@ -10487,7 +10829,9 @@ DECLARE
        v_ means that this is a local function variable.
     ======================================================== */
     v_client_id UUID;
-
+    /* Stores the original assignment and pickup date before Admin edits the booking. */
+    v_existing_chauffeur_id UUID;
+    v_existing_pickup_date DATE;
 BEGIN
     /* ========================================================
        SECTION 1: FIND AND LOCK THE BOOKING
@@ -10501,12 +10845,13 @@ BEGIN
        transaction finishes. This prevents two admin changes from
        editing the same booking simultaneously.
     ======================================================== */
-    SELECT client_id
-    INTO v_client_id
+
+    /* Read and lock the existing booking before changing its assignment or pickup date. */
+    SELECT client_id, chauffeur_id, pickup_date
+    INTO v_client_id, v_existing_chauffeur_id, v_existing_pickup_date
     FROM public.bookings
     WHERE id = p_booking_id
     FOR UPDATE;
-
 
     /* ========================================================
        SECTION 2: CHECK THAT THE BOOKING EXISTS
@@ -10526,6 +10871,32 @@ BEGIN
         USING ERRCODE = 'P0002';
     END IF;
 
+    /* ============================================================
+    PICKUP DATE CHANGE - CHAUFFEUR COMPLIANCE
+
+    When Admin changes the pickup date of an existing booking,
+    the assigned chauffeur must remain eligible on the new date.
+
+    New chauffeur assignments are checked separately by
+    update_booking_admin_assignment.
+
+    Unrelated edits, cancellation, rejection and completion
+    remain possible without triggering this check.
+
+    p_pickup_date IS DISTINCT FROM v_existing_pickup_date:
+        PostgreSQL uses this to determine whether the requested pickup date differs from the original date.
+    ============================================================ */
+
+    IF p_chauffeur_id IS NOT NULL
+    AND p_chauffeur_id = v_existing_chauffeur_id
+    AND p_pickup_date IS DISTINCT FROM v_existing_pickup_date
+    AND p_status IN ('pending', 'accepted', 'confirmed')
+    AND NOT public.is_chauffeur_compliance_eligible(p_chauffeur_id, p_pickup_date)
+    THEN
+        RAISE EXCEPTION
+            'Chauffeur compliance is not valid for this booking pickup date.'
+        USING ERRCODE = '22023';
+    END IF;
 
     /* ========================================================
        SECTION 3: UPDATE THE CLIENT

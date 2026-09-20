@@ -317,10 +317,18 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         }
 
         /* ========================================================
-        22023 means that our database function rejected invalid
-        assignment information.
+        DATABASE VALIDATION ERRORS
+
+        Returns a specific message when chauffeur compliance
+        prevents an assignment, while preserving existing
+        booking validation behaviour.
         ======================================================== */
         if (error.code === "22023") {
+            /* A chauffeur must have valid compliance and required documents. */
+            if (error.message === "Chauffeur compliance is not valid for this booking pickup date.") {
+                return NextResponse.json({ message: error.message }, { status: 400 });
+            }
+
             if (error.message.includes("crosses midnight")) {
                 return NextResponse.json(
                     { message: "This journey crosses midnight and cannot yet create a busy period." },

@@ -222,7 +222,12 @@ async function updateBookingAdminFields(formData: FormData) {
     if (error) {
         console.error("Could not update booking assignment:", error);
         if (error.code === "23P01") {redirect("/admin/bookings?error=chauffeur-time-conflict"); }
+
+        /* Displays the specific error when a chauffeur fails booking compliance checks. */
         if (error.code === "22023") {
+            if (error.message.includes("Chauffeur compliance is not valid for this booking pickup date.")) {
+                redirect("/admin/bookings?error=chauffeur-compliance-invalid");
+            }
             if (error.message.includes("crosses midnight")) { redirect("/admin/bookings?error=journey-crosses-midnight"); }
             redirect("/admin/bookings?error=assignment-required");
         }
@@ -428,6 +433,8 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                 {pageMessage.error === "assignment-required" && ( <p className={pageStyles.errorMsgPage}>An active booking requires a chauffeur and matching vehicle.</p>)}
                 {pageMessage.error === "chauffeur-unavailable" && ( <p className={pageStyles.errorMsgPage}> The selected chauffeur is not operationally available. </p>)}
                 {pageMessage.error === "default-vehicle-unavailable" && (<p className={pageStyles.errorMsgPage}>The selected chauffeur&apos;s default vehicle is not operationally available. </p>)}
+                {/* Explains why the selected chauffeur cannot be assigned to this booking. */}
+                {pageMessage.error === "chauffeur-compliance-invalid" && (<p className={pageStyles.errorMsgPage}>Chauffeur compliance is not valid for this booking pickup date.</p>)}
 
                 {/* Mobile booking cards */}
                 <div className="mt-10 grid gap-4 lg:hidden">

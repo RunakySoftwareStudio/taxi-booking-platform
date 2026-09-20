@@ -784,6 +784,14 @@ export const translations = {
       tr: "Rezervasyon durumu güncellenemedi. Lütfen tekrar deneyin.",
       fa: "وضعیت رزرو به‌روزرسانی نشد. لطفاً دوباره تلاش کنید.",
     },
+    /* Explains why a chauffeur cannot accept a booking when compliance is invalid. */
+    chauffeurComplianceInvalidError: {
+      en: "Chauffeur compliance is not valid for this booking pickup date.",
+      nl: "De chauffeur voldoet niet aan de vereisten voor de ophaaldatum van deze boeking.",
+      ar: "اعتماد أهلية السائق غير صالح في تاريخ الانطلاق المحدد لهذا الحجز.",
+      tr: "Şoförün uygunluğu bu rezervasyonun alınış tarihinde geçerli değil.",
+      fa: "تأیید صلاحیت راننده برای تاریخ سوار شدن این رزرو معتبر نیست.",
+    },
     emailLabel: {
       en: "Email",
       nl: "E-mail",
