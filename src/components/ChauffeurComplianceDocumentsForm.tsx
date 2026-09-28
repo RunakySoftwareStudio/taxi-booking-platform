@@ -69,6 +69,12 @@ export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedD
     /* Connects the styled file-selection button to the hidden browser input. */
     const documentInputId = `chauffeur-document-${chauffeurId}`;
 
+    /* Groups uploaded documents by type while preserving their existing newest-first order. */
+    const groupedDocuments = uploadedDocuments.reduce<Record<string, ChauffeurDocumentRow[]>>((groups, document) => {
+        (groups[document.document_type] ??= []).push(document);
+        return groups;
+    }, {});
+
     /* Validates the selected document before it is sent to the server. */
     function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
         const nextFile = event.target.files?.[0] ?? null;
@@ -300,74 +306,76 @@ export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedD
 
                 </form>
 
-                {/* Shows documents already uploaded for this chauffeur. */}
+                {/* ============================================================
+                    GROUPED CHAUFFEUR DOCUMENTS
+
+                    Groups the chauffeur's uploaded documents into expandable
+                    categories while preserving document history and actions.
+                ============================================================ */}
                 <div className="mt-8 border-t border-cyan-400/20 pt-6">
-                    <h3 className="text-lg font-semibold text-white text-start">
-                        Uploaded documents
-                    </h3>
+                    <h3 className="text-lg font-semibold text-white text-start">Uploaded documents</h3>
+                    <p className="mt-2 text-sm text-slate-400 text-start">Select a category to view its uploaded documents.</p>
 
                     {uploadedDocuments.length === 0 ? (
-                        <p className="mt-3 text-sm text-slate-400 text-start">
-                            No compliance documents uploaded yet.
-                        </p>
+                        <p className="mt-4 text-sm text-slate-400 text-start">No compliance documents uploaded yet.</p>
                     ) : (
                         <div className="mt-4 grid gap-3">
-                            {uploadedDocuments.map((document) => (
-                                <div key={document.id} className="rounded-xl border border-cyan-400/20 bg-slate-950/40 p-4 text-start" >
-                                    <div className="flex flex-wrap items-start justify-between gap-3">
-                                        <div>
-                                            <p className="font-semibold text-white">
-                                                {getDocumentTypeLabel(document.document_type)}
-                                            </p>
+                            {Object.entries(groupedDocuments).map(([documentType, categoryDocuments]) => (
+                                <details key={documentType} className="group rounded-xl border border-cyan-400/20 bg-slate-950/40 text-start">
 
-                                            <p className="mt-1 text-sm text-slate-300 break-all">
-                                                {document.original_file_name}
-                                            </p>
+                                    {/* Shows the document category, count and pending-review state. */}
+                                    <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4 text-slate-200">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-cyan-300 transition-transform group-open:rotate-90">▶</span>
+                                            <span className="font-semibold">{getDocumentTypeLabel(documentType)}</span>
                                         </div>
 
-                                        <span className="rounded-full border border-yellow-400/30 px-3 py-1 text-xs font-semibold text-yellow-200">
-                                            {document.verification_status}
-                                        </span>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-xs text-slate-400">
+                                                {categoryDocuments.length} {categoryDocuments.length === 1 ? "document" : "documents"}
+                                            </span>
+
+                                            {categoryDocuments.some((document) => document.verification_status === "pending_review") && (
+                                                <span className="rounded-full border border-yellow-400/30 px-3 py-1 text-xs text-yellow-200">Pending review</span>
+                                            )}
+                                        </div>
+                                    </summary>
+
+                                    {/* Shows all uploaded versions within this document category. */}
+                                    <div className="grid gap-3 border-t border-cyan-400/20 p-4">
+                                        {categoryDocuments.map((document) => (
+                                            <div key={document.id} className="rounded-xl border border-cyan-400/20 bg-slate-900/60 p-4">
+                                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="break-all font-semibold text-white">{document.original_file_name}</p>
+                                                        <p className="mt-3 text-xs text-slate-400">Uploaded: {new Date(document.uploaded_at).toLocaleString()}</p>
+
+                                                        {document.valid_until && (
+                                                            <p className="mt-1 text-xs text-slate-400">Valid until: {document.valid_until}</p>
+                                                        )}
+                                                    </div>
+
+                                                    <span className="rounded-full border border-yellow-400/30 px-3 py-1 text-xs font-semibold text-yellow-200">
+                                                        {document.verification_status}
+                                                    </span>
+                                                </div>
+
+                                                {/* Keeps the chauffeur's existing private document actions. */}
+                                                <div className="mt-3 flex flex-wrap gap-3">
+                                                    <button type="button" onClick={() => handleViewDocument(document.id)} disabled={viewingDocumentId === document.id} className="rounded-xl border border-cyan-400/40 px-3 py-1.5 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-50">
+                                                        {viewingDocumentId === document.id ? "Opening..." : "View document"}
+                                                    </button>
+
+                                                    {document.verification_status === "pending_review" && (
+                                                        <button type="button" onClick={() => handleDeleteDocument(document.id)} disabled={deletingDocumentId === document.id} className="rounded-xl border border-red-400/40 px-3 py-1.5 text-sm font-semibold text-red-200 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50">
+                                                            {deletingDocumentId === document.id ? "Deleting..." : "Delete"}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-
-                                    <p className="mt-3 text-xs text-slate-400">
-                                        Uploaded: {new Date(document.uploaded_at).toLocaleString()}
-                                    </p>
-
-                                    {document.valid_until && (
-                                        <p className="mt-1 text-xs text-slate-400">
-                                            Valid until: {document.valid_until}
-                                        </p>
-                                    )}
-                                    {/* ============================================================
-                                        CHAUFFEUR DOCUMENT ACTIONS
-
-                                        View document:
-                                        - available for every uploaded document;
-                                        - opens the chauffeur's own private file through a temporary
-                                        signed URL created by the protected chauffeur API.
-
-                                        Delete:
-                                        - available only while the document is pending review;
-                                        - verified, rejected and superseded documents remain stored
-                                        as compliance history and cannot be deleted by chauffeur.
-                                    ============================================================ */}
-                                    <div className="mt-3 flex flex-wrap gap-3">
-                                        <button type="button" onClick={() => handleViewDocument(document.id)} disabled={viewingDocumentId === document.id}
-                                            className="rounded-xl border border-cyan-400/40 px-3 py-1.5 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                        >
-                                            {viewingDocumentId === document.id ? "Opening..." : "View document"}
-                                        </button>
-
-                                        {document.verification_status === "pending_review" && (
-                                            <button type="button" onClick={() => handleDeleteDocument(document.id)} disabled={deletingDocumentId === document.id}
-                                                className="rounded-xl border border-red-400/40 px-3 py-1.5 text-sm font-semibold text-red-200 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                {deletingDocumentId === document.id ? "Deleting..." : "Delete"}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                                </details>
                             ))}
                         </div>
                     )}
