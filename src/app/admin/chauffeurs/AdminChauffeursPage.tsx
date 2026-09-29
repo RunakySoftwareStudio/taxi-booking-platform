@@ -163,71 +163,6 @@ async function changeChauffeurActiveStatus(formData: FormData) {
     redirect("/admin/chauffeurs?success=chauffeur-deactivated");
 }
 
-async function addChauffeur(formData: FormData) {
-    "use server";
-
-    const name = String(formData.get("name") || "").trim();
-    const email = String(formData.get("email") || "").trim().toLowerCase();
-    const phone = String(formData.get("phone") || "").trim();
-    const companyName = String(formData.get("companyName") || "").trim();
-    const operatorId = String(formData.get("operatorId") || "").trim();
-    const licenseNumber = String(formData.get("licenseNumber") || "").trim();
-    const serviceArea = String(formData.get("serviceArea") || "").trim();
-    const acceptsPets = formData.get("acceptsPets") === "on";
-
-    if (!name || !email || !phone) {  redirect("/admin/chauffeurs?error=missing-fields");}
-
-    /* Validate the optional taxi operator before creating the chauffeur. */
-    if (operatorId) {
-        const { data: operatorRow, error: operatorError } = await supabaseAdmin
-            .from("taxi_operators")
-            .select("id")
-            .eq("id", operatorId)
-            .maybeSingle();
-
-        if (operatorError) {
-            console.error("Could not validate taxi operator:", operatorError);
-            redirect("/admin/chauffeurs?error=operator-validation-failed");
-        }
-
-        if (!operatorRow) {
-            redirect("/admin/chauffeurs?error=operator-not-found");
-        }
-    }
-
-    /* Create the chauffeur. */
-    const { error } = await supabaseAdmin.from("chauffeurs").insert({
-        name,
-        email,
-        phone,
-        company_name: companyName || null,
-        operator_id: operatorId || null,
-        license_number: licenseNumber || null,
-        service_area: serviceArea || null,
-        account_status: "pending_approval",
-        accepts_pets: acceptsPets
-    });
-
-    if (error) {
-        console.error("Could not add chauffeur:", error);
-        if (error.code === "23505") { redirect("/admin/chauffeurs?error=duplicate-email");  }
-        redirect("/admin/chauffeurs?error=add-chauffeur-failed");
-    }
-
-    //So after you add/update/delete a chauffeur, the page should show fresh data.
-    revalidatePath("/admin/chauffeurs"); 
-
-    /*================================================
-        //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
-        This also sends the user back to the chauffeurs page, but with an extra query parameter:
-        /admin/chauffeurs?success=chauffeur-added
-        The browser becomes:http://localhost:3000/admin/chauffeurs?success=chauffeur-added
-        This part: ?success=chauffeur-added
-        can be used to show a success message. For example: {success === "chauffeur-added" && ( <p >  Chauffeur added successfully. </p>)}
-    =============================================*/
-    redirect("/admin/chauffeurs?success=chauffeur-added");
-}
-
 export default async function AdminChauffeursPage({ searchParams}: AdminChauffeursPageProps) {
     const pageMessage = await searchParams;
     
@@ -238,16 +173,6 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
             rating, accepts_pets, created_at,
             taxi_operators (company_name, verification_status)`)
         .order("created_at", { ascending: false });
-
-        /* Load taxi operators for the Add chauffeur form. */
-        const { data: taxiOperators, error: taxiOperatorsError } = await supabaseAdmin
-            .from("taxi_operators")
-            .select("id, company_name, verification_status")
-            .order("company_name", { ascending: true });
-
-        if (taxiOperatorsError) {
-            console.error("Could not load taxi operators:", taxiOperatorsError);
-        }
 
     const chauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
 
@@ -287,6 +212,19 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 <p className={pageStyles.pageLabelUpper}> Admin </p>
                 <h1 className={pageStyles.pageTitle}>Chauffeurs</h1>
                 <p className={pageStyles.pageDescription}> Add chauffeurs and view chauffeur accounts registered in the platform. </p>
+
+                {/* Opens the separate create and compliance-monitoring pages. */}
+                <div className="mt-4 flex flex-wrap gap-3">
+                    <Link href="/admin/chauffeurs/new" className={`inline-flex items-center justify-center ${formStyles.primaryButtonDP}`} >
+                        Add chauffeur
+                    </Link>
+
+                    {/* Opens the chauffeur compliance expiry and verification monitoring page. */}
+                    <Link href="/admin/chauffeurs/compliance" className={`inline-flex items-center justify-center ${formStyles.primaryButtonDP}`} >
+                        Compliance monitoring
+                    </Link>
+                </div>
+
                 {pageMessage.success === "chauffeur-added" && (<p className={pageStyles.successMsgPage}> Chauffeur added successfully. </p> )}
                 {pageMessage.success === "status-updated" && ( <p className={pageStyles.successMsgPage}> Chauffeur status updated successfully. </p>)}
                 {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}>  Please fill in all required chauffeur fields.</p> )}
@@ -298,50 +236,6 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 {pageMessage.error === "deactivate-chauffeur-failed" && (<p className={pageStyles.errorMsgPage}> Could not deactivate chauffeur. Please try again. </p>)}
                 {pageMessage.success === "chauffeur-deactivated" && (<p className={pageStyles.successMsgPage}> Chauffeur deactivated successfully.</p>)}
                 {pageMessage.error === "chauffeur-status-change-failed" && ( <p className={pageStyles.errorMsgPage}> Could not change chauffeur status. Please try again. </p>)}
-
-                <form action={addChauffeur} className={formStyles.form}>
-                    <div className={formStyles.formDivGridCol3}>
-                        <label className="block">
-                            <span className={formStyles.span}> Name </span>
-                            <input name="name" required placeholder="Name" className={formStyles.selectWFull}/>
-                        </label>
-                        <label className="block">
-                            <span className={formStyles.span}> Email </span>
-                            <input name="email" type="email" required placeholder="Email" className={formStyles.selectWFull}/>
-                        </label>
-                        <label className="block">
-                            <span className={formStyles.span}> Phone </span>
-                            <input name="phone" required placeholder="Phone" className={formStyles.selectWFull}/>
-                        </label>
-                        <label className="block">
-                            <span className={formStyles.span}> License number </span>
-                            <input name="licenseNumber" placeholder="License number" className={formStyles.selectWFull}/>
-                        </label>                       
-                        <label className="block">
-                            <span className={formStyles.span}> Service area </span>
-                            <input name="serviceArea" placeholder="Service area" className={formStyles.selectWFull}/>
-                        </label>
-                        <label className="block">
-                            <span className={formStyles.span}> Taxi operator </span>
-                            <select name="operatorId" defaultValue="" className={formStyles.selectWFull}>
-                                <option value="">No taxi operator assigned</option>
-
-                                {(taxiOperators ?? []).map((operator) => (
-                                    <option key={operator.id} value={operator.id}>
-                                        {operator.company_name} ({operator.verification_status})
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label className="flex items-center gap-3 text-sm text-white">                       
-                                <span className="h-5 w-5"> <input type="checkbox" name="acceptsPets"  />  </span> 
-                                Accepts pets     
-                        </label>
-                    </div>
-                    <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}> 
-                        Add chauffeur 
-                    </button>
-                </form>
 
                 {error && (<p className={pageStyles.errorMsgPage}> Could not load chauffeurs. </p> )}
                 
