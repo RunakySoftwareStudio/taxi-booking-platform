@@ -28,14 +28,14 @@ export async function POST(request: Request) {
     const name = String(body.name || "").trim();
     const email = String(body.email || "").trim().toLowerCase();
     const phone = String(body.phone || "").trim();
+    const address = String(body.address || "").trim();
     const operatorId = String(body.operatorId || "").trim();
     const serviceArea = String(body.serviceArea || "").trim();
-    const accountStatus = String(body.accountStatus || "").trim();
     const operationalStatus = String(body.operationalStatus || "").trim();
     const statusReason = String(body.statusReason || "").trim();
     const acceptsPets = Boolean(body.acceptsPets);
 
-    if (!name || !email || !phone || !accountStatus || !operationalStatus) {
+    if (!name || !email || !phone || !operationalStatus) {
         return NextResponse.json({ message: "Please fill in all required fields." }, { status: 400 });
     }
 
@@ -53,18 +53,6 @@ export async function POST(request: Request) {
         }
 
         if (!operatorRow) { return NextResponse.json({ message: "Selected taxi operator was not found." }, { status: 400 }); }
-    }
-
-    /* Validate chauffeur account status against the database enum. */
-    const { data: allowedStatuses, error: statusesError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status" });
-
-    if (statusesError) {
-        console.error("Could not load chauffeur account statuses:", statusesError);
-        return NextResponse.json({ message: "Could not validate chauffeur account status." }, { status: 500 });
-    }
-
-    if (!((allowedStatuses ?? []) as string[]).includes(accountStatus)) {
-        return NextResponse.json({ message: "Invalid account status." }, { status: 400 });
     }
 
     /* Validate chauffeur operational status against the database enum. */
@@ -89,9 +77,11 @@ export async function POST(request: Request) {
             name,
             email,
             phone,
+            address: address || null,
             operator_id: operatorId || null,
             service_area: serviceArea || null,
-            account_status: accountStatus,
+            /* Every newly created chauffeur starts pending until compliance is completed. */
+            account_status: "pending_approval",
             accepts_pets: acceptsPets,
             operational_status: operationalStatus,
             status_reason: operationalStatus === "available" ? null : statusReason || null,

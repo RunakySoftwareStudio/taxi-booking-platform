@@ -180,6 +180,10 @@ CREATE TABLE chauffeurs (
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   phone TEXT NOT NULL,
+
+  /* Private chauffeur address stored as one flexible value for international formats. */
+  address TEXT,
+
   /* Taxi business responsible for this chauffeur. */
   operator_id UUID REFERENCES taxi_operators(id),
   company_name TEXT,
@@ -9143,14 +9147,21 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    /*
-     * After deleting a vehicle, recheck the chauffeur who
-     * previously owned it.
-     */
+    /* After deleting a vehicle, recheck the previous chauffeur only
+    when that chauffeur still exists.
+
+    During chauffeur deletion, vehicles are removed by CASCADE and
+    the chauffeur row itself is no longer available for reconciliation. */
     IF TG_OP = 'DELETE' THEN
-        PERFORM public.ensure_single_vehicle_default(
-            OLD.chauffeur_id
-        );
+        IF EXISTS (
+            SELECT 1
+            FROM public.chauffeurs
+            WHERE id = OLD.chauffeur_id
+        ) THEN
+            PERFORM public.ensure_single_vehicle_default(
+                OLD.chauffeur_id
+            );
+        END IF;
 
         RETURN OLD;
     END IF;
@@ -10065,6 +10076,58 @@ TO service_role;
     End CHAUFFEUR COMPLIANCE ELIGIBILITY
  ===================================================================================================*/
 
+ /* ============================================================
+   CHAUFFEUR ACCOUNT APPROVAL COMPLIANCE GUARD
+
+   Prevents a chauffeur from entering the approved account
+   state until required compliance documents are verified and
+   currently valid.
+============================================================ */
+
+CREATE OR REPLACE FUNCTION public.enforce_chauffeur_approval_compliance()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    /* A new chauffeur cannot start as approved because required
+       compliance documents do not exist before chauffeur creation. */
+    IF TG_OP = 'INSERT' AND NEW.account_status = 'approved' THEN
+        RAISE EXCEPTION
+            'Chauffeur cannot be approved before compliance verification is complete.'
+        USING ERRCODE = '23514';
+    END IF;
+
+    /* Protect every transition into the approved state. */
+    IF TG_OP = 'UPDATE'
+       AND NEW.account_status = 'approved'
+       AND OLD.account_status IS DISTINCT FROM 'approved'
+       AND NOT public.is_chauffeur_compliance_eligible(NEW.id, CURRENT_DATE)
+    THEN
+        RAISE EXCEPTION
+            'Chauffeur cannot be approved because required compliance documents are missing, unverified, or expired.'
+        USING ERRCODE = '23514';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+/* Apply the approval rule during chauffeur creation and
+   account-status changes. */
+DROP TRIGGER IF EXISTS enforce_chauffeur_approval_compliance
+ON public.chauffeurs;
+
+CREATE TRIGGER enforce_chauffeur_approval_compliance
+BEFORE INSERT OR UPDATE OF account_status
+ON public.chauffeurs
+FOR EACH ROW
+EXECUTE FUNCTION public.enforce_chauffeur_approval_compliance();
+/* =================================================================================================
+    End CHAUFFEUR ACCOUNT APPROVAL COMPLIANCE GUARD
+ ===================================================================================================*/
 
 /* =================================================================================================
    FUNCTION PURPOSE

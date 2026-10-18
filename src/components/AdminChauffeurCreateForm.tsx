@@ -17,19 +17,18 @@ type TaxiOperatorOption = {
 };
 
 type AdminChauffeurCreateFormProps = {
-    accountStatusOptions: string[];
     taxiOperatorOptions: TaxiOperatorOption[];
 };
 
-export default function AdminChauffeurCreateForm({ accountStatusOptions, taxiOperatorOptions }: AdminChauffeurCreateFormProps) {
+export default function AdminChauffeurCreateForm({taxiOperatorOptions }: AdminChauffeurCreateFormProps) {
     const router = useRouter();
 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
+    const [address, setAddress] = useState("");
     const [operatorId, setOperatorId] = useState("");
     const [serviceArea, setServiceArea] = useState("");
-    const [accountStatus, setAccountStatus] = useState("pending_approval");
     const [operationalStatus, setOperationalStatus] = useState("available");
     const [statusReason, setStatusReason] = useState("");
     const [acceptsPets, setAcceptsPets] = useState(false);
@@ -47,7 +46,7 @@ export default function AdminChauffeurCreateForm({ accountStatusOptions, taxiOpe
             const response = await fetch("/api/admin/chauffeurs", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, phone, operatorId, serviceArea, accountStatus, operationalStatus, statusReason, acceptsPets }),
+                body: JSON.stringify({ name, email, phone, address, operatorId, serviceArea, operationalStatus, statusReason, acceptsPets }),
             });
 
             const result = await response.json();
@@ -86,6 +85,11 @@ export default function AdminChauffeurCreateForm({ accountStatusOptions, taxiOpe
                         <input value={phone} onChange={(event) => setPhone(event.target.value)} required className={formStyles.inputWFullCyan}/>
                     </label>
 
+                    {/* Private chauffeur address stored as one flexible international-format value. */}
+                    <label className={formStyles.label}>Address
+                        <input value={address} onChange={(event) => setAddress(event.target.value)} className={formStyles.inputWFullCyan}/>
+                    </label>
+
                     <label className={formStyles.label}>Taxi operator
                         <select value={operatorId} onChange={(event) => setOperatorId(event.target.value)} className={formStyles.selectWFull}>
                             <option value="">No taxi operator assigned</option>
@@ -97,14 +101,6 @@ export default function AdminChauffeurCreateForm({ accountStatusOptions, taxiOpe
 
                     <label className={formStyles.label}>Service area
                         <input value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} className={formStyles.inputWFullCyan}/>
-                    </label>
-
-                    <label className={formStyles.label}>Account status
-                        <select value={accountStatus} onChange={(event) => setAccountStatus(event.target.value)} required className={formStyles.selectWFull}>
-                            {accountStatusOptions.map((status) => (
-                                <option key={status} value={status}>{status.replaceAll("_", " ")}</option>
-                            ))}
-                        </select>
                     </label>
 
                     <label className={formStyles.label}>Operational status

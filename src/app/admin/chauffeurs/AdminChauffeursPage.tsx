@@ -28,11 +28,17 @@ type ChauffeurRow = {
     license_number: string | null;
     service_area: string | null;
     account_status: string;
+    compliance_monitoring_status?: string;
     operational_status: string;
     status_reason: string | null;
     rating: number;
     accepts_pets: boolean; 
     created_at: string;
+};
+
+type ChauffeurComplianceMonitoringRow = {
+    chauffeur_id: string;
+    monitoring_status: string;
 };
 
 /**
@@ -100,6 +106,20 @@ function getChauffeurOperationalTextClass(operationalStatus: string) {
     return operationalStatus === "available"
         ? "text-green-300"
         : "text-red-300";
+}
+
+/**
+ * canUseQuickAccountAction
+ *
+ * Approved chauffeurs can always be deactivated.
+ * Pending, inactive or suspended chauffeurs can only move to
+ * approved when their compliance is currently valid.
+ */
+function canUseQuickAccountAction(chauffeur: ChauffeurRow) {
+    if (chauffeur.account_status === "approved") { return true; }
+
+    return chauffeur.compliance_monitoring_status === "ok"
+        || chauffeur.compliance_monitoring_status === "warning";
 }
 
 /* ============================================================
@@ -174,7 +194,46 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
             taxi_operators (company_name, verification_status)`)
         .order("created_at", { ascending: false });
 
-    const chauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
+    const baseChauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
+
+    /* Load the current compliance monitoring state for the chauffeur action buttons. */
+    const { data: complianceMonitoring, error: complianceMonitoringError } = await supabaseAdmin
+        .from("chauffeur_compliance_monitoring")
+        .select("chauffeur_id, monitoring_status");
+
+    if (complianceMonitoringError) {
+        console.error("Could not load chauffeur compliance monitoring:", complianceMonitoringError);
+    }
+
+    /* Match each chauffeur with the current compliance monitoring status.
+    Missing monitoring information is treated as critical for safety. */
+    const monitoringRows = (complianceMonitoring ?? []) as ChauffeurComplianceMonitoringRow[];
+    const complianceMonitoringByChauffeurId = new Map();
+    monitoringRows.forEach((row) => {
+        complianceMonitoringByChauffeurId.set(
+            row.chauffeur_id,
+            row.monitoring_status,
+        );
+    });
+
+    /**
+     * For every chauffeur in baseChauffeurRows:
+        create a new chauffeur object
+        copy all existing chauffeur information
+        add compliance_monitoring_status
+        find that status using the chauffeur ID
+        if no status can be found, treat the chauffeur as critical
+     */
+    const chauffeurRows = baseChauffeurRows.map((chauffeur) => {
+        //If we find a monitoring status use that status otherwise  use "critical"
+        //We deliberately choose "critical" as the fallback because this is a safety-sensitive situation.
+        const monitoringStatus =  complianceMonitoringByChauffeurId.get(chauffeur.id) ?? "critical";
+
+        return {
+            ...chauffeur,
+            compliance_monitoring_status: monitoringStatus,
+        };
+    });
 
     /*=============================================
     Sort chauffeur rows for the admin list.
@@ -316,14 +375,21 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                         <div className="mt-3 flex flex-wrap items-center gap-3">  
                             <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>  Details  </Link>
 
-                            <form action={changeChauffeurActiveStatus}>
-                                <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                                <input type="hidden" name="currentAccountStatus"  value={chauffeur.account_status} />
-                                <input type="hidden" name="nextAccountStatus"  value={getNextQuickAccountStatus(chauffeur.account_status)}  />
-                                <button type="submit"  className={ chauffeur.account_status === "approved" ? formStyles.deActiveDeleteButton : formStyles.activateButton  }  >
-                                {getQuickAccountStatusButtonText(chauffeur.account_status)}
+                            {/* Only allow approval/reactivation when chauffeur compliance is currently valid. */}
+                            {canUseQuickAccountAction(chauffeur) ? (
+                                <form action={changeChauffeurActiveStatus}>
+                                    <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+                                    <input type="hidden" name="currentAccountStatus" value={chauffeur.account_status} />
+                                    <input type="hidden" name="nextAccountStatus" value={getNextQuickAccountStatus(chauffeur.account_status)} />
+                                    <button type="submit" className={chauffeur.account_status === "approved" ? formStyles.deActiveDeleteButton : formStyles.activateButton}>
+                                        {getQuickAccountStatusButtonText(chauffeur.account_status)}
+                                    </button>
+                                </form>
+                            ) : (
+                                <button type="button" disabled className={`${formStyles.activateButton} cursor-not-allowed opacity-50`}>
+                                    Compliance required
                                 </button>
-                            </form>
+                            )}
                         </div>
                     </article>
                 ))}
@@ -408,14 +474,21 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                             <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
                                                 Details
                                             </Link>
-                                            <form action={changeChauffeurActiveStatus}>
-                                                <input type="hidden" name="chauffeurId" value={chauffeur.id} />
-                                                <input type="hidden" name="currentAccountStatus"  value={chauffeur.account_status} />
-                                                <input type="hidden" name="nextAccountStatus"  value={getNextQuickAccountStatus(chauffeur.account_status)}  />
-                                                <button type="submit"  className={ chauffeur.account_status === "approved" ? formStyles.deActiveDeleteButton : formStyles.activateButton  }  >
-                                                {getQuickAccountStatusButtonText(chauffeur.account_status)}
+                                            {/* Only allow approval/reactivation when chauffeur compliance is currently valid. */}
+                                            {canUseQuickAccountAction(chauffeur) ? (
+                                                <form action={changeChauffeurActiveStatus}>
+                                                    <input type="hidden" name="chauffeurId" value={chauffeur.id} />
+                                                    <input type="hidden" name="currentAccountStatus" value={chauffeur.account_status} />
+                                                    <input type="hidden" name="nextAccountStatus" value={getNextQuickAccountStatus(chauffeur.account_status)} />
+                                                    <button type="submit" className={chauffeur.account_status === "approved" ? formStyles.deActiveDeleteButton : formStyles.activateButton}>
+                                                        {getQuickAccountStatusButtonText(chauffeur.account_status)}
+                                                    </button>
+                                                </form>
+                                            ) : (
+                                                <button type="button" disabled className={`${formStyles.activateButton} cursor-not-allowed opacity-50`}>
+                                                    Compliance required
                                                 </button>
-                                            </form>
+                                            )}
                                         </div>
                                     </td>                                   
                                 </tr>

@@ -10,8 +10,6 @@ import AdminChauffeurCreateForm from "@/components/AdminChauffeurCreateForm";
 ============================================================ */
 
 export default async function AdminChauffeurNewPage() {
-    const { data: accountStatuses, error: statusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status" });
-    if (statusError) { console.error("Could not load chauffeur account statuses:", statusError); }
 
     const { data: taxiOperators, error: operatorsError } = await supabaseAdmin
         .from("taxi_operators")
@@ -30,7 +28,7 @@ export default async function AdminChauffeurNewPage() {
                 <p className={pageStyles.pageDescription}>Enter the chauffeur details first. Compliance documents can be added after the chauffeur has been created.</p>
 
                 {/* Creates the chauffeur, then redirects to the normal chauffeur detail page. */}
-                <AdminChauffeurCreateForm  accountStatusOptions={(accountStatuses ?? []) as string[]} taxiOperatorOptions={taxiOperators ?? []} />
+                <AdminChauffeurCreateForm taxiOperatorOptions={taxiOperators ?? []} />
 
                 {/* Compliance needs a real chauffeur_id, so it stays disabled for a new chauffeur. */}
                 <section className="mt-8 rounded-2xl border border-white/10 bg-slate-900/40 p-5 opacity-60">

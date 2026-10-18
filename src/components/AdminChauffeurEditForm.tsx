@@ -11,6 +11,7 @@ type ChauffeurForEdit = {
   name: string;
   email: string;
   phone: string;
+  address: string | null;
   operator_id: string | null;
   service_area: string | null;
   account_status: string;
@@ -53,6 +54,7 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
   const [name, setName] = useState(chauffeur.name);
   const [email, setEmail] = useState(chauffeur.email);
   const [phone, setPhone] = useState(chauffeur.phone);
+  const [address, setAddress] = useState(chauffeur.address ?? "");
   const [operatorId, setOperatorId] = useState(chauffeur.operator_id ?? "");
   const [serviceArea, setServiceArea] = useState(chauffeur.service_area ?? "");
   const [accountStatus, setAccountStatus] = useState(chauffeur.account_status);
@@ -74,7 +76,7 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
         const response = await fetch(`/api/admin/chauffeurs/${chauffeur.id}`, {
             method: "PATCH",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ name, email, phone, operatorId, serviceArea, accountStatus, acceptsPets, operationalStatus, statusReason}),
+            body: JSON.stringify({ name, email, phone, address, operatorId, serviceArea, accountStatus, acceptsPets, operationalStatus, statusReason}),
         });
 
         const result = await response.json();
@@ -109,6 +111,11 @@ export default function AdminChauffeurEditForm({ chauffeur, accountStatusOptions
 
             <label className={formStyles.label}> {getAdminChauffeurEditText("phoneLabel")}
               <input value={phone}  onChange={(event) => setPhone(event.target.value)} required  className={formStyles.inputWFullCyan}/>
+            </label>
+
+            {/* Private chauffeur address stored as one flexible international-format value. */}
+            <label className={formStyles.label}>Address
+              <input value={address} onChange={(event) => setAddress(event.target.value)} className={formStyles.inputWFullCyan}/>
             </label>
 
             <label className={formStyles.label}>

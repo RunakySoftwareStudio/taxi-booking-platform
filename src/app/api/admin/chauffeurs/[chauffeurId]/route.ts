@@ -25,6 +25,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const name = String(body.name || "").trim();
     const email = String(body.email || "").trim();
     const phone = String(body.phone || "").trim();
+    const address = String(body.address || "").trim();
     const operatorId = String(body.operatorId || "").trim();
     const serviceArea = String(body.serviceArea || "").trim();
     const accountStatus = String(body.accountStatus || "").trim();
@@ -113,6 +114,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         name,
         email,
         phone,
+        address: address || null,
         operator_id: operatorId || null,
         service_area: serviceArea || null,
         account_status: accountStatus,

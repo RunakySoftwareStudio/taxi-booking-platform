@@ -15,7 +15,7 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
 
   const { data: chauffeurRow, error } = await supabaseAdmin
     .from("chauffeurs")
-    .select('id, name, email, phone, operator_id, service_area, account_status, accepts_pets, operational_status, status_reason, status_changed_at')
+    .select('id, name, email, phone, address, operator_id, service_area, account_status, accepts_pets, operational_status, status_reason, status_changed_at')
     .eq("id", chauffeurId)
     .maybeSingle();
 
@@ -31,6 +31,16 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
 
   if (!chauffeurRow) { notFound(); }
 
+  /* Load the chauffeur's current compliance state for account approval controls. */
+  const { data: complianceMonitoringRow, error: complianceMonitoringError } = await supabaseAdmin
+    .from("chauffeur_compliance_monitoring")
+    .select("monitoring_status")
+    .eq("chauffeur_id", chauffeurId)
+    .maybeSingle();
+
+  if (complianceMonitoringError) {
+    console.error("Could not load chauffeur compliance monitoring:", complianceMonitoringError);
+  }
 
   const { data: accountStatuses, error: statusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "chauffeur_account_status" });
   if (statusError) { console.error("Could not load chauffeur account statuses:", statusError); }
@@ -92,6 +102,18 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
     throw new Error("Could not load chauffeur documents.");
   }
 
+  /* Approved remains available when:
+    - the chauffeur is already approved, or
+    - current compliance is valid or warning-only. */
+  const canApproveChauffeur =
+    chauffeurRow.account_status === "approved"
+    || complianceMonitoringRow?.monitoring_status === "ok"
+    || complianceMonitoringRow?.monitoring_status === "warning";
+
+  const availableAccountStatuses = ((accountStatuses ?? []) as string[]).filter(
+    (status) => status !== "approved" || canApproveChauffeur,
+  );
+
   return (
     <main className={pageStyles.main}>
       <div className={pageStyles.containerMedium}>
@@ -119,7 +141,7 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
         {/* Chauffeur details/edit form. */}
         <AdminChauffeurEditForm
           chauffeur={chauffeurRow}
-          accountStatusOptions={(accountStatuses ?? []) as string[]}
+          accountStatusOptions={availableAccountStatuses}
           taxiOperatorOptions={taxiOperators ?? []}
         />
 
