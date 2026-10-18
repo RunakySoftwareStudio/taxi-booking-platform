@@ -15,6 +15,7 @@ type DashboardCard = {
     title: string;
     description: string;
     href: string;
+    alertCount?: number;
 };
 
 /*
@@ -82,6 +83,26 @@ async function getApprovedChauffeursCount() {
 }
 
 /*
+    getPendingChauffeurChangeRequestsCount
+
+    Counts chauffeur profile-change requests that still require
+    administrator review.
+*/
+async function getPendingChauffeurChangeRequestsCount() {
+    const { count, error } = await supabaseAdmin
+        .from("chauffeur_change_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+
+    if (error) {
+        console.warn("Could not count pending chauffeur change requests:", error);
+        return 0;
+    }
+
+    return count || 0;
+}
+
+/*
     AdminDashboardPage is the main admin dashboard component.
 
     It is an async server component, so it can read Supabase data
@@ -99,6 +120,7 @@ export default async function AdminDashboardPage() {
         totalClients,
         totalChauffeurs,
         approvedChauffeurs,
+        pendingChauffeurChangeRequests,
         totalVehicles,
         totalOperators,
     ] = await Promise.all([
@@ -107,6 +129,7 @@ export default async function AdminDashboardPage() {
         getTableCount("clients"),
         getTableCount("chauffeurs"),
         getApprovedChauffeursCount(),
+        getPendingChauffeurChangeRequestsCount(),
         getTableCount("vehicles"),
         getTableCount("taxi_operators"),
     ]);
@@ -127,6 +150,7 @@ export default async function AdminDashboardPage() {
             title: `Chauffeurs (${totalChauffeurs})`,
             description: `Active chauffeurs: ${approvedChauffeurs}`,
             href: "/admin/chauffeurs",
+            alertCount: pendingChauffeurChangeRequests,
         },
         {
             title: `Taxi operators (${totalOperators})`,
@@ -189,7 +213,16 @@ export default async function AdminDashboardPage() {
                     <div className="mt-4 grid gap-6 md:grid-cols-3">
                         {dashboardCards.map((cardItem) => (
                             <Link key={cardItem.title} href={cardItem.href}  className={pageStyles.sectionCardCyan}  >
-                                <h2 className={pageStyles.pageLabel}> {cardItem.title}   </h2>
+                                {/* Shows a red badge when this Admin area has pending work. */}
+                                <div className="flex items-center gap-2">
+                                    <h2 className={pageStyles.pageLabel}>{cardItem.title}</h2>
+
+                                    {(cardItem.alertCount ?? 0) > 0 && (
+                                        <span className="inline-flex items-center justify-center rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+                                            {cardItem.alertCount} {cardItem.alertCount === 1 ? "change request" : "change requests"}
+                                        </span>
+                                    )}
+                                </div>
                                 <p className={pageStyles.pageDescription}> {cardItem.description}  </p>
                             </Link>
                         ))}

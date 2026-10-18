@@ -456,6 +456,7 @@ export const translations = {
 
       nameLabel: { en: "Name", nl: "Naam", ar: "الاسم", tr: "Ad", fa: "نام" },
       emailLabel: { en: "Email", nl: "E-mail", ar: "البريد الإلكتروني", tr: "E-posta", fa: "ایمیل" },
+      addressLabel: { en: "Address", nl: "Adres", ar: "العنوان", tr: "Adres", fa: "آدرس" },
       companyLabel: { en: "Company", nl: "Bedrijf", ar: "الشركة", tr: "Şirket", fa: "شرکت" },
       licenseLabel: { en: "Licence number", nl: "Vergunningsnummer", ar: "رقم الترخيص", tr: "Lisans numarası", fa: "شماره مجوز" },
       statusLabel: { en: "Account status", nl: "Accountstatus", ar: "حالة الحساب", tr: "Hesap durumu", fa: "وضعیت حساب" },
@@ -608,7 +609,13 @@ export const translations = {
       title: { en: "Request a profile change", nl: "Profielwijziging aanvragen", ar: "طلب تعديل الملف الشخصي", tr: "Profil değişikliği talep et", fa: "درخواست تغییر نمایه" },
       // Explains the purpose and which protected fields may be requested.
       description: { en: "Ask the administrator to change protected information such as your name, email, company name or licence number.", nl: "Vraag de beheerder om beveiligde gegevens te wijzigen, zoals uw naam, e-mail, bedrijfsnaam of vergunningsnummer.", ar: "اطلب من المسؤول تغيير المعلومات المحمية مثل الاسم أو البريد الإلكتروني أو اسم الشركة أو رقم الترخيص.", tr: "Yöneticiden adınız, e-posta adresiniz, şirket adınız veya lisans numaranız gibi korumalı bilgileri değiştirmesini isteyin.", fa: "از مدیر بخواهید اطلاعات محافظت‌شده مانند نام، ایمیل، نام شرکت یا شماره مجوز شما را تغییر دهد." },
-      allowedFields: { en: "You can request changes to your name, email, company name or licence number.", nl: "U kunt wijzigingen aanvragen voor uw naam, e-mail, bedrijfsnaam of vergunningsnummer.", ar: "يمكنك طلب تغيير الاسم أو البريد الإلكتروني أو اسم الشركة أو رقم الترخيص.", tr: "Adınız, e-posta adresiniz, şirket adınız veya lisans numaranız için değişiklik talep edebilirsiniz.", fa: "می‌توانید برای نام، ایمیل، نام شرکت یا شماره مجوز درخواست تغییر ثبت کنید." },
+      allowedFields: {
+          en: "You can request changes to your name, email or address.",
+          nl: "U kunt wijzigingen aanvragen voor uw naam, e-mail of adres.",
+          ar: "يمكنك طلب تغيير اسمك أو بريدك الإلكتروني أو عنوانك.",
+          tr: "Adınız, e-posta adresiniz veya adresiniz için değişiklik talep edebilirsiniz.",
+          fa: "می‌توانید برای نام، ایمیل یا آدرس خود درخواست تغییر ثبت کنید."
+      },
       // Labels used by the chauffeur change-request form.
       fieldLabel: { en: "Information to change", nl: "Te wijzigen gegeven", ar: "المعلومة المطلوب تغييرها", tr: "Değiştirilecek bilgi", fa: "اطلاعات مورد تغییر" },
       selectFieldPlaceholder: { en: "Select information", nl: "Selecteer een gegeven", ar: "اختر المعلومة", tr: "Bilgi seçin", fa: "اطلاعات را انتخاب کنید" },
@@ -617,6 +624,7 @@ export const translations = {
       // Protected field names shown in the dropdown.
       fieldName: { en: "Name", nl: "Naam", ar: "الاسم", tr: "Ad", fa: "نام" },
       fieldEmail: { en: "Email", nl: "E-mail", ar: "البريد الإلكتروني", tr: "E-posta", fa: "ایمیل" },
+      fieldAddress: { en: "Address", nl: "Adres", ar: "العنوان", tr: "Adres", fa: "آدرس" },
       fieldCompanyName: { en: "Company name", nl: "Bedrijfsnaam", ar: "اسم الشركة", tr: "Şirket adı", fa: "نام شرکت" },
       fieldLicenseNumber: { en: "Licence number", nl: "Vergunningsnummer", ar: "رقم الترخيص", tr: "Lisans numarası", fa: "شماره مجوز" },
 

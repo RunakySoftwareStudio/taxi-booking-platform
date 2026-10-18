@@ -235,6 +235,18 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
         };
     });
 
+    /* Count pending chauffeur profile-change requests for the Admin alert badge. */
+    const { count: pendingChangeRequestCount, error: changeRequestCountError } = await supabaseAdmin
+        .from("chauffeur_change_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+
+    if (changeRequestCountError) {
+        console.error("Could not count pending chauffeur change requests:", changeRequestCountError);
+    }
+
+    const pendingChangeRequests = pendingChangeRequestCount ?? 0;
+
     /*=============================================
     Sort chauffeur rows for the admin list.
     const sortedChauffeurRows = [...chauffeurRows] means:
@@ -281,6 +293,17 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                     {/* Opens the chauffeur compliance expiry and verification monitoring page. */}
                     <Link href="/admin/chauffeurs/compliance" className={`inline-flex items-center justify-center ${formStyles.primaryButtonDP}`} >
                         Compliance monitoring
+                    </Link>
+
+                    {/* Opens chauffeur profile-change requests and alerts Admin when requests are pending. */}
+                    <Link href="/admin/chauffeurs/change-requests" className={`inline-flex items-center justify-center ${formStyles.primaryButtonDP}`}>
+                        <span>Change requests</span>
+
+                        {pendingChangeRequests > 0 && (
+                            <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                                {pendingChangeRequests}
+                            </span>
+                        )}
                     </Link>
                 </div>
 

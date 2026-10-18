@@ -17,8 +17,7 @@ type ChangeRequestRow = { id: string; field_name: string; current_value: string 
 function getFieldTextKey(fieldValue: string) {
     if (fieldValue === "name") { return "fieldName"; }
     if (fieldValue === "email") { return "fieldEmail"; }
-    if (fieldValue === "company_name") { return "fieldCompanyName"; }
-    if (fieldValue === "license_number") { return "fieldLicenseNumber"; }
+    if (fieldValue === "address") { return "fieldAddress"; }
     return "";
 }
 

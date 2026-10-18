@@ -30,7 +30,7 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
     // Loads editable and administrator-controlled chauffeur information.
     const { data: chauffeurRow, error } = await supabaseAdmin
         .from("chauffeurs")
-        .select("id, name, email, phone, company_name, license_number, service_area, account_status, accepts_pets, bio, profile_photo_path")
+        .select("id, name, email, address, phone, service_area, account_status, accepts_pets, bio, profile_photo_path")
         .eq("id", chauffeurId)
         .maybeSingle();
 
@@ -87,27 +87,23 @@ export default async function ChauffeurProfilePage({ params }: ChauffeurProfileP
                     <h2 className="text-xl font-semibold text-white"><TranslatedText sectionName="chauffeurProfilePage" textKey="readOnlyTitle" /></h2>
                     <p className="mt-1 text-sm text-slate-400"><TranslatedText sectionName="chauffeurProfilePage" textKey="readOnlyDescription" /></p>
 
-                    {/* Shows protected account and business information and its related change-request action. . */}
+                    {/* Shows protected account information and its related change-request action. */}
                     <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
                             <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="nameLabel" />: </span>
                             <span className={formStyles.formInputInfoValue}>{chauffeurRow.name}</span>
                         </div>
                         <div>
-                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="emailLabel" />: </span> 
+                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="emailLabel" />: </span>
                             <span className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.email}</span>
                         </div>
-                        {/* Shows the registered company name. */}
+
+                        {/* Shows the administrator-controlled chauffeur address. */}
                         <div className="text-start">
-                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="companyLabel" />: </span>
-                            <span className={formStyles.formInputInfoValue}>{chauffeurRow.company_name || "---"}</span>
+                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="addressLabel" />: </span>
+                            <span className={formStyles.formInputInfoValue}>{chauffeurRow.address || "---"}</span>
                         </div>
 
-                        {/* Shows the administrator-controlled licence number. */}
-                        <div className="text-start">
-                            <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="licenseLabel" />: </span>
-                            <span className={`${formStyles.formInputInfoValue} technical-value`}>{chauffeurRow.license_number || "---"}</span>
-                        </div>
                         <div>
                             <span className={formStyles.formInputInfoCaptionCyan}><TranslatedText sectionName="chauffeurProfilePage" textKey="statusLabel" />: </span>
                             <span className={formStyles.formInputInfoValue}>{accountStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={accountStatusTextKey} /> : chauffeurRow.account_status}</span>

@@ -7,7 +7,7 @@ import { formStyles, pageStyles } from "@/styles/classNames";
 import { useRouter } from "next/navigation";
 
 // Defines the protected chauffeur fields available in the dropdown.
-type ChangeableField = "" | "name" | "email" | "company_name" | "license_number";
+type ChangeableField = "" | "name" | "email" | "address";
 
 // Defines the chauffeur ID received from the page.
 type ChauffeurChangeRequestFormProps = { chauffeurId: string };
@@ -16,8 +16,7 @@ type ChauffeurChangeRequestFormProps = { chauffeurId: string };
 const fieldOptions: { value: Exclude<ChangeableField, "">; textKey: string }[] = [
     { value: "name", textKey: "fieldName" },
     { value: "email", textKey: "fieldEmail" },
-    { value: "company_name", textKey: "fieldCompanyName" },
-    { value: "license_number", textKey: "fieldLicenseNumber" },
+    { value: "address", textKey: "fieldAddress" },
 ];
 
 // Creates and submits a protected profile-change request.
