@@ -19,15 +19,38 @@ import { Fragment } from "react";
 import { getVehicleMatchResult, type VehicleWheelchairAccess } from "@/lib/vehicleMatching";
 import type { WheelchairRequirement } from "@/types/wheelchairRequirementType";
 import ScrollToBooking from "@/components/ScrollToBooking";
-
+import SearchableChauffeurFilter from "./SearchableChauffeurFilter";
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
+/**
+ * These new values will later mean:
+    search        → Search bookings
+    assignment    → all / assigned / unassigned
+    chauffeurId   → one specific chauffeur
+    pickupDate    → journey date
+    sort          → newest / oldest / journey date
 
+    For example, eventually the URL could look like:
+    /admin/bookings?assignment=unassigned
+    or:
+    /admin/bookings?chauffeurId=123...
+    or several together:
+    /admin/bookings?assignment=assigned&pickupDate=2026-10-20&sort=journey_asc
+ */
 type AdminBookingsPageProps = {
-  searchParams: Promise<{
-    success?: string;
-    error?: string;
-    bookingId?: string;
-  }>;
+    searchParams: Promise<{
+        success?: string;
+        error?: string;
+        bookingId?: string;
+
+        /* Admin booking-list search and filter values. */
+        search?: string;
+        assignment?: string;
+        chauffeurId?: string;
+        pickupDate?: string;
+        period?: string;
+        sort?: string;
+        page?: string;
+    }>;
 };
 
 // type  = creates a TypeScript rule/shape for data
@@ -257,22 +280,116 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     /* Stores the booking selected from the assignment-alert page. */
     const selectedBookingId = pageMessage.bookingId ?? null;
 
-  const { data: bookings, error } = await supabaseAdmin // data: bookings= you are renaming data to bookings.
-    .from("bookings")
-    .select
-    ( `
-        id, pickup_location, destination, pickup_date, pickup_time, 
-        passengers, luggage, trip_type, status, notes, created_at, has_pets,
-        infant_seat_count_required, child_seat_count_required,
-        booster_seat_count_required,  isofix_required,
-        wheelchair_requirement, wheelchair_passenger_count,
-        mobility_aid_storage_required, extra_large_luggage_required,
-        clients (name, email, phone ),
-        chauffeur_id, vehicle_id,
-        chauffeurs (name, email, phone ),
-        vehicles(id, brand, model, license_plate, vehicle_type, vehicle_year, vehicle_color) `
-    )
-    .order("created_at", { ascending: false });
+    /* Reads and validates the Admin assignment filter from the URL. */
+    const assignmentFilter =
+        pageMessage.assignment === "assigned" || pageMessage.assignment === "unassigned"
+            ? pageMessage.assignment
+            : "all";
+
+    /* Stores the chauffeur selected in the Admin booking filter. */
+    const selectedChauffeurId = pageMessage.chauffeurId?.trim() ?? "";
+
+    /* Reads and validates the journey-date filter from the URL. */
+    const selectedPickupDate =
+        /^\d{4}-\d{2}-\d{2}$/.test(pageMessage.pickupDate ?? "")
+            ? pageMessage.pickupDate ?? ""
+            : "";
+
+    /* Reads the requested booking-list page and prevents invalid page numbers. */
+    const requestedPage = Number(pageMessage.page ?? "1");
+    const currentPage =
+        Number.isInteger(requestedPage) && requestedPage > 0
+            ? requestedPage
+            : 1;
+
+    const pageSize = 20;
+
+    /* Calculates the database row range for the selected booking page. */
+    const pageFrom = (currentPage - 1) * pageSize;
+    const pageTo = pageFrom + pageSize - 1;
+
+    /* Reads and validates the journey-period filter from the URL. That gives a value such as:2026-10-19*/
+    const journeyPeriod =
+        pageMessage.period === "today" ||
+        pageMessage.period === "upcoming" ||
+        pageMessage.period === "past"
+            ? pageMessage.period
+            : "all";
+
+    /* Returns today's calendar date in the Netherlands for journey filtering. */
+    const todayDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Amsterdam",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(new Date());
+
+    let bookingsQuery = supabaseAdmin // data: bookings= you are renaming data to bookings.
+        .from("bookings")
+        .select
+        ( `
+            id, pickup_location, destination, pickup_date, pickup_time,
+            passengers, luggage, trip_type, status, notes, created_at, has_pets,
+            infant_seat_count_required, child_seat_count_required,
+            booster_seat_count_required,  isofix_required,
+            wheelchair_requirement, wheelchair_passenger_count,
+            mobility_aid_storage_required, extra_large_luggage_required,
+            clients (name, email, phone ),
+            chauffeur_id, vehicle_id,
+            chauffeurs (name, email, phone ),
+            vehicles(id, brand, model, license_plate, vehicle_type, vehicle_year, vehicle_color) `,
+             { count: "exact" }
+        )
+
+    /*
+        Filters bookings by a specific chauffeur when selected.
+        A specific chauffeur takes priority over the general assigned/unassigned filter.
+
+        That gives us:
+        Specific chauffeur selected
+                ↓
+        Bookings for that chauffeur only
+
+        No chauffeur selected + Assigned
+                ↓
+        All assigned bookings
+
+        No chauffeur selected + Unassigned
+                ↓
+        All unassigned bookings
+
+        No chauffeur selected + All
+                ↓
+        All bookings
+    */
+    if (selectedChauffeurId) {bookingsQuery = bookingsQuery.eq("chauffeur_id", selectedChauffeurId);}
+    else if (assignmentFilter === "assigned") {bookingsQuery = bookingsQuery.not("chauffeur_id", "is", null);}
+    else if (assignmentFilter === "unassigned") {bookingsQuery = bookingsQuery.is("chauffeur_id", null);}
+
+   /* Exact journey date takes priority over the broader journey-period filter. */
+    if (selectedPickupDate) {
+        bookingsQuery = bookingsQuery.eq("pickup_date", selectedPickupDate);
+    }
+    else if (journeyPeriod === "today") {
+        bookingsQuery = bookingsQuery.eq("pickup_date", todayDate);
+    }
+    else if (journeyPeriod === "upcoming") {
+        bookingsQuery = bookingsQuery.gt("pickup_date", todayDate);
+    }
+    else if (journeyPeriod === "past") {
+        bookingsQuery = bookingsQuery.lt("pickup_date", todayDate);
+    }
+
+    /* Orders the results and loads only the bookings for the selected page. */
+    bookingsQuery = bookingsQuery
+        .order("created_at", { ascending: false })
+        .range(pageFrom, pageTo);
+
+    const { data: bookings, error, count: bookingCount } = await bookingsQuery;
+
+    /* Calculates how many booking pages are available. */
+    const totalBookings = bookingCount ?? 0;
+    const totalPages = Math.max(1, Math.ceil(totalBookings / pageSize));
 
     if (error) 
         {
@@ -390,6 +507,21 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
         });
     }
 
+    /* Builds a booking-list URL while keeping the active Admin filters. */
+    function buildBookingsPageUrl(pageNumber: number) {
+        const params = new URLSearchParams();
+
+        if (assignmentFilter !== "all") {params.set("assignment", assignmentFilter);}
+        if (pageMessage.search) {params.set("search", pageMessage.search);}
+        if (pageMessage.chauffeurId) {params.set("chauffeurId", pageMessage.chauffeurId);}
+        if (pageMessage.pickupDate) {params.set("pickupDate", pageMessage.pickupDate);}
+        if (pageMessage.sort) {params.set("sort", pageMessage.sort);}
+        if (journeyPeriod !== "all") {params.set("period", journeyPeriod);}
+        params.set("page", String(pageNumber));
+
+        return `/admin/bookings?${params.toString()}`;
+    }
+
     /* =====================================================
         <table>
             <thead>
@@ -409,13 +541,85 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
         <main className={pageStyles.main}>
             {/* Scrolls to the booking opened from an assignment alert. */}
             <ScrollToBooking bookingId={selectedBookingId} />
-
             <div className={pageStyles.container}> 
                 <Link  href="/admin" className={formStyles.link}  > ← Back to admin dashboard </Link>
                 <p className={pageStyles.pageLabelUpper}> Admin </p>
                 <h1 className={pageStyles.pageTitle}>Booking requests</h1>
                 <p className={pageStyles.pageDescription}>  Here you can see booking requests submitted through the website. </p>
 
+                {/* Filters bookings by whether a chauffeur is assigned. */}
+                <form method="GET" action="/admin/bookings" className="mt-6 flex flex-wrap items-end gap-3">
+                    {/* Keeps Assignment and Chauffeur filters synchronized. */}
+                    <SearchableChauffeurFilter
+                        chauffeurs={chauffeurOptions.map((chauffeur) => ({id: chauffeur.id, name: chauffeur.name, }))}
+                        assignmentFilter={assignmentFilter} selectedChauffeurId={selectedChauffeurId}
+                    />
+
+                    {/* Filters bookings by their journey date relative to today. */}
+                    <div>
+                        <label htmlFor="period" className="mb-1 block text-sm text-slate-300">
+                            Journey period
+                        </label>
+
+                        <select id="period" name="period" defaultValue={journeyPeriod} className={formStyles.selectForm}>
+                            <option value="all">All dates</option>
+                            <option value="today">Today</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="past">Past bookings</option>
+                        </select>
+                    </div>
+
+                    {/* Filters bookings by journey pickup date. */}
+                    <div>
+                        <label htmlFor="pickupDate" className="mb-1 block text-sm text-slate-300">
+                            Journey date
+                        </label>
+                        <input id="pickupDate" type="date" name="pickupDate" defaultValue={selectedPickupDate} className={formStyles.selectForm} />
+                    </div>
+
+                    {/* Apply the filter. */}
+                    <button type="submit" className={formStyles.filterButton}>
+                        Search
+                    </button>
+                </form>
+
+                {/* Shows booking count and page navigation while keeping the table scroll available. */}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-slate-400">
+                        Showing {totalBookings === 0 ? 0 : pageFrom + 1}–
+                        {Math.min(pageTo + 1, totalBookings)} of {totalBookings} bookings
+                    </p>
+
+                    {totalPages > 1 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                            {currentPage > 1 && (
+                                <Link href={buildBookingsPageUrl(currentPage - 1)} className={formStyles.link}>
+                                    Previous
+                                </Link>
+                            )}
+
+                            {Array.from({ length: totalPages }, (_, index) => {
+                                const pageNumber = index + 1;
+                                return (
+                                    <Link key={pageNumber} href={buildBookingsPageUrl(pageNumber)}
+                                        className={
+                                            pageNumber === currentPage
+                                                ? "rounded-md bg-cyan-600 px-3 py-1 text-sm font-semibold text-white"
+                                                : "rounded-md border border-slate-700 px-3 py-1 text-sm text-slate-300 hover:border-cyan-500"
+                                        }>
+                                        {pageNumber}
+                                    </Link>
+                                );
+                            })}
+
+                            {currentPage < totalPages && (
+                                <Link href={buildBookingsPageUrl(currentPage + 1)} className={formStyles.link}>
+                                    Next
+                                </Link>
+                            )}
+                        </div>
+                    )}
+                </div>
                 {pageMessage.success === "chauffeur-assigned" && ( <p className={pageStyles.successMsgPage}>    Chauffeur assigned successfully. </p>)}
                 {pageMessage.success === "status-updated" && ( <p className={pageStyles.successMsgPage}>    Booking status updated successfully. </p>)}
                 {pageMessage.error === "missing-fields" && ( <p className={pageStyles.errorMsgPage}>    Please select the required booking information. </p>)}

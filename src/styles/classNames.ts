@@ -13,6 +13,7 @@ export const formStyles = {
     inputNumber:            "rounded-lg border border-cyan-400/30 bg-slate-950 px-4 py-2 text-white outline-none focus:border-cyan-300 w-26 ",  
     selectWFull:            "rounded-lg border-3 border-cyan-400/30 bg-slate-950 h-9 px-3 py-0 text-sm leading-tight text-white outline-none focus:border-cyan-300 w-full",  //with w-full 
     selectForm:             "rounded-lg border border-cyan-400/30 bg-slate-950 h-9 px-3 py-0 text-white outline-none focus:border-cyan-300",
+    filterButton:           "h-9 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/20",
     label:                  "block text-sm font-medium text-slate-200",
     info:                   "rounded-2xl border-3 border-cyan-400/30 bg-slate-950 p-5",
     textarea:               "rounded-lg border border-cyan-400/30 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-300 w-full text-sm h-14 ",
