@@ -3,17 +3,45 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
+import ChauffeurFilters from "./ChauffeurFilters";
 
 //export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app/admin/chauffeurs/page.tsx 
+
+/**=====================================================================
+ * These will mean:
+    name                 → partial chauffeur-name search
+    serviceArea          → partial service-area search
+    pets                 → all / yes / no
+    wheelchairCapacity   → any / 1 / 2 / 3 / 4
+    extraLargeLuggage    → all / yes / no
+ =====================================================================*/
+type AdminChauffeursPageProps = {
+    searchParams: Promise<{
+        success?: string;
+        error?: string;
+
+        /* Admin chauffeur-list filters. */
+        name?: string;
+        serviceArea?: string;
+        pets?: string;
+        wheelchairCapacity?: string;
+        extraLargeLuggage?: string;
+    }>;
+};
+
 /*=====================================================================
 pending_approval → chauffeur applied / waiting for approval
 approved         → active chauffeur, can appear on homepage and assignment lists
 suspended        → temporarily blocked
 inactive         → removed/deactivated from normal use
 =========================================================================*/
-
-type AdminChauffeursPageProps = {  searchParams: Promise<{ success?: string;  error?: string; }>;};
-
+type ChauffeurVehicleOption = {
+    id: string;
+    is_default_vehicle: boolean;
+    vehicle_status: string;
+    wheelchair_capacity: number;
+    extra_large_luggage: boolean;
+};
 type ChauffeurRow = {
     id: string;
     name: string;
@@ -34,6 +62,8 @@ type ChauffeurRow = {
     rating: number;
     accepts_pets: boolean; 
     created_at: string;
+    /* Vehicle capabilities used by the Admin chauffeur filters. */
+    vehicles: ChauffeurVehicleOption[];
 };
 
 type ChauffeurComplianceMonitoringRow = {
@@ -57,6 +87,18 @@ function getChauffeurStatusSortPriority(accountStatus: string) {
     if (accountStatus === "inactive") { return 3; }
 
     return 4;
+}
+
+/**
+    getDefaultVehicle
+
+    Returns the chauffeur's default vehicle.
+    Vehicle capability filters use this vehicle only.
+*/
+function getDefaultVehicle(chauffeur: ChauffeurRow) {
+    return (chauffeur.vehicles ?? []).find(
+        (vehicle) => vehicle.is_default_vehicle
+    ) ?? null;
 }
 
 /**
@@ -185,13 +227,35 @@ async function changeChauffeurActiveStatus(formData: FormData) {
 
 export default async function AdminChauffeursPage({ searchParams}: AdminChauffeursPageProps) {
     const pageMessage = await searchParams;
-    
+    /* Reads the Admin chauffeur filters from the URL. */
+    const nameFilter = pageMessage.name?.trim() ?? "";
+    const serviceAreaFilter = pageMessage.serviceArea?.trim() ?? "";
+    const petsFilter =
+        pageMessage.pets === "yes" || pageMessage.pets === "no"
+            ? pageMessage.pets
+            : "all";
+    const wheelchairCapacityFilter =
+        ["1", "2", "3", "4"].includes(pageMessage.wheelchairCapacity ?? "")
+            ? Number(pageMessage.wheelchairCapacity)
+            : 0;
+    const extraLargeLuggageFilter =
+        pageMessage.extraLargeLuggage === "yes" ||
+        pageMessage.extraLargeLuggage === "no"
+            ? pageMessage.extraLargeLuggage
+            : "all";
     const { data: chauffeurs, error } = await supabaseAdmin
         .from("chauffeurs")
         .select(`id, name, email, phone, company_name, operator_id, license_number,
             operational_status, status_reason, service_area, account_status,
             rating, accepts_pets, created_at,
-            taxi_operators (company_name, verification_status)`)
+            taxi_operators (company_name, verification_status),
+            vehicles (
+                id,
+                is_default_vehicle,
+                vehicle_status,
+                wheelchair_capacity,
+                extra_large_luggage
+            )`)
         .order("created_at", { ascending: false });
 
     const baseChauffeurRows = (chauffeurs ?? []) as unknown as ChauffeurRow[];
@@ -235,6 +299,56 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
         };
     });
 
+    /*
+        Filters the Admin chauffeur list.
+
+        Name and service area use partial, case-insensitive matching.
+        Vehicle capability filters use the chauffeur's default vehicle.
+    */
+    const filteredChauffeurRows = chauffeurRows.filter((chauffeur) => {
+        const defaultVehicle = getDefaultVehicle(chauffeur);
+
+        /* Filter by chauffeur name. */
+        if ( nameFilter && !chauffeur.name.toLowerCase().includes(nameFilter.toLowerCase())) {
+            return false;
+        }
+
+        /* Filter by service area. */
+        if (
+            serviceAreaFilter &&
+            !(chauffeur.service_area ?? "")
+                .toLowerCase()
+                .includes(serviceAreaFilter.toLowerCase())
+        ) {
+            return false;
+        }
+
+        /* Filter by whether the chauffeur accepts pets. */
+        if (petsFilter === "yes" && !chauffeur.accepts_pets) {
+            return false;
+        }
+
+        if (petsFilter === "no" && chauffeur.accepts_pets) {
+            return false;
+        }
+
+        /* Filter by minimum wheelchair capacity of the default vehicle. */
+        if (wheelchairCapacityFilter > 0 && (!defaultVehicle || defaultVehicle.wheelchair_capacity < wheelchairCapacityFilter)) {
+            return false;
+        }
+
+        /* Filter by extra-large-luggage support of the default vehicle. */
+        if (extraLargeLuggageFilter === "yes" && (!defaultVehicle || !defaultVehicle.extra_large_luggage)) {
+            return false;
+        }
+
+        if (extraLargeLuggageFilter === "no" && defaultVehicle?.extra_large_luggage === true ) {
+            return false;
+        }
+
+        return true;
+    });
+
     /* Count pending chauffeur profile-change requests for the Admin alert badge. */
     const { count: pendingChangeRequestCount, error: changeRequestCountError } = await supabaseAdmin
         .from("chauffeur_change_requests")
@@ -263,8 +377,10 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
         3. Same status but not pending_approval: sort by chauffeur name.
 
         They help .sort() place important statuses like pending_approval at the top of the admin list, instead of sorting statuses alphabetically.
+        sortedChauffeurRows = [...filteredChauffeurRows]  Create a new array and copy all items from filteredChauffeurRows into it.
+        .sort() is using your custom chauffeur priority rules, not simply alphabetical sorting.
     =============================================*/
-    const sortedChauffeurRows = [...chauffeurRows].sort(
+    const sortedChauffeurRows = [...filteredChauffeurRows].sort(
         (firstChauffeur, secondChauffeur) => { 
             const firstPriority = getChauffeurStatusSortPriority( firstChauffeur.account_status );
             const secondPriority = getChauffeurStatusSortPriority(secondChauffeur.account_status );
@@ -306,6 +422,15 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                         )}
                     </Link>
                 </div>
+
+                {/* Admin chauffeur search and capability filters. */}
+                <ChauffeurFilters
+                    nameFilter={nameFilter}
+                    serviceAreaFilter={serviceAreaFilter}
+                    petsFilter={petsFilter}
+                    wheelchairCapacityFilter={wheelchairCapacityFilter}
+                    extraLargeLuggageFilter={extraLargeLuggageFilter}
+                />
 
                 {pageMessage.success === "chauffeur-added" && (<p className={pageStyles.successMsgPage}> Chauffeur added successfully. </p> )}
                 {pageMessage.success === "status-updated" && ( <p className={pageStyles.successMsgPage}> Chauffeur status updated successfully. </p>)}
@@ -417,7 +542,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                     </article>
                 ))}
 
-                {chauffeurRows.length === 0 && ( <div className={tableStyles.cellEmpty}> No chauffeurs found yet.</div> )}
+                {sortedChauffeurRows.length === 0 && ( <div className={tableStyles.cellEmpty}> No chauffeurs found yet.</div> )}
                 </div>
 
                 {/* =================Desktop chauffeur table ==========================*/}
@@ -517,7 +642,7 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                 </tr>
                             ))}
 
-                            {chauffeurRows.length === 0 && (<tr><td className={tableStyles.cell} colSpan={8}> No chauffeurs found yet. </td></tr>)}
+                            {sortedChauffeurRows.length === 0 && (<tr><td className={tableStyles.cell} colSpan={8}> No chauffeurs found yet. </td></tr>)}
 
                         </tbody>
                     </table>
