@@ -15,8 +15,14 @@ type ClientRow =
         created_at: string;
     };
 
-export default async function AdminClientsPage() 
+/* ============================================================
+   ADMIN CLIENTS PAGE
+   Loads clients and filters them by name using the URL search.
+============================================================ */
+export default async function AdminClientsPage({searchParams,}: { searchParams: Promise<{ name?: string; order?: string }>;})
 {
+  /* Read the search name and alphabetical sorting preference. */
+  const { name = "", order = "az" } = await searchParams;
   const { data: clients, error } = await supabaseAdmin
     .from("clients")
     .select("id, name, email, phone, created_at")
@@ -36,7 +42,17 @@ export default async function AdminClientsPage()
         );
     }
 
-  const clientRows = (clients ?? []) as ClientRow[];
+  /* Filter client names without changing the database query. */
+  const searchName = name.trim().toLocaleLowerCase();
+
+  /* Filter clients by name and sort alphabetically. */
+  const clientRows = ((clients ?? []) as ClientRow[])
+    .filter((client) => client.name.toLocaleLowerCase().includes(searchName))
+    .sort((a, b) =>
+      order === "za"
+        ? b.name.localeCompare(a.name)
+        : a.name.localeCompare(b.name)
+    );
 
   return (
     <main className={pageStyles.main}>
@@ -45,6 +61,34 @@ export default async function AdminClientsPage()
         <p className={pageStyles.pageLabelUpper}> Admin </p>
         <h1 className={pageStyles.pageTitle}>Clients</h1>
         <p className={pageStyles.pageDescription}>  View clients who submitted booking requests through the website.  </p>
+
+        {/* Search clients by name */}
+        <form action="/admin/clients" method="GET" className="mt-6 flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            name="name" autoComplete="off"
+            defaultValue={name}
+            placeholder="Search client name..."
+            aria-label="Search client by name"
+            className="w-full max-w-sm rounded-lg border border-cyan-700 bg-cyan-950/30 px-4 py-2 text-white placeholder:text-gray-400"
+          />
+
+          {/* Order dropdown resets when the URL search parameters change */}
+          <select
+            key={`${name}-${order}`}
+            name="order"
+            defaultValue={order}
+            aria-label="Order clients by name"
+            className="rounded-lg border border-cyan-700 bg-cyan-950 px-4 py-2 text-white"
+          >
+            <option value="az">Name: A–Z</option>
+            <option value="za">Name: Z–A</option>
+          </select>
+
+          <button type="submit" className={formStyles.smallButton}>Search</button>
+          <Link href="/admin/clients" className={formStyles.link}>Reset filter</Link>
+        </form>
+
         {/* Mobile client cards */}
         <div className="mt-6 grid gap-4 lg:hidden">
             {clientRows.map((client) => (
