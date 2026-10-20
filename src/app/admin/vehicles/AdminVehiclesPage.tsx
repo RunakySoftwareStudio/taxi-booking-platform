@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { Fragment } from "react";
+import VehicleFilters from "./VehicleFilters";
+import { requireAdminUser } from "@/lib/auth/requireAdminUser";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/vehicles/page.tsx
 
@@ -29,10 +31,13 @@ type AdminVehiclesPageProps = {
     wheelchairCapacity?: string;
     mobilityAidStorage?: string;
     extraLargeLuggage?: string;
+
+    /* Vehicle list filters, independent of the Add Vehicle form. */
+    filterChauffeurId?: string;
+    filterLargeLuggage?: string;
+    filterMobilityStorage?: string;
   }>;
 };
-type ChauffeurOption = { id: string; name: string;  email: string; };
-
 type VehicleRow = {
     id: string;
     chauffeur_id: string;
@@ -92,143 +97,10 @@ function getVehicleStatusTextClass(vehicleStatus: string) {
         : "text-red-300";
 }
 
-async function addVehicle(formData: FormData) {
-    "use server";
-
-    const chauffeurId = String(formData.get("chauffeurId") || "");
-    const model = String(formData.get("model") || "").trim();
-    const brand = String(formData.get("brand") || "").trim();
-    const vehicleYearValue = String(formData.get("vehicleYear") || "");
-    const vehicleYear = vehicleYearValue ? Number(vehicleYearValue) : null;
-    const vehicleColor = String(formData.get("vehicleColor") || "").trim();
-    const licensePlate = String(formData.get("licensePlate") || "").trim().toUpperCase();
-    const vehicleType = String(formData.get("vehicleType") || "");
-    const seats = Number(formData.get("seats") || 4);
-    const luggageCapacity = Number(formData.get("luggageCapacity") || 2);
-    const infantSeatCount = Number(formData.get("infantSeatCount") || 0);
-    const childSeatCount = Number(formData.get("childSeatCount") || 0);
-    const boosterSeatCount = Number(formData.get("boosterSeatCount") || 0);
-    const isofixAvailable = formData.get("isofixAvailable") === "on";
-    const wheelchairAccess = String(formData.get("wheelchairAccess") || "none");
-    const wheelchairCapacity = Number(formData.get("wheelchairCapacity") || 0);
-    const mobilityAidStorage = formData.get("mobilityAidStorage") === "on";
-    const extraLargeLuggage = formData.get("extraLargeLuggage") === "on";
-
-    const previousFormValues = new URLSearchParams({
-      chauffeurId,
-      vehicleType,
-      brand,
-      model,
-      licensePlate,
-      seats: String(seats),
-      luggageCapacity: String(luggageCapacity),
-      vehicleYear: vehicleYearValue,
-      vehicleColor,
-      infantSeatCount: String(infantSeatCount),
-      childSeatCount: String(childSeatCount),
-      boosterSeatCount: String(boosterSeatCount),
-      isofixAvailable: String(isofixAvailable),
-      wheelchairAccess,
-      wheelchairCapacity: String(wheelchairCapacity),
-      mobilityAidStorage: String(mobilityAidStorage),
-      extraLargeLuggage: String(extraLargeLuggage),
-    });
-
-    const previousFormQuery = previousFormValues.toString();
-
-    if (!chauffeurId || !brand || !model || !licensePlate || !vehicleType) {
-      redirect(`/admin/vehicles?error=missing-fields&${previousFormQuery}`);
-    }
-
-    // Validates child-seat and wheelchair capacity values.
-    const capabilityCounts = [infantSeatCount, childSeatCount, boosterSeatCount, wheelchairCapacity];
-    if (capabilityCounts.some((countValue) => !Number.isInteger(countValue) || countValue < 0)) {
-        redirect(`/admin/vehicles?error=invalid-capabilities&${previousFormQuery}`);
-    }
-
-    // Validates the wheelchair access option.
-    const allowedWheelchairAccessTypes = ["none", "foldable_only", "ramp", "lift"];
-    if (!allowedWheelchairAccessTypes.includes(wheelchairAccess)) {
-        redirect(`/admin/vehicles?error=invalid-wheelchair-settings&${previousFormQuery}`);
-    }
-
-    // none/foldable_only require capacity 0; ramp/lift require capacity 1 or more.
-    const wheelchairSettingsInvalid =
-        ((wheelchairAccess === "none" || wheelchairAccess === "foldable_only") && wheelchairCapacity !== 0) ||
-        ((wheelchairAccess === "ramp" || wheelchairAccess === "lift") && wheelchairCapacity < 1);
-    if (wheelchairSettingsInvalid) {
-        redirect(`/admin/vehicles?error=invalid-wheelchair-settings&${previousFormQuery}`);
-    }
-
-    // .select() we can read data inserted
-    const {error } = await supabaseAdmin
-    .from("vehicles")
-    .insert({
-        chauffeur_id: chauffeurId,
-        brand,
-        model,
-        vehicle_year: vehicleYear,
-        vehicle_color: vehicleColor || null,
-        license_plate: licensePlate,
-        vehicle_type: vehicleType,
-        seats,
-        luggage_capacity: luggageCapacity,
-        infant_seat_count: infantSeatCount,
-        child_seat_count: childSeatCount,
-        booster_seat_count: boosterSeatCount,
-        isofix_available: isofixAvailable,
-        wheelchair_access: wheelchairAccess,
-        wheelchair_capacity: wheelchairCapacity,
-        mobility_aid_storage: mobilityAidStorage,
-        extra_large_luggage: extraLargeLuggage,
-      })
-    .select()
-    .single();
-
-    if (error) {
-        console.error("Could not add vehicle:", error);
-        if (error.code === "23505") { redirect(`/admin/vehicles?error=duplicate-license-plate&${previousFormQuery}`);; }
-        redirect(`/admin/vehicles?error=add-vehicle-failed&${previousFormQuery}`);; //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
-    }
-
-    /*
-  * Rechecks the chauffeur's vehicle count after adding the vehicle.
-  * When this is the chauffeur's only vehicle and it is available, the PostgreSQL function automatically marks it as default.
-  * When the chauffeur has multiple vehicles, the function does not choose between them automatically.
-  * Insert vehicle
-    → confirm insert succeeded
-    → call ensure_single_vehicle_default(...)
-    → refresh vehicle page
-    → redirect with success
-  */
-  const { error: defaultVehicleCheckError } = await supabaseAdmin.rpc("ensure_single_vehicle_default",{p_chauffeur_id: chauffeurId});
-  if (defaultVehicleCheckError) {
-      console.error("Vehicle was added, but the default-vehicle check failed:", defaultVehicleCheckError);
-      revalidatePath("/admin/vehicles");
-
-      redirect(
-          `/admin/vehicles?success=vehicle-added` +
-          `&error=default-vehicle-check-failed` +
-          `&chauffeurId=${chauffeurId}` +
-          `#chauffeur-vehicles-${chauffeurId}`
-      );
-  }
-
-    //So after you add/update/delete a vehicle, the page should show fresh data.
-    revalidatePath("/admin/vehicles");
-
-    /*================================================
-        //This is useful because server actions cannot use useState directly. So we pass the result through the URL.
-        This also sends the user back to the chauffeurs page, but with an extra query parameter:
-        /admin/vehicles?success=vehicle-added
-        The browser becomes:http://localhost:3000/admin/vehicles?success=vehicle-added
-        This part: ?success=vehicle-added
-        can be used to show a success message. For example: {pageMessage.success === "vehicle-added" && (<p > Vehicle added successfully. </p> )}
-    =============================================*/
-    redirect("/admin/vehicles?success=vehicle-added");
-}
+/* Verifies Admin authorization before deleting or reading vehicle data. */
 async function deleteVehicle(formData: FormData) {
     "use server";
+    await requireAdminUser();
 
     const vehicleId = String(formData.get("vehicleId") || "");
     if (!vehicleId) { redirect("/admin/vehicles?error=missing-fields"); }
@@ -313,8 +185,10 @@ async function deleteVehicle(formData: FormData) {
  * - sets the selected vehicle as the new default;
  * - rejects unavailable vehicles.
  */
+/* Verifies Admin authorization before changing a chauffeur's default vehicle. */
 async function setDefaultVehicle(formData: FormData) {
     "use server";
+    await requireAdminUser();
 
     const vehicleId = String(formData.get("vehicleId") || "");
     const chauffeurId = String(formData.get("chauffeurId") || "");
@@ -343,28 +217,18 @@ async function setDefaultVehicle(formData: FormData) {
 
 export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPageProps) {
     const pageMessage = await searchParams;
+
+    /* ============================================================
+      VEHICLE LIST FILTER VALUES
+      Reads the selected filters from the URL.
+      These values are independent of the Add Vehicle form.
+    ============================================================ */
+    const filterChauffeurId = pageMessage.filterChauffeurId ?? "";
+    const filterLargeLuggage = pageMessage.filterLargeLuggage === "true";
+    const filterMobilityStorage = pageMessage.filterMobilityStorage === "true";
+
     /* Stores the vehicle label received through the URL. */
     const deletedVehicleLabel =  pageMessage.vehicleLabel?.trim() || "Selected vehicle";
-
-    const formValues = {
-        chauffeurId: pageMessage.chauffeurId ?? "",
-        vehicleType: pageMessage.vehicleType ?? "",
-        brand: pageMessage.brand ?? "",
-        model: pageMessage.model ?? "",
-        licensePlate: pageMessage.licensePlate ?? "",
-        seats: pageMessage.seats ?? "4",
-        luggageCapacity: pageMessage.luggageCapacity ?? "4",
-        vehicleYear: pageMessage.vehicleYear ?? "",
-        vehicleColor: pageMessage.vehicleColor ?? "",
-        infantSeatCount: pageMessage.infantSeatCount ?? "0",
-        childSeatCount: pageMessage.childSeatCount ?? "0",
-        boosterSeatCount: pageMessage.boosterSeatCount ?? "0",
-        isofixAvailable: pageMessage.isofixAvailable ?? "false",
-        wheelchairAccess: pageMessage.wheelchairAccess ?? "none",
-        wheelchairCapacity: pageMessage.wheelchairCapacity ?? "0",
-        mobilityAidStorage: pageMessage.mobilityAidStorage ?? "false",
-        extraLargeLuggage: pageMessage.extraLargeLuggage ?? "false",
-    };
 
     const { data: vehicles, error: vehiclesError } = await supabaseAdmin
       .from("vehicles")
@@ -374,21 +238,24 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
         created_at, chauffeurs (name, email, phone )` )
       .order("chauffeur_id,created_at", { ascending: false });
 
-    const { data: approvedChauffeurs, error: chauffeursError } = await supabaseAdmin
-      .from("chauffeurs")
-      .select("id, name, email, phone")
-      .eq("account_status", "approved")
-      .order("name", { ascending: true });
-
-    const { data: vehicleTypes, error: vehicleTypesError } =  await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "vehicle_type"});
 
     if (vehiclesError) {console.error("Could not load vehicles:", vehiclesError); }
-    if (chauffeursError) { console.error("Could not load approved chauffeurs:", chauffeursError); }
-    if (vehicleTypesError) { console.error("Could not load vehicle types:", vehicleTypesError); }
 
     const vehicleRows = (vehicles ?? []) as unknown as VehicleRow[];
+
+    /* ============================================================
+      FILTER VEHICLE RECORDS
+      A vehicle must satisfy every selected filter.
+      No selected filters means all vehicles are displayed.
+    ============================================================ */
+    const filteredVehicleRows = vehicleRows.filter((vehicle) =>
+      (!filterChauffeurId || vehicle.chauffeur_id === filterChauffeurId) &&
+      (!filterLargeLuggage || vehicle.extra_large_luggage === true) &&
+      (!filterMobilityStorage || vehicle.mobility_aid_storage === true)
+    );
+
     //group vehicles by chaffeus, This groups all vehicles that have the same chauffeur_id.
-    const vehicleGroups = vehicleRows.reduce< { chauffeurId: string; chauffeurName: string; chauffeurEmail: string;  chauffeurPhone: string;  vehicles: VehicleRow[]; }[]>
+    const vehicleGroups = filteredVehicleRows.reduce< { chauffeurId: string; chauffeurName: string; chauffeurEmail: string;  chauffeurPhone: string;  vehicles: VehicleRow[]; }[]>
       (
         (groups, vehicle) => { const existingGroup = groups.find(  (group) => group.chauffeurId === vehicle.chauffeur_id  );
         if (existingGroup) { existingGroup.vehicles.push(vehicle); return groups;}
@@ -397,20 +264,32 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
         return groups;}, []
       );
 
-    const chauffeurOptions = (approvedChauffeurs ?? []) as unknown as ChauffeurOption[];
-    const vehicleTypeOptions = (vehicleTypes ?? []) as string[];
-    const { data: wheelchairAccessTypes, error: wheelchairAccessTypesError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "wheelchair_access_type", });
-    if (wheelchairAccessTypesError) {console.error("Could not load wheelchair access types:", wheelchairAccessTypesError); }
+      /* ============================================================
+        VEHICLE FILTER CHAUFFEUR OPTIONS
+        Creates a unique list of chauffeurs from all vehicle records.
+        This includes chauffeurs with vehicle history regardless of
+        their current approval status.
+      ============================================================ */
+      const filterChauffeurs = Array.from(
+        new Map(
+          vehicleRows.map((vehicle) => [
+            vehicle.chauffeur_id,
+            {
+              id: vehicle.chauffeur_id,
+              name: vehicle.chauffeurs?.name || "Unknown chauffeur",
+            },
+          ])
+        ).values()
+      ).sort((a, b) => a.name.localeCompare(b.name));
 
-    const wheelchairAccessOptions = (wheelchairAccessTypes ?? []) as string[];
-
-    return (
+      return (
       <main className={pageStyles.main}>
         <div className={pageStyles.container}>
           <Link  href="/admin" className={formStyles.link} > {"\u2190"} Back to admin dashboard </Link>
           <p className={pageStyles.pageLabelUpper}> Admin </p>
           <h1 className={pageStyles.pageTitle}>Vehicles</h1>
-          <p className={pageStyles.pageDescription}> Add vehicles and connect them to approved chauffeurs. </p>
+          {/* ===== ADMIN VEHICLES PAGE HEADER ===== */}
+          <p className={pageStyles.pageDescription}>View, filter and manage registered chauffeur vehicles.</p>
 
           {pageMessage.success === "vehicle-added" && (<p className={pageStyles.successMsgPage}> Vehicle added successfully. </p> )}
           {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> Please fill in all required vehicle fields.  </p> )}
@@ -423,119 +302,22 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
           {pageMessage.success === "default-vehicle-updated" && (<p className={pageStyles.successMsgPage}> Default vehicle updated successfully. </p>)}
           {pageMessage.error === "missing-default-vehicle-fields" && (<p className={pageStyles.errorMsgPage}>The selected vehicle information is incomplete.</p>)}
           {pageMessage.error === "default-vehicle-check-failed" && (<p className={pageStyles.errorMsgPage}>The vehicle was added, but its automatic default status could not be checked. Please review the chauffeur&apos;s vehicles. </p>)}
-          <form  action={addVehicle}  className={formStyles.form}>
-                <div className={formStyles.formDivGridCol3}>
-                    <label className="block">
-                        <span className={formStyles.span}> Chauffeur </span>
-                        <select name="chauffeurId" required defaultValue={formValues.chauffeurId} className={formStyles.selectWFull} >
-                            <option value="">Select chauffeur</option>
-                            {chauffeurOptions.map((chauffeur) => ( <option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name} - {chauffeur.email} </option> ))}
-                        </select>
-                    </label>
 
-                    <label className="block">
-                        <span className={formStyles.span}> Vehicle type </span>
-                        <select  name="vehicleType"  required defaultValue={formValues.vehicleType} className={formStyles.selectWFull}>
-                            <option value="">Select vehicle type</option>
-                            {vehicleTypeOptions.map((vehicleType) => ( <option key={vehicleType} value={vehicleType}> {vehicleType} </option> ))}
-                        </select>
-                    </label>
+          {/* ============================================================
+                ADMIN VEHICLE FILTERS
+                Displays chauffeur and vehicle capability filters.
+                Filtering is handled on the server through URL parameters.
+            ============================================================ */}
+            <VehicleFilters
+              chauffeurs={filterChauffeurs}
+              filterChauffeurId={filterChauffeurId}
+              filterLargeLuggage={filterLargeLuggage}
+              filterMobilityStorage={filterMobilityStorage}
+            />
 
-                    <label className="block">
-                        <span className={formStyles.span}> Brand </span>
-                        <input name="brand"  required defaultValue={formValues.brand} placeholder="Brand, example Mercedes" className={formStyles.inputWFullCyan} />
-                    </label>
-
-                    {/*   md:col-span-2: This makes the whole group start under the left side of the form instead of staying only in the third column.
-                          w-20! This forces the input to be small, even if formStyles.inputNumber has w-full. */}
-                    <label className="block">
-                      <span className={formStyles.span}>Model</span>
-                      <input name="model"  required defaultValue={formValues.model} placeholder="Model, example E-Class" className={formStyles.inputWFullCyan} />
-                    </label>
-
-                    <label className="block">
-                      <span className={formStyles.span}>License Plate</span>
-                      <input name="licensePlate"  required defaultValue={formValues.licensePlate} placeholder="License plate"  className={formStyles.inputWFullCyan} />
-                    </label>
-
-                    <div className="flex flex-wrap items-end gap-2">
-                        <label className="block">
-                          <span className={formStyles.span}>Seats</span>
-                        <input name="seats" type="number"  min="1" defaultValue={formValues.seats} required   placeholder="4"  className={`${formStyles.inputNumber} w-20!`}  />
-                        </label>
-
-                        <label className="block">
-                          <span className={formStyles.span}>Luggage</span>
-                        <input  name="luggageCapacity"  type="number"   min="0" defaultValue={formValues.luggageCapacity} required  placeholder="2"  className={`${formStyles.inputNumber} w-20!`}  />
-                        </label>
-
-                        <label className="block">
-                          <span className={formStyles.span}>Year</span>
-                          <input  name="vehicleYear" type="number"  min="1980"  max="2100"  defaultValue={formValues.vehicleYear} placeholder="2024"  className={`${formStyles.inputNumber} w-24!`}  />
-                        </label>
-
-                        <label className="block">
-                          <span className={formStyles.span}>Color</span>
-                          <input  name="vehicleColor"  defaultValue={formValues.vehicleColor} placeholder="black"  className={`${formStyles.inputNumber} w-24!`}  />
-                        </label>
-                    </div>
-
-                </div>
-                {/* Passenger support*/}
-                <div className="md:col-span-3 rounded-xl border border-cyan-400/20 p-4 mt-4">
-                    <h3 className="font-semibold text-cyan-300">Passenger support</h3>
-                    <div className="mt-4 grid gap-4 md:grid-cols-3">
-                        {/* Small numeric fields occupy two grid columns. */}
-                        <div className="flex flex-wrap items-end gap-3 md:col-span-2">
-                            <label className="block">
-                                <span className={formStyles.span}>Infant seats</span>
-                                <input name="infantSeatCount" type="number" min="0" defaultValue={formValues.infantSeatCount} className={`${formStyles.inputNumber} w-24!`} />
-                            </label>
-
-                            <label className="block">
-                                <span className={formStyles.span}>Child seats</span>
-                                <input name="childSeatCount" type="number" min="0" defaultValue={formValues.childSeatCount} className={`${formStyles.inputNumber} w-24!`} />
-                            </label>
-
-                            <label className="block">
-                                <span className={formStyles.span}>Booster seats</span>
-                                <input name="boosterSeatCount" type="number" min="0" defaultValue={formValues.boosterSeatCount} className={`${formStyles.inputNumber} w-24!`} />
-                            </label>
-
-                            <label className="block">
-                                <span className={formStyles.span}>Wheelchair capacity</span>
-                                <input name="wheelchairCapacity" type="number" min="0" defaultValue={formValues.wheelchairCapacity} className={`${formStyles.inputNumber} w-24!`} />
-                            </label>
-                        </div>
-
-                        {/* Vertically centers the checkboxes beside the numeric fields. */}
-                        <div className="flex flex-wrap items-center gap-4 self-center md:col-span-1">
-                            <label className="flex items-center gap-2">
-                                <input name="isofixAvailable" type="checkbox" defaultChecked={formValues.isofixAvailable === "true"} /> ISOFIX available
-                            </label>
-                            <label className="flex items-center gap-2">
-                                <input name="mobilityAidStorage" type="checkbox" defaultChecked={formValues.mobilityAidStorage === "true"} /> Mobility-aid storage
-                            </label>
-                            <label className="flex items-center gap-2">
-                                <input name="extraLargeLuggage" type="checkbox" defaultChecked={formValues.extraLargeLuggage === "true"} /> Extra-large luggage
-                            </label>
-                        </div>
-
-                        {/* Occupies two of the three grid columns. */}
-                        <label className="block md:col-span-2">
-                            <span className={formStyles.span}>Wheelchair access</span>
-                            <select name="wheelchairAccess" defaultValue={formValues.wheelchairAccess} className={`${formStyles.selectWFull} w-72! max-w-full`}>
-                                {wheelchairAccessOptions.map((accessType) => (<option key={accessType} value={accessType}>{accessType}</option>))}
-                            </select>
-                        </label>
-                    </div>
-                </div>
-                <button type="submit" className={`mt-8 ${formStyles.primaryButtonDP}`}>
-                    Add vehicle
-                </button>
-          </form>
           {/*======section List of vehicles grouped by chauffeur======*/}
           <h3 className={tableStyles.headerTableSmall}>  List of vehicles grouped by chauffeur</h3>
+
           <div className="mt-8 space-y-8">
             {vehicleGroups.map((group) => (
               <section key={group.chauffeurId} id={`chauffeur-vehicles-${group.chauffeurId}`} className="scroll-mt-24">
@@ -763,7 +545,14 @@ export default async function AdminVehiclesPage({searchParams}: AdminVehiclesPag
               </section>
             ))}
 
-            {vehicleGroups.length === 0 && (<p className={tableStyles.cellEmpty}>No vehicles found yet.</p> )}
+            {/* Show a specific message when selected filters return no vehicles. */}
+            {vehicleGroups.length === 0 && (
+              <p className={tableStyles.cellEmpty}>
+                {filterChauffeurId || filterLargeLuggage || filterMobilityStorage
+                  ? "No vehicles match the selected filters."
+                  : "No vehicles found yet."}
+              </p>
+            )}
           </div>
         </div>
       </main>

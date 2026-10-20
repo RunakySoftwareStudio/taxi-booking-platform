@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
+import AvailabilityFilters from "./AvailabilityFilters";
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/availability/page.tsx 
 
 type AvailabilityRow = {
@@ -15,8 +16,23 @@ type AvailabilityRow = {
   chauffeurs: { name: string; email: string; phone: string; } | null;
 };
 
-export default async function AdminAvailabilityPage() 
+/* ============================================================
+   ADMIN AVAILABILITY FILTER PARAMETERS
+   Reads chauffeur and date selections from the page URL.
+============================================================ */
+type AdminAvailabilityPageProps = {
+    searchParams: Promise<{
+        filterChauffeurId?: string;
+        filterDate?: string;
+    }>;
+};
+
+/* Loads availability records using the selected filters. */
+export default async function AdminAvailabilityPage({searchParams}: AdminAvailabilityPageProps)
 {
+    const pageFilters = await searchParams;
+    const filterChauffeurId = pageFilters.filterChauffeurId ?? "";
+    const filterDate = pageFilters.filterDate ?? "";
     const { data: availabilityRecords, error } = await supabaseAdmin
         .from("chauffeur_availability")
         .select( `id, chauffeur_id, available_date, start_time, end_time, status, created_at, chauffeurs (name,email, phone) ` )
@@ -36,7 +52,28 @@ export default async function AdminAvailabilityPage()
         );
     }
     const availabilityRows = (availabilityRecords ?? []) as unknown as AvailabilityRow[];
-    const availabilityGroups = availabilityRows.reduce< 
+
+    /* ============================================================
+    AVAILABILITY FILTERING
+    Applies chauffeur and date filters before grouping records.
+    Both filters must match when selected together.
+    ============================================================ */
+    const filteredAvailabilityRows = availabilityRows.filter((availability) =>
+        (!filterChauffeurId || availability.chauffeur_id === filterChauffeurId) &&
+        (!filterDate || availability.available_date === filterDate)
+    );
+
+    /* Creates unique chauffeur options from the original records,
+    so the dropdown remains complete when filters are active. */
+    const filterChauffeurs = Array.from(
+        new Map(availabilityRows.map((availability) => [
+            availability.chauffeur_id,
+            {id: availability.chauffeur_id, name: availability.chauffeurs?.name || "Unknown chauffeur"},
+        ])).values()
+    ).sort((a, b) => a.name.localeCompare(b.name));
+
+
+    const availabilityGroups = filteredAvailabilityRows.reduce<
     { groupKey: string; chauffeurName: string; chauffeurEmail: string; chauffeurPhone: string; records: AvailabilityRow[]; }[] >((groups, availability) => {
         const chauffeurName = availability.chauffeurs?.name || "Unknown chauffeur";
         const chauffeurEmail = availability.chauffeurs?.email || "-";
@@ -56,92 +93,93 @@ export default async function AdminAvailabilityPage()
             <p className={pageStyles.pageLabelUpper}> Admin </p>
             <h1 className={pageStyles.pageTitle}>Chauffeur availability</h1>
             <p className={pageStyles.pageDescription}>  View availability records added by chauffeurs.  </p>
+            {/* Search controls for chauffeur and availability date. */}
+            <AvailabilityFilters chauffeurs={filterChauffeurs} filterChauffeurId={filterChauffeurId} filterDate={filterDate} />
             <div >
+                <div className="mt-6 space-y-8">
+                    {availabilityGroups.map((group) => (
+                        <section key={group.groupKey} className={formStyles.sectionCardBorder4}>
+                        <div className="mb-5">
+                            <h2 className="text-lg font-bold text-white"> Chauffeur: {group.chauffeurName}</h2>
+                            <p className="wrap-break-word text-sm text-slate-300"> Email: {group.chauffeurEmail} </p>
+                            <p className="text-sm text-slate-300">  Phone: {group.chauffeurPhone} </p>
+                            {group.records.length ===0  && ( <p className="mt-2 text-sm font-semibold text-red-500"> No availability records! </p>)}
+                            {group.records.length > 1 && ( <p className="mt-2 text-sm font-semibold text-cyan-200"> Availability records: {group.records.length} </p>)}
 
-            <div className="mt-6 space-y-8">
-                {availabilityGroups.map((group) => (
-                    <section key={group.groupKey} className={formStyles.sectionCardBorder4}>
-                    <div className="mb-5">
-                        <h2 className="text-lg font-bold text-white"> Chauffeur: {group.chauffeurName}</h2>
-                        <p className="wrap-break-word text-sm text-slate-300"> Email: {group.chauffeurEmail} </p>
-                        <p className="text-sm text-slate-300">  Phone: {group.chauffeurPhone} </p>
-                        {group.records.length ===0  && ( <p className="mt-2 text-sm font-semibold text-red-500"> No availability records! </p>)}
-                        {group.records.length > 1 && ( <p className="mt-2 text-sm font-semibold text-cyan-200"> Availability records: {group.records.length} </p>)}
-                        
-                    </div>
+                        </div>
 
-                    {/* Mobile availability cards */}
-                    <div className="grid gap-4 lg:hidden">
-                        {group.records.map((availability, index) => {
-                            let statusColorClasses = tableStyles.statusRedClasses;
-                            if (availability.status === "available") { statusColorClasses = tableStyles.statusGreenClasses; }
-                            if (availability.status === "busy") { statusColorClasses = tableStyles.statusYellowClasses;}
+                        {/* Mobile availability cards */}
+                        <div className="grid gap-4 lg:hidden">
+                            {group.records.map((availability, index) => {
+                                let statusColorClasses = tableStyles.statusRedClasses;
+                                if (availability.status === "available") { statusColorClasses = tableStyles.statusGreenClasses; }
+                                if (availability.status === "busy") { statusColorClasses = tableStyles.statusYellowClasses;}
 
-                            return ( <article key={availability.id}  >                                  
-                                    <div className={index === 0 ? "pt-0" : mobileStyle.line} >                                       
-                                        <div className="grid grid-cols-2 gap-3">                                       
-                                            <div>
-                                                <span className={mobileStyle.inforCaption}> Date: </span>
-                                                <span className={mobileStyle.infoValue}>{formatShortDate(availability.available_date)}</span>
-                                            </div>
-        
-                                            <div className="flex items-center gap-2">
-                                                <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}  > {availability.status} </span>
-                                                {availability.status === "available" && ( <span className={tableStyles.okCheckSign} aria-hidden="true">  ✓  </span>)}
-                                            </div>
+                                return ( <article key={availability.id}>
+                                        <div className={index === 0 ? "pt-0" : mobileStyle.line} >
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <span className={mobileStyle.inforCaption}> Date: </span>
+                                                    <span className={mobileStyle.infoValue}>{formatShortDate(availability.available_date)}</span>
+                                                </div>
 
-                                            <div>
-                                                <span  className={mobileStyle.inforCaption}>  Start time:  </span>
-                                                <span className={mobileStyle.infoValue}>{formatShortTime(availability.start_time)}</span>
-                                            </div>
-                                            
-                                            <div>
-                                                <span  className={mobileStyle.inforCaption}>  End time:  </span>
-                                                <span className={mobileStyle.infoValue}>{formatShortTime(availability.end_time)}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}  > {availability.status} </span>
+                                                    {availability.status === "available" && ( <span className={tableStyles.okCheckSign} aria-hidden="true">  ✓  </span>)}
+                                                </div>
+
+                                                <div>
+                                                    <span  className={mobileStyle.inforCaption}>  Start time:  </span>
+                                                    <span className={mobileStyle.infoValue}>{formatShortTime(availability.start_time)}</span>
+                                                </div>
+
+                                                <div>
+                                                    <span  className={mobileStyle.inforCaption}>  End time:  </span>
+                                                    <span className={mobileStyle.infoValue}>{formatShortTime(availability.end_time)}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </article>  );
-                            })}
-                    </div>
+                                    </article>  );
+                                })}
+                        </div>
 
-                    {/* Desktop availability table */}
-                    <div className={`${tableStyles.tableDiv} hidden lg:block`}>
-                        <table className={tableStyles.table1000}>
-                        <thead className={tableStyles.tableHeaderCyan}>
-                            <tr>
-                            <th className={tableStyles.cellCaption}>Date</th>
-                            <th className={tableStyles.cellCaption}>Start time</th>
-                            <th className={tableStyles.cellCaption}>End time</th>
-                            <th className={tableStyles.cellCaption}>Status</th>
-                            </tr>
-                        </thead>
+                        {/* Desktop availability table */}
+                        <div className={`${tableStyles.tableDiv} hidden lg:block`}>
+                            <table className={tableStyles.table1000}>
+                            <thead className={tableStyles.tableHeaderCyan}>
+                                <tr>
+                                <th className={tableStyles.cellCaption}>Date</th>
+                                <th className={tableStyles.cellCaption}>Start time</th>
+                                <th className={tableStyles.cellCaption}>End time</th>
+                                <th className={tableStyles.cellCaption}>Status</th>
+                                </tr>
+                            </thead>
 
-                        <tbody>
-                            {group.records.map((availability) => {let statusColorClasses = tableStyles.statusRedClasses;
-                            if (availability.status === "available") { statusColorClasses = tableStyles.statusGreenClasses; }
-                            if (availability.status === "busy") { statusColorClasses = tableStyles.statusYellowClasses;}
+                            <tbody>
+                                {group.records.map((availability) => {let statusColorClasses = tableStyles.statusRedClasses;
+                                if (availability.status === "available") { statusColorClasses = tableStyles.statusGreenClasses; }
+                                if (availability.status === "busy") { statusColorClasses = tableStyles.statusYellowClasses;}
 
-                            return (
-                                <tr key={availability.id} className="border-b border-white/10">
-                                <td className={tableStyles.cell}> {availability.available_date} </td>
-                                <td className={tableStyles.cell}> {availability.start_time}  </td>
-                                <td className={tableStyles.cell}> {availability.end_time}  </td>
+                                return (
+                                    <tr key={availability.id} className="border-b border-white/10">
+                                    <td className={tableStyles.cell}> {availability.available_date} </td>
+                                    <td className={tableStyles.cell}> {availability.start_time}  </td>
+                                    <td className={tableStyles.cell}> {availability.end_time}  </td>
 
-                                <td className="p-4">
-                                    <div className="flex items-center gap-2">
-                                    <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}  >  {availability.status}  </span>
-                                    {availability.status === "available" && ( <span className={tableStyles.okCheckSign} aria-hidden="true">  ✓ </span>  )}
-                                    </div>
-                                </td>
-                                </tr>); })}
-                        </tbody>
-                        </table>
-                    </div>
-                    </section>
-                ))}
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-2">
+                                        <span  className={`rounded-full px-3 py-1 text-xs font-medium ${statusColorClasses}`}  >  {availability.status}  </span>
+                                        {availability.status === "available" && ( <span className={tableStyles.okCheckSign} aria-hidden="true">  ✓ </span>  )}
+                                        </div>
+                                    </td>
+                                    </tr>); })}
+                            </tbody>
+                            </table>
+                        </div>
+                        </section>
+                    ))}
 
-                {availabilityGroups.length === 0 && ( <p className={tableStyles.cellEmpty}> No availability records found yet. </p>  )}
+                    {availabilityGroups.length === 0 && ( <p className={tableStyles.cellEmpty}> No availability records found yet. </p>  )}
                 </div>
             </div>
         </div>
