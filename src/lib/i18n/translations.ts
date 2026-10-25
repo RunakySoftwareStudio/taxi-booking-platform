@@ -37,11 +37,18 @@ type TranslationDictionary = Record<string, TranslationSection>;
 export const translations = {
   adminChauffeurEditPage: {
     backToAdminChauffeurs: {
-      en: "← Back to admin chauffeurs",
-      nl: "← Terug naar admin chauffeurs",
+      en: "\u2190 Back to admin chauffeurs",
+      nl: "\u2190 Terug naar admin chauffeurs",
       ar: "العودة إلى إدارة السائقين →",
-      tr: "← Şoför yönetimine dön",
+      tr: "\u2190 Şoför yönetimine dön",
       fa: "بازگشت به مدیریت رانندگان →",
+    },
+    backToAdminSupportChauffeurs: {
+        en: "\u2190 Back to Support Dashboard",
+        nl: "\u2190 Terug naar het ondersteuningsdashboard",
+        ar: "العودة إلى لوحة الدعم \u2192",
+        tr: "\u2190 Destek Paneline Geri Dön",
+        fa: "بازگشت به داشبورد پشتیبانی \u2192",
     },
     viewChauffeurDashboard: {
       en: "View chauffeur dashboard",
@@ -194,10 +201,10 @@ export const translations = {
 
   chauffeurAvailabilityPage: {
     backToDashboard: {
-      en: "← Back to dashboard",
-      nl: "← Terug naar dashboard",
+      en: "\u2190 Back to dashboard",
+      nl: "\u2190 Terug naar dashboard",
       ar: "العودة إلى لوحة التحكم →",
-      tr: "← Kontrol paneline dön",
+      tr: "\u2190 Kontrol paneline dön",
       fa: "بازگشت به داشبورد →",
     },
     chauffeurLabel: {
@@ -376,10 +383,10 @@ export const translations = {
       fa: "در تعطیلات",
     },
     backToAvailability: {
-      en: "← Back to availability",
-      nl: "← Terug naar beschikbaarheid",
+      en: "\u2190 Back to availability",
+      nl: "\u2190 Terug naar beschikbaarheid",
       ar: "العودة إلى التوفر →",
-      tr: "← Uygunluğa dön",
+      tr: "\u2190 Uygunluğa dön",
       fa: "بازگشت به دسترسی →",
     },
     editTitlePrefix: {
@@ -605,7 +612,7 @@ export const translations = {
 
     // Text used by the chauffeur profile change-request page.
   chauffeurChangeRequestPage: {
-      backToProfile: { en: "← Back to profile", nl: "← Terug naar profiel", ar: "العودة إلى الملف الشخصي →", tr: "← Profile dön", fa: "بازگشت به نمایه →" },
+      backToProfile: { en: "\u2190 Back to profile", nl: "\u2190 Terug naar profiel", ar: "العودة إلى الملف الشخصي →", tr: "\u2190 Profile dön", fa: "بازگشت به نمایه →" },
       title: { en: "Request a profile change", nl: "Profielwijziging aanvragen", ar: "طلب تعديل الملف الشخصي", tr: "Profil değişikliği talep et", fa: "درخواست تغییر نمایه" },
       // Explains the purpose and which protected fields may be requested.
       description: { en: "Ask the administrator to change protected information such as your name, email, company name or licence number.", nl: "Vraag de beheerder om beveiligde gegevens te wijzigen, zoals uw naam, e-mail, bedrijfsnaam of vergunningsnummer.", ar: "اطلب من المسؤول تغيير المعلومات المحمية مثل الاسم أو البريد الإلكتروني أو اسم الشركة أو رقم الترخيص.", tr: "Yöneticiden adınız, e-posta adresiniz, şirket adınız veya lisans numaranız gibi korumalı bilgileri değiştirmesini isteyin.", fa: "از مدیر بخواهید اطلاعات محافظت‌شده مانند نام، ایمیل، نام شرکت یا شماره مجوز شما را تغییر دهد." },
@@ -660,25 +667,25 @@ export const translations = {
 
   chauffeurDashboardPage: {
     backToHomepage: {
-      en: "← Back to homepage",
-      nl: "← Terug naar homepage",
+      en: "\u2190 Back to homepage",
+      nl: "\u2190 Terug naar homepage",
       ar: "العودة إلى الصفحة الرئيسية →",
-      tr: "← Ana sayfaya dön",
+      tr: "\u2190 Ana sayfaya dön",
       fa: "بازگشت به صفحه اصلی →",
     },
     backToAdminChauffeurs: {
-      en: "← Back to admin chauffeurs",
-      nl: "← Terug naar admin chauffeurs",
+      en: "\u2190 Back to admin chauffeurs",
+      nl: "\u2190 Terug naar admin chauffeurs",
       ar: "العودة إلى إدارة السائقين →",
-      tr: "← Şoför yönetimine dön",
+      tr: "\u2190 Şoför yönetimine dön",
       fa: "بازگشت به مدیریت رانندگان →",
     },
     // Link used to return from a self-management page to the chauffeur dashboard.
     backToDashboard: { 
-      en: "← Back to dashboard", 
-      nl: "← Terug naar dashboard", 
-      ar: "العودة إلى لوحة التحكم →", 
-      tr: "← Kontrol paneline dön", fa: "بازگشت به داشبورد →" 
+      en: "\u2190 Back to dashboard",
+      nl: "\u2190 Terug naar dashboard",
+      ar: "العودة إلى لوحة التحكم →",
+      tr: "\u2190 Kontrol paneline dön", fa: "بازگشت به داشبورد →"
     },
     chauffeurLabel: {
       en: "Chauffeur",
@@ -1343,10 +1350,10 @@ export const translations = {
 
   chauffeurOpenBookingsPage: {
     backToDashboard: {
-      en: "← Back to dashboard",
-      nl: "← Terug naar dashboard",
+      en: "\u2190 Back to dashboard",
+      nl: "\u2190 Terug naar dashboard",
       ar: "العودة إلى لوحة التحكم →",
-      tr: "← Kontrol paneline dön",
+      tr: "\u2190 Kontrol paneline dön",
       fa: "بازگشت به داشبورد →",
     },
 
@@ -1521,10 +1528,10 @@ export const translations = {
       
   loginPage: {
     backToHomepage: {
-      en: "← Back to homepage",
-      nl: "← Terug naar homepage",
+      en: "\u2190 Back to homepage",
+      nl: "\u2190 Terug naar homepage",
       ar: "العودة إلى الصفحة الرئيسية →",
-      tr: "← Ana sayfaya dön",
+      tr: "\u2190 Ana sayfaya dön",
       fa: "بازگشت به صفحه اصلی →",
     },
     label: {
@@ -1842,10 +1849,10 @@ export const translations = {
 
   chauffeurStatusPage: {
     backToHomepage: {
-      en: "← Back to homepage",
-      nl: "← Terug naar homepage",
+      en: "\u2190 Back to homepage",
+      nl: "\u2190 Terug naar homepage",
       ar: "العودة إلى الصفحة الرئيسية →",
-      tr: "← Ana sayfaya dön",
+      tr: "\u2190 Ana sayfaya dön",
       fa: "بازگشت به صفحه اصلی →",
     },
     label: {
@@ -2048,10 +2055,10 @@ export const translations = {
 
   bookingStatusPage: {
     backToHomepage: {
-      en: "← Back to homepage",
-      nl: "← Terug naar homepage",
+      en: "\u2190 Back to homepage",
+      nl: "\u2190 Terug naar homepage",
       ar: "العودة إلى الصفحة الرئيسية →",
-      tr: "← Ana sayfaya dön",
+      tr: "\u2190 Ana sayfaya dön",
       fa: "بازگشت به صفحه اصلی →",
     },
     label: {

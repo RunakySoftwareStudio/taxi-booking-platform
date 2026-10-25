@@ -18,6 +18,7 @@ type ChauffeurDocumentRow = {
 type ChauffeurComplianceDocumentsFormProps = {
     chauffeurId: string;
     uploadedDocuments?: ChauffeurDocumentRow[];
+    mode?: "chauffeur" | "admin";
 };
 /* Defines the private compliance document types supported by Voya Taxi. */
 const documentTypes = [
@@ -50,10 +51,16 @@ function getDocumentTypeLabel(documentTypeValue: string) {
 const maximumFileSize = 8 * 1024 * 1024;
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png"];
 
-/* Selects and uploads a private chauffeur compliance document. */
-export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedDocuments = []}: ChauffeurComplianceDocumentsFormProps) {
+/* Defaults to chauffeur mode to preserve the existing profile functionality. */
+export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedDocuments = [], mode = "chauffeur"}: ChauffeurComplianceDocumentsFormProps) {
 
     const router = useRouter();
+
+    /* Selects the correct document API based on the user's role.
+    The server independently verifies authorization. */
+    const documentApiUrl = mode === "admin"
+        ? `/api/admin/chauffeurs/${chauffeurId}/documents`
+        : `/api/chauffeur/${chauffeurId}/documents`;
 
     /* Stores the current form and upload state. */
     const [documentType, setDocumentType] = useState("chauffeur_card");
@@ -123,11 +130,8 @@ export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedD
 
             formData.append("documentType", documentType);
             formData.append("document", selectedFile);
-
-            const response = await fetch(`/api/chauffeur/${chauffeurId}/documents`,
-                {method: "POST", body: formData}
-            );
-
+            /* Uploads through the appropriate protected API endpoint. */
+            const response = await fetch(documentApiUrl, {method: "POST", body: formData});
             const result = await response.json();
 
             if (!response.ok) {
@@ -181,10 +185,12 @@ export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedD
         documentWindow.opener = null;
 
         try {
-            const response = await fetch(
-                `/api/chauffeur/${chauffeurId}/documents?documentId=${documentId}`
-            );
+            /* Selects the protected document-viewing API for Admin or chauffeur. */
+            const viewDocumentUrl = mode === "admin"
+                ? `/api/admin/chauffeurs/${chauffeurId}/documents/${documentId}`
+                : `/api/chauffeur/${chauffeurId}/documents?documentId=${documentId}`;
 
+            const response = await fetch(viewDocumentUrl);
             const result = await response.json();
 
             if (!response.ok || !result.signedUrl) {
@@ -366,7 +372,8 @@ export default function ChauffeurComplianceDocumentsForm({chauffeurId, uploadedD
                                                         {viewingDocumentId === document.id ? "Opening..." : "View document"}
                                                     </button>
 
-                                                    {document.verification_status === "pending_review" && (
+                                                    {/* Only chauffeurs can delete their own pending-review documents. */}
+                                                    {mode === "chauffeur" && document.verification_status === "pending_review" && (
                                                         <button type="button" onClick={() => handleDeleteDocument(document.id)} disabled={deletingDocumentId === document.id} className="rounded-xl border border-red-400/40 px-3 py-1.5 text-sm font-semibold text-red-200 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50">
                                                             {deletingDocumentId === document.id ? "Deleting..." : "Delete"}
                                                         </button>

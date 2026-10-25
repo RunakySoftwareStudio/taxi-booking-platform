@@ -1,6 +1,7 @@
 
 import Link from "next/link";
 import { formStyles } from "@/styles/classNames";
+import { SlidersHorizontal } from "lucide-react";
 
 /* ============================================================
    ADMIN VEHICLE MANAGEMENT CONTROLS
@@ -36,8 +37,10 @@ export default function VehicleFilters({chauffeurs, filterChauffeurId, filterLar
 
             {/* ===== FILTER PANEL ===== */}
             <div className="mt-5 border-t border-cyan-800/60 pt-5">
-                <h3 className="mb-4 font-semibold text-cyan-300">Vehicle filters</h3>
-
+                <div className="mb-4 flex items-center gap-2 border-b border-cyan-500/20 pb-3">
+                    <SlidersHorizontal className="h-5 w-5 text-cyan-400" aria-hidden="true" />
+                    <h2 className="text-lg font-semibold text-cyan-300">Filter Vehicles</h2>
+                </div>
                 <form key={`${filterChauffeurId}-${filterLargeLuggage}-${filterMobilityStorage}`} action="/admin/vehicles" method="GET" className="flex flex-wrap items-end gap-4">
                     <label className="block w-full max-w-sm">
                         <span className={formStyles.span}>Chauffeur</span>

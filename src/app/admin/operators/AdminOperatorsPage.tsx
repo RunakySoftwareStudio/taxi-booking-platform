@@ -4,6 +4,8 @@ import Link from "next/link";
 import { requireAdminUser } from "@/lib/auth/requireAdminUser";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles, tableStyles } from "@/styles/classNames";
+import { SlidersHorizontal } from "lucide-react";
+import OperatorFilters from "./OperatorFilters";
 
 /**
  * TaxiOperatorRow
@@ -23,6 +25,16 @@ type TaxiOperatorRow = {
     country_code: string;
     verification_status: string;
     created_at: string;
+};
+
+/* Defines the optional URL filters for the Admin Taxi Operators page. */
+type AdminOperatorsPageProps = {
+    searchParams: Promise<{
+        company?: string;
+        kvk?: string;
+        location?: string;
+        status?: string;
+    }>;
 };
 
 /**
@@ -75,8 +87,15 @@ function getOperatorStatusClass(verificationStatus: string) {
  * Operator verification and status changes will later use the
  * dedicated update_taxi_operator_verification_status RPC.
  */
-export default async function AdminOperatorsPage() {
+/* Reads the URL search parameters before loading the operator list. */
+export default async function AdminOperatorsPage({searchParams}: AdminOperatorsPageProps) {
     await requireAdminUser();
+
+    const filters = await searchParams;
+    const companyFilter = filters.company?.trim() ?? "";
+    const kvkFilter = filters.kvk?.trim() ?? "";
+    const locationFilter = filters.location?.trim() ?? "";
+    const statusFilter = filters.status?.trim() ?? "";
 
     /* ===== Load taxi operators ===== */
     const { data: operatorData, error: operatorError } = await supabaseAdmin
@@ -108,8 +127,23 @@ export default async function AdminOperatorsPage() {
 
     const operatorRows = (operatorData ?? []) as TaxiOperatorRow[];
 
-    /* ===== Sort operators by verification priority ===== */
-    const sortedOperatorRows = [...operatorRows].sort((firstOperator, secondOperator) => {
+    /* ============================================================
+    FILTER TAXI OPERATORS
+    Applies optional company, KvK, location and verification
+    status filters without changing the database query.
+    ============================================================ */
+    const filteredOperatorRows = operatorRows.filter((operator) => {
+        const matchesCompany = operator.company_name.toLowerCase().includes(companyFilter.toLowerCase());
+        const matchesKvk = operator.kvk_number.toLowerCase().includes(kvkFilter.toLowerCase());
+        const operatorLocation = `${operator.city ?? ""} ${operator.country_code}`.toLowerCase();
+        const matchesLocation = operatorLocation.includes(locationFilter.toLowerCase());
+        const matchesStatus = !statusFilter || operator.verification_status === statusFilter;
+
+        return matchesCompany && matchesKvk && matchesLocation && matchesStatus;
+    });
+
+    /* Sort the filtered operators, keeping pending verification first. */
+    const sortedOperatorRows = [...filteredOperatorRows].sort((firstOperator, secondOperator) => {
         const firstPriority = getOperatorStatusSortPriority(firstOperator.verification_status);
         const secondPriority = getOperatorStatusSortPriority(secondOperator.verification_status);
 
@@ -138,6 +172,19 @@ export default async function AdminOperatorsPage() {
                         Could not load taxi operators.
                     </p>
                 )}
+
+                {/* ============================================================
+                    TAXI OPERATOR FILTER PANEL
+                    Displays the existing URL-based search controls inside
+                    the standardized Admin filter container.
+                ============================================================ */}
+                <section className="mt-6 rounded-xl border border-cyan-500/30 bg-slate-900/70 p-4 shadow-lg sm:p-6">
+                    <div className="mb-4 flex items-center gap-2 border-b border-cyan-500/20 pb-3">
+                        <SlidersHorizontal className="h-5 w-5 text-cyan-400" aria-hidden="true" />
+                        <h2 className="text-lg font-semibold text-cyan-300">Filter taxi operators</h2>
+                    </div>
+                    <OperatorFilters companyFilter={companyFilter} kvkFilter={kvkFilter} locationFilter={locationFilter} statusFilter={statusFilter} />
+                </section>
 
                 {/* ===== Operator list ===== */}
                 <h3 className={tableStyles.headerTableSmall}>List of taxi operators:</h3>

@@ -20,6 +20,8 @@ import { getVehicleMatchResult, type VehicleWheelchairAccess } from "@/lib/vehic
 import type { WheelchairRequirement } from "@/types/wheelchairRequirementType";
 import ScrollToBooking from "@/components/ScrollToBooking";
 import SearchableChauffeurFilter from "./SearchableChauffeurFilter";
+import { SlidersHorizontal } from "lucide-react";
+import CopyBookingIdButton from "@/app/admin/chauffeurs/[chauffeurId]/support/CopyBookingIdButton";
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
 /**
  * These new values will later mean:
@@ -547,41 +549,52 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                 <h1 className={pageStyles.pageTitle}>Booking requests</h1>
                 <p className={pageStyles.pageDescription}>  Here you can see booking requests submitted through the website. </p>
 
-                {/* Filters bookings by whether a chauffeur is assigned. */}
-                <form method="GET" action="/admin/bookings" className="mt-6 flex flex-wrap items-end gap-3">
-                    {/* Keeps Assignment and Chauffeur filters synchronized. */}
-                    <SearchableChauffeurFilter
-                        chauffeurs={chauffeurOptions.map((chauffeur) => ({id: chauffeur.id, name: chauffeur.name, }))}
-                        assignmentFilter={assignmentFilter} selectedChauffeurId={selectedChauffeurId}
-                    />
-
-                    {/* Filters bookings by their journey date relative to today. */}
-                    <div>
-                        <label htmlFor="period" className="mb-1 block text-sm text-slate-300">
-                            Journey period
-                        </label>
-
-                        <select id="period" name="period" defaultValue={journeyPeriod} className={formStyles.selectForm}>
-                            <option value="all">All dates</option>
-                            <option value="today">Today</option>
-                            <option value="upcoming">Upcoming</option>
-                            <option value="past">Past bookings</option>
-                        </select>
+                {/* ============================================================
+                    ADMIN BOOKINGS FILTER PANEL
+                    Groups existing search controls into a clearly labelled box.
+                    The filtering logic remains unchanged.
+                ============================================================ */}
+                <section className="mt-6 rounded-xl border border-cyan-500/30 bg-slate-900/70 p-4 shadow-lg sm:p-6">
+                    <div className="mb-4 flex items-center gap-2 border-b border-cyan-500/20 pb-3">
+                        <SlidersHorizontal className="h-5 w-5 text-cyan-400" aria-hidden="true" />
+                        <h2 className="text-lg font-semibold text-cyan-300">Filter chauffeurs</h2>
                     </div>
+                    {/* Filters bookings by whether a chauffeur is assigned. */}
+                    <form method="GET" action="/admin/bookings" className="mt-6 flex flex-wrap items-end gap-3">
+                        {/* Keeps Assignment and Chauffeur filters synchronized. */}
+                        <SearchableChauffeurFilter
+                            chauffeurs={chauffeurOptions.map((chauffeur) => ({id: chauffeur.id, name: chauffeur.name, }))}
+                            assignmentFilter={assignmentFilter} selectedChauffeurId={selectedChauffeurId}
+                        />
 
-                    {/* Filters bookings by journey pickup date. */}
-                    <div>
-                        <label htmlFor="pickupDate" className="mb-1 block text-sm text-slate-300">
-                            Journey date
-                        </label>
-                        <input id="pickupDate" type="date" name="pickupDate" defaultValue={selectedPickupDate} className={formStyles.selectForm} />
-                    </div>
+                        {/* Filters bookings by their journey date relative to today. */}
+                        <div>
+                            <label htmlFor="period" className="mb-1 block text-sm text-slate-300">
+                                Journey period
+                            </label>
 
-                    {/* Apply the filter. */}
-                    <button type="submit" className={formStyles.filterButton}>
-                        Search
-                    </button>
-                </form>
+                            <select id="period" name="period" defaultValue={journeyPeriod} className={formStyles.selectForm}>
+                                <option value="all">All dates</option>
+                                <option value="today">Today</option>
+                                <option value="upcoming">Upcoming</option>
+                                <option value="past">Past bookings</option>
+                            </select>
+                        </div>
+
+                        {/* Filters bookings by journey pickup date. */}
+                        <div>
+                            <label htmlFor="pickupDate" className="mb-1 block text-sm text-slate-300">
+                                Journey date
+                            </label>
+                            <input id="pickupDate" type="date" name="pickupDate" defaultValue={selectedPickupDate} className={formStyles.selectForm} />
+                        </div>
+
+                        {/* Apply the filter. */}
+                        <button type="submit" className={formStyles.filterButton}>
+                            Search
+                        </button>
+                    </form>
+                </section>
 
                 {/* Shows booking count and page navigation while keeping the table scroll available. */}
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -770,6 +783,10 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                         <span className={mobileStyle.infoValue}> {getAssignedVehicleLabel(booking.vehicles)} </span>
                                     </div>
                                     <div>
+                                        {/* Copies the complete booking UUID to the clipboard. */}
+                                        <CopyBookingIdButton recordId={booking.id} label="Copy Booking ID" />
+                                    </div>
+                                    <div>
                                         <span className={mobileStyle.inforCaption}>Chauffeur: </span>
                                         <input type="hidden" name="bookingId" value={booking.id} />
                                         <span className={mobileStyle.infoValue}>
@@ -907,6 +924,10 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                                         <strong className="text-cyan-300">Assigned vehicle:</strong>{" "}
                                                         {getAssignedVehicleLabel(booking.vehicles)}
                                                     </span>
+                                                    <div>
+                                                        {/* Copies the complete booking UUID to the clipboard. */}
+                                                        <CopyBookingIdButton recordId={booking.id} label="Copy Booking ID" />
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>

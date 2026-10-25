@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import AvailabilityFilters from "./AvailabilityFilters";
+import { SlidersHorizontal } from "lucide-react";
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/availability/page.tsx 
 
 type AvailabilityRow = {
@@ -93,8 +94,21 @@ export default async function AdminAvailabilityPage({searchParams}: AdminAvailab
             <p className={pageStyles.pageLabelUpper}> Admin </p>
             <h1 className={pageStyles.pageTitle}>Chauffeur availability</h1>
             <p className={pageStyles.pageDescription}>  View availability records added by chauffeurs.  </p>
-            {/* Search controls for chauffeur and availability date. */}
+
+                {/* ============================================================
+                    ADMIN BOOKINGS FILTER PANEL
+                    Groups existing search controls into a clearly labelled box.
+                    The filtering logic remains unchanged.
+                ============================================================ */}
+                <section className="mt-6 rounded-xl border border-cyan-500/30 bg-slate-900/70 p-4 shadow-lg sm:p-6">
+                    <div className="mb-4 flex items-center gap-2 border-b border-cyan-500/20 pb-3">
+                        <SlidersHorizontal className="h-5 w-5 text-cyan-400" aria-hidden="true" />
+                        <h2 className="text-lg font-semibold text-cyan-300">Filter chauffeurs</h2>
+                    </div>
+                    {/* Filters bookings by whether a chauffeur is assigned. */}
+                   {/* Search controls for chauffeur and availability date. */}
             <AvailabilityFilters chauffeurs={filterChauffeurs} filterChauffeurId={filterChauffeurId} filterDate={filterDate} />
+                </section>
             <div >
                 <div className="mt-6 space-y-8">
                     {availabilityGroups.map((group) => (

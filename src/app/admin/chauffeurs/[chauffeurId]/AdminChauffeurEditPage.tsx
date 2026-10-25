@@ -125,6 +125,11 @@ export default async function AdminChauffeurEditPage({ params}: AdminChauffeurEd
           <Link href={`/chauffeur/${chauffeurId}`} className={formStyles.link}>
             <TranslatedText sectionName="adminChauffeurEditPage" textKey="viewChauffeurDashboard" />
           </Link>
+
+          {/* Returns to the main Admin Chauffeur Support Dashboard. */}
+          <Link href={`/admin/chauffeurs/${chauffeurId}/support`} className={formStyles.link}>
+              <TranslatedText sectionName="adminChauffeurEditPage" textKey="backToAdminSupportChauffeurs" />
+          </Link>
         </div>
 
         <p className={pageStyles.pageLabelUpper}> <TranslatedText sectionName="adminChauffeurEditPage" textKey="adminLabel" /> </p>

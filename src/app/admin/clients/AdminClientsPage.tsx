@@ -3,6 +3,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles,mobileStyle } from "@/styles/classNames";
 import { formatShortDateTime } from "@/lib/formatDateTime";
+import { SlidersHorizontal } from "lucide-react";
 
 //export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app/admin/clients/page.tsx 
 
@@ -62,33 +63,43 @@ export default async function AdminClientsPage({searchParams,}: { searchParams: 
         <h1 className={pageStyles.pageTitle}>Clients</h1>
         <p className={pageStyles.pageDescription}>  View clients who submitted booking requests through the website.  </p>
 
-        {/* Search clients by name */}
-        <form action="/admin/clients" method="GET" className="mt-6 flex flex-wrap items-center gap-3">
-          <input
-            type="search"
-            name="name" autoComplete="off"
-            defaultValue={name}
-            placeholder="Search client name..."
-            aria-label="Search client by name"
-            className="w-full max-w-sm rounded-lg border border-cyan-700 bg-cyan-950/30 px-4 py-2 text-white placeholder:text-gray-400"
-          />
+        {/* ============================================================
+            ADMIN CLIENTS FILTER PANEL
+            Groups existing search controls into a clearly labelled box.
+            The filtering logic remains unchanged.
+        ============================================================ */}
+        <section className="mt-6 rounded-xl border border-cyan-500/30 bg-slate-900/70 p-4 shadow-lg sm:p-6">
+            <div className="mb-4 flex items-center gap-2 border-b border-cyan-500/20 pb-3">
+                <SlidersHorizontal className="h-5 w-5 text-cyan-400" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-cyan-300">Filter chauffeurs</h2>
+            </div>
+            {/* Filters clients by name or reorder options */}
+            <form action="/admin/clients" method="GET" className="mt-6 flex flex-wrap items-center gap-3">
+<input
+type="search"
+name="name" autoComplete="off"
+defaultValue={name}
+placeholder="Search client name..."
+aria-label="Search client by name"
+className="w-full max-w-sm rounded-lg border border-cyan-700 bg-cyan-950/30 px-4 py-2 text-white placeholder:text-gray-400"
+/>
 
-          {/* Order dropdown resets when the URL search parameters change */}
-          <select
-            key={`${name}-${order}`}
-            name="order"
-            defaultValue={order}
-            aria-label="Order clients by name"
-            className="rounded-lg border border-cyan-700 bg-cyan-950 px-4 py-2 text-white"
-          >
-            <option value="az">Name: A–Z</option>
-            <option value="za">Name: Z–A</option>
-          </select>
+{/* Order dropdown resets when the URL search parameters change */}
+<select
+key={`${name}-${order}`}
+name="order"
+defaultValue={order}
+aria-label="Order clients by name"
+className="rounded-lg border border-cyan-700 bg-cyan-950 px-4 py-2 text-white"
+>
+<option value="az">Name: A–Z</option>
+<option value="za">Name: Z–A</option>
+</select>
 
-          <button type="submit" className={formStyles.smallButton}>Search</button>
-          <Link href="/admin/clients" className={formStyles.link}>Reset filter</Link>
-        </form>
-
+<button type="submit" className={formStyles.smallButton}>Search</button>
+<Link href="/admin/clients" className={formStyles.link}>Reset filter</Link>
+            </form>
+        </section>
         {/* Mobile client cards */}
         <div className="mt-6 grid gap-4 lg:hidden">
             {clientRows.map((client) => (

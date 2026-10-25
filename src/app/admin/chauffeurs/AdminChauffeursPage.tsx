@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import ChauffeurFilters from "./ChauffeurFilters";
+import { SlidersHorizontal } from "lucide-react";
 
 //export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app/admin/chauffeurs/page.tsx 
 
@@ -423,15 +424,25 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                     </Link>
                 </div>
 
-                {/* Admin chauffeur search and capability filters. */}
-                <ChauffeurFilters
-                    nameFilter={nameFilter}
-                    serviceAreaFilter={serviceAreaFilter}
-                    petsFilter={petsFilter}
-                    wheelchairCapacityFilter={wheelchairCapacityFilter}
-                    extraLargeLuggageFilter={extraLargeLuggageFilter}
-                />
+                {/* ============================================================
+                    ADMIN CHAUFFEUR FILTER PANEL
+                    Groups existing search controls into a clearly labelled box.
+                    The filtering logic remains unchanged.
+                ============================================================ */}
+                <section className="mt-6 rounded-xl border border-cyan-500/30 bg-slate-900/70 p-4 shadow-lg sm:p-6">
+                    <div className="mb-4 flex items-center gap-2 border-b border-cyan-500/20 pb-3">
+                        <SlidersHorizontal className="h-5 w-5 text-cyan-400" aria-hidden="true" />
+                        <h2 className="text-lg font-semibold text-cyan-300">Filter chauffeurs</h2>
+                    </div>
 
+                    <ChauffeurFilters
+                        nameFilter={nameFilter}
+                        serviceAreaFilter={serviceAreaFilter}
+                        petsFilter={petsFilter}
+                        wheelchairCapacityFilter={wheelchairCapacityFilter}
+                        extraLargeLuggageFilter={extraLargeLuggageFilter}
+                    />
+                </section>
                 {pageMessage.success === "chauffeur-added" && (<p className={pageStyles.successMsgPage}> Chauffeur added successfully. </p> )}
                 {pageMessage.success === "status-updated" && ( <p className={pageStyles.successMsgPage}> Chauffeur status updated successfully. </p>)}
                 {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}>  Please fill in all required chauffeur fields.</p> )}
@@ -471,18 +482,6 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                     <span className= {mobileStyle.inforCaption}>Phone: </span>
                                     <span className= {mobileStyle.infoValue} >{chauffeur.phone}</span>
                                 </p>
-                                <p className="mt-1">
-                                    <span className={mobileStyle.inforCaption}>Taxi operator: </span>
-                                    <span className={mobileStyle.infoValue}>
-                                        {chauffeur.taxi_operators?.company_name || "Not assigned"}
-                                    </span>
-
-                                    {chauffeur.taxi_operators && (
-                                        <span className="ml-2 text-xs text-slate-400">
-                                            ({chauffeur.taxi_operators.verification_status})
-                                        </span>
-                                    )}
-                                </p>
                                 <div className="mt-2">
                                     <span className={mobileStyle.inforCaption}>
                                         Operational status:{" "}
@@ -521,8 +520,8 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                             </div>
                         </div>
                         <div className="mt-3 flex flex-wrap items-center gap-3">  
-                            <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>  Details  </Link>
-
+                            <Link href={`/admin/chauffeurs/${chauffeur.id}`} className={formStyles.smallButton}>Details</Link>
+                            <Link href={`/admin/chauffeurs/${chauffeur.id}/support`} className={formStyles.smallButton}>Support Dashboard</Link>
                             {/* Only allow approval/reactivation when chauffeur compliance is currently valid. */}
                             {canUseQuickAccountAction(chauffeur) ? (
                                 <form action={changeChauffeurActiveStatus}>
@@ -549,22 +548,18 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                 <div className={`${tableStyles.DivCyanList} hidden lg:block`}>
                     <table className={tableStyles.table1000}>
                         {/*These add up to 100% and deliberately give more room to: Name,Taxi operator,Actions*/}
-                        {/* Desktop column widths: Name, Phone, Taxi operator, Service area, Rating, Pet, Status, Actions */}
-                        <colgroup><col className="w-[20%]" />
-                        <col className="w-[11%]" />
-                        <col className="w-[17%]" />
-                        <col className="w-[10%]" />
-                        <col className="w-[6%]" />
-                        <col className="w-[6%]" />
-                        <col className="w-[12%]" />
-                        <col className="w-[18%]" />
+                        {/* Seven columns: Name, Phone, Service area, Rating, Pet, Status, Actions. */}
+                        <colgroup>
+                            <col className="w-[20%]" /><col className="w-[12%]" />
+                            <col className="w-[12%]" /><col className="w-[7%]" />
+                            <col className="w-[7%]" /><col className="w-[12%]" />
+                            <col className="w-[30%]" />
                         </colgroup>
 
                         <thead className={tableStyles.tableHeaderCyan}>
                             <tr>
                                 <th className={tableStyles.cellCaption}>Name</th>
                                 <th className={tableStyles.cellCaption}>Phone</th>
-                                <th className={tableStyles.cellCaption}>Taxi operator</th>
                                 <th className={tableStyles.cellCaption}>Service area</th>
                                 <th className={tableStyles.cellCaption}>Rating</th>
                                 <th className ={tableStyles.cellCaption}> pet </th>
@@ -594,15 +589,6 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                     }
                                     </td>
                                     <td className={tableStyles.cell}>{chauffeur.phone}</td>
-                                    <td className={tableStyles.cell}>
-                                        <div>{chauffeur.taxi_operators?.company_name || "Not assigned"}</div>
-
-                                        {chauffeur.taxi_operators && (
-                                            <div className="mt-1 text-xs text-slate-400">
-                                                {chauffeur.taxi_operators.verification_status}
-                                            </div>
-                                        )}
-                                    </td>
                                     <td className={tableStyles.cell}> {chauffeur.service_area || "-"} </td>
                                     <td className={tableStyles.cell}>{chauffeur.rating}</td>                                   
                                     <td className={tableStyles.cell}>
@@ -619,9 +605,10 @@ export default async function AdminChauffeursPage({ searchParams}: AdminChauffeu
                                     
                                     <td className={tableStyles.cellCaption}>
                                         <div className="flex flex-wrap items-center gap-3">
-                                            <Link href={`/chauffeur/${chauffeur.id}`} className={formStyles.smallButton}>
-                                                Details
-                                            </Link>
+                                            {/* Admin management and chauffeur support navigation. */}
+                                            <Link href={`/admin/chauffeurs/${chauffeur.id}`} className={formStyles.smallButton}>Details</Link>
+                                            <Link href={`/admin/chauffeurs/${chauffeur.id}/support`} className={formStyles.smallButton}>Support Dashboard</Link>
+
                                             {/* Only allow approval/reactivation when chauffeur compliance is currently valid. */}
                                             {canUseQuickAccountAction(chauffeur) ? (
                                                 <form action={changeChauffeurActiveStatus}>
