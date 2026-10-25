@@ -57,7 +57,8 @@ export default async function AdminChauffeurSupportPage({params}: AdminChauffeur
                 </section>
 
                 {/* Main navigation: reuse existing management routes wherever possible. */}
-                <section className="mt-6 grid gap-4 sm:grid-cols-3">
+                {/* Four responsive Admin Support navigation cards. */}
+                <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <Link href={`${supportUrl}/bookings`} className="rounded-xl border border-cyan-700/60 bg-slate-900/70 p-5 hover:border-cyan-400">
                         <h2 className="font-semibold text-cyan-300">Bookings</h2>
                         <p className="mt-2 text-sm text-slate-300">View assigned bookings, filters and booking UUIDs.</p>
@@ -71,6 +72,14 @@ export default async function AdminChauffeurSupportPage({params}: AdminChauffeur
                     <Link href={`${supportUrl}/documents`} className="rounded-xl border border-cyan-700/60 bg-slate-900/70 p-5 hover:border-cyan-400">
                         <h2 className="font-semibold text-cyan-300">Official Documents</h2>
                         <p className="mt-2 text-sm text-slate-300">Review chauffeur documents and verification information.</p>
+                    </Link>
+
+                    {/* Manage the selected chauffeur's availability through Admin Support. */}
+                    <Link href={`${supportUrl}/availability`} className="rounded-xl border border-cyan-700/60 bg-slate-900/70 p-5 hover:border-cyan-400">
+                        <h2 className="font-semibold text-cyan-300">Availability</h2>
+                        <p className="mt-2 text-sm text-slate-300">
+                            View and manage working hours, holidays and unavailable periods.
+                        </p>
                     </Link>
                 </section>
             </div>

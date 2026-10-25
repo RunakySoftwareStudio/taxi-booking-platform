@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import { TranslatedText } from "@/components/TranslatedText";
+import {requireChauffeurUser} from "@/lib/auth/requireChauffeurUser";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/Availability/page.tsx 
 type AvailabilityRow = {
@@ -46,6 +47,10 @@ async function addAvailability(formData: FormData) {
     "use server";
     // read data from user input on form
     const chauffeurId = String(formData.get("chauffeurId") || "");
+    /* SECURITY: Only the chauffeur who owns this account
+      can add availability through this Server Action. */
+    await requireChauffeurUser(chauffeurId);
+
     const availableDate = String(formData.get("availableDate") || "");
     const startTime = String(formData.get("startTime") || "");
     const endTime = String(formData.get("endTime") || "");
@@ -85,6 +90,9 @@ async function deleteAvailability(formData: FormData) {
 
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const availabilityId = String(formData.get("availabilityId") || "");
+    /* SECURITY: Verify chauffeur ownership before accessing
+      or deleting availability through the privileged client. */
+    await requireChauffeurUser(chauffeurId);
 
     if (!availabilityId) {redirect(`/chauffeur/${chauffeurId}/availability?error=missing-fields`); }
     

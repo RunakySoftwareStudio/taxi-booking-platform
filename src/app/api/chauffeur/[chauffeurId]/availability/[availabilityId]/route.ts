@@ -11,12 +11,8 @@ type RouteContext = {
 
 export async function PATCH(request: Request, { params }: RouteContext) {
   const { chauffeurId, availabilityId } = await params;
-
   const authSupabase = await createClient();
-
-  const {
-    data: { user },
-  } = await authSupabase.auth.getUser();
+  const {data: {user},} = await authSupabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ message: "Not logged in." }, { status: 401 });
@@ -28,12 +24,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const isAdmin = profile?.role === "admin";
-  const isOwnChauffeurPage =
-    profile?.role === "chauffeur" && profile.chauffeur_id === chauffeurId;
+  /* Only the chauffeur who owns this account may use this endpoint.
+    Admin changes use the separate audited Admin Support operation. */
+  const isOwnChauffeurPage = profile?.role === "chauffeur" && profile.chauffeur_id === chauffeurId;
 
-  if (!isAdmin && !isOwnChauffeurPage) {
-    return NextResponse.json({ message: "Not allowed." }, { status: 403 });
+  if (!isOwnChauffeurPage) {
+    return NextResponse.json({message: "Not allowed."}, {status: 403});
   }
 
   const body = await request.json();
@@ -77,19 +73,25 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 
-  const { data: updatedRow, error } = await supabaseAdmin
-    .from("chauffeur_availability")
-    .update({
-      available_date: availableDate,
-      start_time: startTime,
-      end_time: endTime,
-      status,
-      notes: notes || null,
-    })
-    .eq("id", availabilityId)
-    .eq("chauffeur_id", chauffeurId)
-    .select("id")
-    .maybeSingle();
+  /* ============================================================
+    UPDATE MANUALLY ENTERED AVAILABILITY ONLY
+    Booking-generated periods are managed by the booking system
+    and must not be changed through this availability API.
+  ============================================================ */
+  const {data: updatedRow, error} = await supabaseAdmin
+      .from("chauffeur_availability")
+      .update({
+          available_date: availableDate,
+          start_time: startTime,
+          end_time: endTime,
+          status,
+          notes: notes || null
+      })
+      .eq("id", availabilityId)
+      .eq("chauffeur_id", chauffeurId)
+      .is("booking_id", null)
+      .select("id")
+      .maybeSingle();
 
   if (error) {
     console.error("Could not update availability:", error);
