@@ -152,10 +152,16 @@ export default async function AdminChauffeurBookingsPage({params, searchParams}:
                                     <p className="mt-1 text-sm text-white">{booking.pickup_location} → {booking.destination}</p>
                                     <p className="mt-1 text-sm text-slate-400">Booking reference: {booking.id.slice(0, 8)}</p>
 
-                                    <p className="mt-1 text-sm text-slate-300">Client: {booking.clients[0]?.name ?? "Unknown"}</p>
                                     <p className="mt-1 text-sm text-slate-300">
-                                        {/* Display the first related vehicle, if available. */}
-                                        Vehicle: {booking.vehicles?.length ? `${booking.vehicles[0].brand} ${booking.vehicles[0].model} (${booking.vehicles[0].license_plate})` : "Not assigned"}
+                                        {/* Supports both array and object relationship responses from Supabase. */}
+                                        Client: {(Array.isArray(booking.clients) ? booking.clients[0] : booking.clients)?.name ?? "Unknown"}
+                                    </p>
+                                    <p className="mt-1 text-sm text-slate-300">
+                                        {/* Display the related vehicle whether Supabase returns an array or object. */}
+                                        Vehicle: {(() => {
+                                            const vehicle = Array.isArray(booking.vehicles) ? booking.vehicles[0] : booking.vehicles;
+                                            return vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.license_plate})` : "Not assigned";
+                                        })()}
                                     </p>
                                     <div className="flex items-center gap-3">
                                         {/* Opens the details page for the selected booking. */}
