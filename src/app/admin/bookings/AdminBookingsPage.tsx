@@ -22,6 +22,8 @@ import ScrollToBooking from "@/components/ScrollToBooking";
 import SearchableChauffeurFilter from "./SearchableChauffeurFilter";
 import { SlidersHorizontal } from "lucide-react";
 import CopyBookingIdButton from "@/app/admin/chauffeurs/[chauffeurId]/support/CopyBookingIdButton";
+import { updateBookingStatus } from "@/lib/bookings/updateBookingStatus";
+
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
 /**
  * These new values will later mean:
@@ -136,6 +138,23 @@ async function updateBookingAdminFields(formData: FormData) {
     if (!bookingId || !status) { redirect("/admin/bookings?error=missing-fields"); }
     if (activeStatuses.includes(status) && !chauffeurId) {redirect("/admin/bookings?error=chauffeur-required"); }
 
+    /* Load the original booking status and email details before updating. */
+    const { data: originalBooking, error: originalBookingError } = await supabaseAdmin
+        .from("bookings")
+        .select(`
+            id, status, pickup_location, destination, pickup_date, pickup_time,
+            passengers, luggage, trip_type, has_pets, notes,
+            clients(name, email, phone)
+        `)
+        .eq("id", bookingId)
+        .maybeSingle();
+
+    /* Stop the update if the original booking cannot be loaded. */
+    if (originalBookingError || !originalBooking) {
+        console.error("Could not load original booking:", originalBookingError);
+        redirect("/admin/bookings?error=booking-update-failed");
+    }
+
     let vehicleId: string | null = null;
 
     /* Finds and validates the chauffeur's default vehicle. */
@@ -236,13 +255,20 @@ async function updateBookingAdminFields(formData: FormData) {
         }
     }
 
-    /* Saves chauffeur, exact vehicle, status and busy period together. */
-    const { error } = await supabaseAdmin.rpc("update_booking_admin_assignment", {
-        p_booking_id: bookingId,
-        p_chauffeur_id: chauffeurId || null,
-        p_vehicle_id: vehicleId,
-        p_status: status,
-    });
+    /* Update the booking through the central service while preserving the existing scheduling RPC. */
+    const { error } = await updateBookingStatus(
+        bookingId,
+        async () => {
+            const { error: rpcError } = await supabaseAdmin.rpc("update_booking_admin_assignment", {
+                p_booking_id: bookingId,
+                p_chauffeur_id: chauffeurId || null,
+                p_vehicle_id: vehicleId,
+                p_status: status,
+            });
+
+            return { error: rpcError };
+        }
+    );
 
     if (error) {
         console.error("Could not update booking assignment:", error);
@@ -259,6 +285,7 @@ async function updateBookingAdminFields(formData: FormData) {
 
         redirect("/admin/bookings?error=booking-update-failed");
     }
+
     /* Rechecks and resolves the assignment alert after a valid reassignment. */
     const { error: alertSyncError } = await supabaseAdmin.rpc("sync_booking_assignment_alert",
         {

@@ -155,3 +155,93 @@ export function createAdminNewBookingEmail(inputData: BookingEmailData): EmailCo
 
     return {subject, text,  html, };
 }
+
+/**
+ * Purpose:
+ * Creates a cancellation confirmation email for the client.
+ * Includes booking details and a link to check booking status.
+ */
+export function createClientBookingCancelledEmail(inputData: BookingEmailData): EmailContent {
+    const subject = "Your Voya Taxi booking has been cancelled";
+    const formattedTime = formatBookingTime(inputData.time);
+    const bookingStatusUrl = createBookingStatusUrl(inputData.id);
+
+    const text = `
+Hello ${inputData.name},
+
+Your Voya Taxi booking has been cancelled.
+
+Booking reference: ${inputData.id}
+Pickup: ${inputData.pickup}
+Destination: ${inputData.destination}
+Date: ${inputData.date}
+Time: ${formattedTime}
+Status: Cancelled
+
+${bookingStatusUrl ? `Check your booking status: ${bookingStatusUrl}` : ""}
+
+Voya Taxi
+Where the journey begins
+    `.trim();
+
+    const html = `
+        <h2>Your Voya Taxi booking has been cancelled</h2>
+        <p>Hello ${escapeHtml(inputData.name)},</p>
+        <p>Your booking has been cancelled.</p>
+        <p><strong>Booking reference:</strong> ${escapeHtml(inputData.id)}</p>
+        <ul>
+            <li><strong>Pickup:</strong> ${escapeHtml(inputData.pickup)}</li>
+            <li><strong>Destination:</strong> ${escapeHtml(inputData.destination)}</li>
+            <li><strong>Date:</strong> ${escapeHtml(inputData.date)}</li>
+            <li><strong>Time:</strong> ${escapeHtml(formattedTime)}</li>
+            <li><strong>Status:</strong> Cancelled</li>
+        </ul>
+        ${bookingStatusUrl ? `<p><a href="${escapeHtml(bookingStatusUrl)}">Check booking status</a></p>` : ""}
+        <p>Voya Taxi<br />Where the journey begins</p>
+    `.trim();
+
+    return { subject, text, html };
+}
+
+/**
+ * Purpose:
+ * Creates an administrator notification when a booking
+ * is cancelled, including the booking and client details.
+ */
+export function createAdminBookingCancelledEmail(inputData: BookingEmailData): EmailContent {
+    const subject = `Voya Taxi - Booking cancelled: ${inputData.id}`;
+    const formattedTime = formatBookingTime(inputData.time);
+
+    const text = `
+Booking cancelled
+
+Booking reference: ${inputData.id}
+Client: ${inputData.name}
+Client email: ${inputData.email}
+Pickup: ${inputData.pickup}
+Destination: ${inputData.destination}
+Date: ${inputData.date}
+Time: ${formattedTime}
+Status: Cancelled
+
+Voya Taxi Administration
+    `.trim();
+
+    const html = `
+        <h2>Booking cancelled</h2>
+        <p>A Voya Taxi booking has been cancelled.</p>
+        <p><strong>Booking reference:</strong> ${escapeHtml(inputData.id)}</p>
+        <ul>
+            <li><strong>Client:</strong> ${escapeHtml(inputData.name)}</li>
+            <li><strong>Client email:</strong> ${escapeHtml(inputData.email)}</li>
+            <li><strong>Pickup:</strong> ${escapeHtml(inputData.pickup)}</li>
+            <li><strong>Destination:</strong> ${escapeHtml(inputData.destination)}</li>
+            <li><strong>Date:</strong> ${escapeHtml(inputData.date)}</li>
+            <li><strong>Time:</strong> ${escapeHtml(formattedTime)}</li>
+            <li><strong>Status:</strong> Cancelled</li>
+        </ul>
+        <p>Voya Taxi Administration</p>
+    `.trim();
+
+    return { subject, text, html };
+}

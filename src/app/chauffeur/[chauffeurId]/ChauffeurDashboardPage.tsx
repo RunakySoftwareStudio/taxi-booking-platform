@@ -8,6 +8,7 @@ import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/class
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import { Fragment } from "react";
 import { TranslatedText } from "@/components/TranslatedText";
+import { updateBookingStatus } from "@/lib/bookings/updateBookingStatus";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx
 type TypeChauffeurRow = { id: string;  name: string;  email: string;  phone: string;  service_area: string | null;  account_status: string;};
@@ -152,12 +153,17 @@ async function updateAssignedBookingStatus(formData: FormData) {
         redirect(`/chauffeur/${authorizedChauffeurId}?error=status-update-failed`);
     }
 
-    // Updates the booking status and its linked busy period in one transaction.
-    const { error } = await supabaseAdmin.rpc("update_booking_admin_assignment", {
-        p_booking_id: bookingId,
-        p_chauffeur_id: authorizedChauffeurId,
-        p_vehicle_id: assignedBooking.vehicle_id,
-        p_status: status,
+    /* Update the chauffeur booking through the central service.
+    Preserve the protected PostgreSQL booking and availability transaction. */
+    const { error } = await updateBookingStatus(bookingId, async () => {
+        const { error: rpcError } = await supabaseAdmin.rpc("update_booking_admin_assignment", {
+            p_booking_id: bookingId,
+            p_chauffeur_id: authorizedChauffeurId,
+            p_vehicle_id: assignedBooking.vehicle_id,
+            p_status: status,
+        });
+
+        return { error: rpcError };
     });
 
     // 23P01 is the PostgreSQL error code for the overlapping-time exclusion constraint.

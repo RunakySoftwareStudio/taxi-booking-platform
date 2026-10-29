@@ -21,7 +21,13 @@
             emailSender.ts →  Will contain the real email provider code, for example Resend.
             For now, it is only a safe placeholder.
 ==================================================*/
-import { createAdminNewBookingEmail, createClientBookingReceivedEmail } from "./emailTemplates";
+import {
+    createAdminNewBookingEmail,
+    createClientBookingReceivedEmail,
+    createAdminBookingCancelledEmail,
+    createClientBookingCancelledEmail,
+} from "./emailTemplates";
+
 import { type BookingEmailData, type SendEmailResult } from "./emailTypes";
 import { sendEmail } from "./emailSender";
 
@@ -30,9 +36,7 @@ type BookingEmailNotificationResult = {
     adminEmail: SendEmailResult;
 };
 
-export async function sendBookingCreatedEmails(
-    inputData: BookingEmailData
-): Promise<BookingEmailNotificationResult> {
+export async function sendBookingCreatedEmails( inputData: BookingEmailData): Promise<BookingEmailNotificationResult> {
     const adminEmailAddress = process.env.ADMIN_BOOKING_EMAIL;
 
     if (!adminEmailAddress) {
@@ -74,4 +78,46 @@ export async function sendBookingCreatedEmails(
         clientEmail: clientEmailResult,
         adminEmail: adminEmailResult,
     };
+}
+
+/**
+ * Purpose:
+ * Sends cancellation notifications to the administrator.
+ * The client email is sent as an admin preview until
+ * actual customer email delivery is enabled.
+ */
+export async function sendBookingCancelledEmails(inputData: BookingEmailData): Promise<BookingEmailNotificationResult> {
+    const adminEmailAddress = process.env.ADMIN_BOOKING_EMAIL;
+
+    /* Skip notifications when the administrator email is not configured. */
+    if (!adminEmailAddress) {
+        const skipped = {
+            success: true,
+            skipped: true,
+            message: "ADMIN_BOOKING_EMAIL is not configured.",
+        };
+        return { clientEmail: skipped, adminEmail: skipped };
+    }
+
+    /* Prepare the cancellation email content. */
+    const clientEmail = createClientBookingCancelledEmail(inputData);
+    const adminEmail = createAdminBookingCancelledEmail(inputData);
+
+    /* Send client preview and administrator cancellation notification. */
+    const [clientEmailResult, adminEmailResult] = await Promise.all([
+        sendEmail({
+            to: adminEmailAddress,
+            subject: `[Client preview] ${clientEmail.subject}`,
+            text: clientEmail.text,
+            html: clientEmail.html,
+        }),
+        sendEmail({
+            to: adminEmailAddress,
+            subject: adminEmail.subject,
+            text: adminEmail.text,
+            html: adminEmail.html,
+        }),
+    ]);
+
+    return { clientEmail: clientEmailResult, adminEmail: adminEmailResult };
 }

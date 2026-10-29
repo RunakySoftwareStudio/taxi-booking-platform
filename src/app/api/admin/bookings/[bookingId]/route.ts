@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { getVehicleMatchResult, type VehicleWheelchairAccess } from "@/lib/vehicleMatching";
 import type { WheelchairRequirement } from "@/types/wheelchairRequirementType";
+import { updateBookingStatus } from "@/lib/bookings/updateBookingStatus";
 
 type RouteContext = {params: Promise<{ bookingId: string; }>;};
 
@@ -248,7 +249,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     When one operation fails, PostgreSQL reverses all changes.
     ============================================================ */
-    const { error } = await supabaseAdmin.rpc("update_booking_admin_details", {
+    /* Update booking details through the central service.
+   The existing PostgreSQL RPC preserves atomic booking updates. */
+    const { error } = await updateBookingStatus(bookingId, async () => {
+    const { error: rpcError } = await supabaseAdmin.rpc("update_booking_admin_details", {
         p_booking_id: bookingId,
 
         p_client_name: clientName,
@@ -278,6 +282,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         p_chauffeur_id: chauffeurId || null,
         p_vehicle_id: vehicleId || null,
         p_status: status,
+        });
+
+        return { error: rpcError };
     });
 
     if (error) {
