@@ -44,6 +44,7 @@ INSERT INTO public.pricing_profiles (
     status,
     effective_from,
     effective_until,
+    created_at,
     activated_at
 )
 VALUES (
@@ -56,6 +57,7 @@ VALUES (
     'active',
     TIMESTAMPTZ '2026-08-19 16:56:56.332068+00',
     NULL,
+    TIMESTAMPTZ '2026-08-19 16:56:56.332068+00',
     TIMESTAMPTZ '2026-08-19 16:56:56.332068+00'
 )
 ON CONFLICT (pricing_profile_code, pricing_profile_version)
@@ -98,6 +100,7 @@ INSERT INTO public.pricing_profiles (
     status,
     effective_from,
     effective_until,
+    created_at,
     activated_at
 )
 VALUES (
@@ -110,6 +113,7 @@ VALUES (
     'active',
     TIMESTAMPTZ '2026-08-19 16:57:47.596382+00',
     NULL,
+    TIMESTAMPTZ '2026-08-19 16:57:47.596382+00',
     TIMESTAMPTZ '2026-08-19 16:57:47.596382+00'
 )
 ON CONFLICT (pricing_profile_code, pricing_profile_version)
@@ -152,6 +156,7 @@ INSERT INTO public.pricing_profiles (
     status,
     effective_from,
     effective_until,
+    created_at,
     activated_at
 )
 VALUES (
@@ -164,6 +169,7 @@ VALUES (
     'active',
     TIMESTAMPTZ '2026-08-19 16:58:32.315410+00',
     NULL,
+    TIMESTAMPTZ '2026-08-19 16:58:32.315410+00',
     TIMESTAMPTZ '2026-08-19 16:58:32.315410+00'
 )
 ON CONFLICT (pricing_profile_code, pricing_profile_version)

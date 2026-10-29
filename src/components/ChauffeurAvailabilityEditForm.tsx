@@ -5,6 +5,7 @@ import { useState } from "react";
 import { formStyles, pageStyles } from "@/styles/classNames";
 import { getTranslation } from "@/lib/i18n/translations";
 import { useLanguage } from "@/components/LanguageProvider";
+import TimeInput24 from "@/components/TimeInput24";
 
 type AvailabilityForEdit = {
   id: string;
@@ -115,20 +116,23 @@ export default function ChauffeurAvailabilityEditForm({ chauffeurId, availabilit
         <form onSubmit={handleSubmit} className={`${formStyles.sectionCardBorder4} mt-8`}>
             <div className="grid gap-5 md:grid-cols-2">
 
-                <div className="flex flex-wrap items-end gap-2 grid-cols-2">
+                <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
                     <div className="block">
                         <span className={formStyles.label}> {getAvailabilityText("dateLabel")} </span>
                         <input type="date" value={availableDate} onChange={(event) => setAvailableDate(event.target.value)} required  min={minimumAvailableDate} max="2099-12-31"  className={formStyles.inputWFullCyan}/>
                     </div>
                     <div className="block">
-                        <span className={formStyles.label}> {getAvailabilityText("startTimeLabel")} </span>
-                        <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required className={formStyles.inputWFullCyan} />
+                        {/* Start time - controlled 24-hour picker. */}
+                        <span className={formStyles.label}>{getAvailabilityText("startTimeLabel")}</span>
+                        <TimeInput24 name="startTime" label="Start time" value={startTime} onChange={setStartTime} required className={formStyles.inputWFullCyan} />
                     </div>
 
                     <div className="block">
-                        <span className={formStyles.label}> {getAvailabilityText("endTimeLabel")} </span>
-                        <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required className={formStyles.inputWFullCyan} />
+                        {/* End time - controlled 24-hour picker. */}
+                        <span className={formStyles.label}>{getAvailabilityText("endTimeLabel")}</span>
+                        <TimeInput24 name="endTime" label="End time" value={endTime} onChange={setEndTime} required className={formStyles.inputWFullCyan} />
                     </div>
+
                     <div className={formStyles.label}> {getAvailabilityText("statusLabel")}
                         <select  value={status}  onChange={(event) => setStatus(event.target.value)}  required  className={formStyles.selectWFull}>
                             {statusOptions.map((statusOption) => (

@@ -74,24 +74,26 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   /* ============================================================
-    UPDATE MANUALLY ENTERED AVAILABILITY ONLY
-    Booking-generated periods are managed by the booking system
-    and must not be changed through this availability API.
+    UPDATE CHAUFFEUR AVAILABILITY THROUGH PROTECTED DATABASE RPC
+
+    Uses the authenticated user's Supabase session so the
+    PostgreSQL function can verify ownership through auth.uid().
+
+    The RPC acquires the schedule lock, protects booking-generated
+    periods and validates overlaps through the database trigger.
   ============================================================ */
-  const {data: updatedRow, error} = await supabaseAdmin
-      .from("chauffeur_availability")
-      .update({
-          available_date: availableDate,
-          start_time: startTime,
-          end_time: endTime,
-          status,
-          notes: notes || null
-      })
-      .eq("id", availabilityId)
-      .eq("chauffeur_id", chauffeurId)
-      .is("booking_id", null)
-      .select("id")
-      .maybeSingle();
+  const {data: updatedRow, error} = await authSupabase.rpc(
+      "chauffeur_update_availability",
+      {
+          p_chauffeur_id: chauffeurId,
+          p_availability_id: availabilityId,
+          p_available_date: availableDate,
+          p_start_time: startTime,
+          p_end_time: endTime,
+          p_status: status,
+          p_notes: notes
+      }
+  );
 
   if (error) {
     console.error("Could not update availability:", error);

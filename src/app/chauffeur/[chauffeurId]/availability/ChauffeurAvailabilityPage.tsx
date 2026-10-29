@@ -6,6 +6,8 @@ import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/class
 import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import { TranslatedText } from "@/components/TranslatedText";
 import {requireChauffeurUser} from "@/lib/auth/requireChauffeurUser";
+import {createClient} from "@/lib/supabase/server";
+import TimeInput24 from "@/components/TimeInput24";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/Availability/page.tsx 
 type AvailabilityRow = {
@@ -69,10 +71,26 @@ async function addAvailability(formData: FormData) {
   const endTotalMinutes = endHour * 60 + endMinute;
   if (startTotalMinutes >= endTotalMinutes) { redirect(`/chauffeur/${chauffeurId}/availability?error=incorrect-time&${previousFormQuery}` ); }
 
-  // insert data
-  const { error } = await supabaseAdmin
-    .from("chauffeur_availability")
-    .insert({chauffeur_id: chauffeurId, available_date: availableDate, start_time: startTime, end_time: endTime, status, notes });
+
+  /* ============================================================
+    ADD CHAUFFEUR AVAILABILITY THROUGH PROTECTED DATABASE RPC
+
+    Uses the authenticated Supabase client so PostgreSQL can
+    identify the logged-in chauffeur through auth.uid().
+
+    The RPC verifies account ownership, coordinates scheduling
+    changes and checks conflicts through the database trigger.
+  ============================================================ */
+  const supabase = await createClient();
+
+  const {error} = await supabase.rpc("chauffeur_add_availability", {
+      p_chauffeur_id: chauffeurId,
+      p_available_date: availableDate,
+      p_start_time: startTime,
+      p_end_time: endTime,
+      p_status: status,
+      p_notes: notes
+  });
 
   // insert data check
   if (error) {
@@ -85,61 +103,50 @@ async function addAvailability(formData: FormData) {
   redirect(`/chauffeur/${chauffeurId}/availability?success=availability-added`);
 }
 
+/* ============================================================
+   DELETE CHAUFFEUR AVAILABILITY
+
+   Deletes manually created availability through a protected
+   database RPC. Booking-generated periods cannot be deleted.
+============================================================ */
 async function deleteAvailability(formData: FormData) {
     "use server";
 
+    /* SECTION 1: Read submitted identifiers. */
     const chauffeurId = String(formData.get("chauffeurId") || "");
     const availabilityId = String(formData.get("availabilityId") || "");
-    /* SECURITY: Verify chauffeur ownership before accessing
-      or deleting availability through the privileged client. */
+
+    /* SECTION 2: Verify chauffeur ownership server-side. */
     await requireChauffeurUser(chauffeurId);
 
-    if (!availabilityId) {redirect(`/chauffeur/${chauffeurId}/availability?error=missing-fields`); }
-    
-    // Checks whether the availability record was created from a booking.
-    const { data: availabilityRecord, error: availabilityCheckError } = await supabaseAdmin
-        .from("chauffeur_availability")
-        .select("id, booking_id")
-        .eq("id", availabilityId)
-        .eq("chauffeur_id", chauffeurId)
-        .maybeSingle();
-
-    if (availabilityCheckError || !availabilityRecord) {
-        console.error("Could not verify availability record:", availabilityCheckError);
-        redirect(`/chauffeur/${chauffeurId}/availability?error=delete-availability-failed`);
+    if (!availabilityId) {
+        redirect(`/chauffeur/${chauffeurId}/availability?error=missing-fields`);
     }
 
-    if (availabilityRecord.booking_id) {
-        redirect(`/chauffeur/${chauffeurId}/availability?error=booking-period-protected`);
-    }
+    /* SECTION 3: Use the authenticated Supabase client.
 
-    const { error } = await supabaseAdmin
-      .from("chauffeur_availability")
-      .delete()
-      .eq("id", availabilityId)
-      .eq("chauffeur_id", chauffeurId);
-
-    /*
-    redirect(`/chauffeur/${chauffeurId}/availability?error=booking-period-protected`);
-    means:reload the same ChauffeurAvailabilityPage, now with an error parameter so it can show the message.
-    This stops the delete action and sends the user back to the availability page with this error in the URL:
-      pageMessage.error === "booking-period-protected"
-
-        booking_id is NULL
-        → manual availability
-        → deletion allowed
-
-        booking_id contains a booking UUID
-        → automatically created busy period
-        → redirect with error
-        → deletion prevented
+       The database RPC performs another ownership check,
+       protects booking records and acquires a schedule lock.
     */
+    const supabase = await createClient();
+
+    const {error} = await supabase.rpc("chauffeur_delete_availability", {
+        p_chauffeur_id: chauffeurId,
+        p_availability_id: availabilityId
+    });
+
+    /* SECTION 4: Handle deletion errors. */
     if (error) {
-      console.error("Could not delete availability:", error);
-      redirect(`/chauffeur/${chauffeurId}/availability?error=delete-availability-failed` );
+        console.error("Could not delete availability:", error);
+
+        const errorCode = error.code === "P0002"
+            ? "booking-period-protected"
+            : "delete-availability-failed";
+
+        redirect(`/chauffeur/${chauffeurId}/availability?error=${errorCode}`);
     }
 
-
+    /* SECTION 5: Refresh the chauffeur availability page. */
     revalidatePath(`/chauffeur/${chauffeurId}/availability`);
     redirect(`/chauffeur/${chauffeurId}/availability?success=availability-deleted`);
 }
@@ -204,20 +211,23 @@ export default async function ChauffeurAvailabilityPage({params, searchParams}: 
           <form action={addAvailability}  className={formStyles.form} >
             <input type="hidden" name="chauffeurId" value={chauffeurId} />
             <div className="grid gap-5 md:grid-cols-2">
-                  <div className="flex flex-wrap items-end gap-2 grid-cols-2">
+                  <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
                       <div className="block">
                            <span className={formStyles.label}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="dateLabel" /> </span>
                           <input name="availableDate" type="date"  defaultValue={formValues.availableDate} required min={todayDate} max="2099-12-31" className={formStyles.inputWFullCyan} />
                       </div>
                       <div className="block">
                           <span className={formStyles.label}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="startTimeLabel" /> </span>
-                          <input  name="startTime"  type="time"  required defaultValue={formValues.startTime} className={formStyles.inputWFullCyan} />
+                          {/* Start time - 24-hour hour/minute picker. */}
+                          <TimeInput24 name="startTime" label="Start time" required defaultValue={formValues.startTime} className={formStyles.inputWFullCyan} />
                       </div>
 
                       <div className="block">
                           <span className={formStyles.label}> <TranslatedText sectionName="chauffeurAvailabilityPage" textKey="endTimeLabel" /> </span>
-                          <input name="endTime"  type="time"  required defaultValue={formValues.endTime}  className={formStyles.inputWFullCyan} />
+                          {/* End time - 24-hour hour/minute picker. */}
+                          <TimeInput24 name="endTime" label="End time" required defaultValue={formValues.endTime} className={formStyles.inputWFullCyan} />
                       </div>
+
                       <input type="hidden" name="status" value="offline" />
                   </div>
 

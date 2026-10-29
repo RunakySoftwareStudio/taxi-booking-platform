@@ -37,4 +37,24 @@ describe("calculateJourneyFareFromVatAmount", () => {
         expect(fareCalculation.roundingAdjustment).toBe(0.02);
         expect(fareCalculation.finalTotalIncludingVat).toBe(40.35);
     });
+
+    /**
+     * Purpose:
+     * Verify that the journey total before final currency rounding
+     * uses the same four-decimal precision as VAT tax allocations.
+     *
+     * This prevents floating-point precision differences from
+     * causing journey quote and tax allocation mismatches.
+     */
+    it("rounds the journey total before final rounding to four decimal places", () => {
+        const fareCalculation = calculateJourneyFareFromVatAmount(
+            37.12345,
+            3.33334,
+            dutchEuroRoundingRule
+        );
+
+        expect(fareCalculation.totalIncludingVatBeforeRounding).toBe(40.4568);
+        expect(fareCalculation.finalTotalIncludingVat).toBe(40.46);
+        expect(fareCalculation.roundingAdjustment).toBeCloseTo(0.0032, 4);
+    });
 });

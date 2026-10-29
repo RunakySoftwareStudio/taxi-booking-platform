@@ -45,7 +45,8 @@ export function calculateJourneyFareFromVatAmount(
     roundingRule: CountryRoundingRule
 ): JourneyFareCalculation {
 
-    const totalIncludingVatBeforeRounding = basicFareExcludingVat + vatAmount;
+    /* Keep the journey total consistent with four-decimal tax allocations. */
+    const totalIncludingVatBeforeRounding = Number((basicFareExcludingVat + vatAmount).toFixed(4));
     const finalTotalIncludingVat = roundCurrencyAmount(totalIncludingVatBeforeRounding, roundingRule );
     const roundingAdjustment = Number((finalTotalIncludingVat - totalIncludingVatBeforeRounding).toFixed(4));
 
