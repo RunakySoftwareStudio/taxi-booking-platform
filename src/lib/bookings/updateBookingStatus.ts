@@ -24,6 +24,24 @@ export type BookingUpdateResult = {
 
 /**
  * Purpose:
+ * Identify the cause of a chauffeur scheduling conflict
+ * using the existing PostgreSQL error code and message.
+ */
+export function getBookingConflictReason( error: { code?: string; message: string } | null): "chauffeur-unavailable" | "booking-overlap" | null {
+    if (!error || error.code !== "23P01") return null;
+
+    if (
+        error.message.includes("Chauffeur is unavailable during this booking.") ||
+        error.message.includes("Booking conflicts with chauffeur unavailability.")
+    ) {
+        return "chauffeur-unavailable";
+    }
+
+    return "booking-overlap";
+}
+
+/**
+ * Purpose:
  * Execute an authorized booking update and centrally handle
  * cancellation notifications after a successful database change.
  *

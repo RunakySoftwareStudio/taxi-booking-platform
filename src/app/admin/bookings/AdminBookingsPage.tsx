@@ -22,7 +22,7 @@ import ScrollToBooking from "@/components/ScrollToBooking";
 import SearchableChauffeurFilter from "./SearchableChauffeurFilter";
 import { SlidersHorizontal } from "lucide-react";
 import CopyBookingIdButton from "@/app/admin/chauffeurs/[chauffeurId]/support/CopyBookingIdButton";
-import { updateBookingStatus } from "@/lib/bookings/updateBookingStatus";
+import { getBookingConflictReason, updateBookingStatus } from "@/lib/bookings/updateBookingStatus";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
 /**
@@ -272,7 +272,16 @@ async function updateBookingAdminFields(formData: FormData) {
 
     if (error) {
         console.error("Could not update booking assignment:", error);
-        if (error.code === "23P01") {redirect("/admin/bookings?error=chauffeur-time-conflict"); }
+        /* Show the actual reason for the chauffeur scheduling conflict. */
+        if (error.code === "23P01") {
+            const conflictReason = getBookingConflictReason(error);
+
+            if (conflictReason === "chauffeur-unavailable") {
+                redirect("/admin/bookings?error=chauffeur-unavailable-period");
+            }
+
+            redirect("/admin/bookings?error=chauffeur-time-conflict");
+        }
 
         /* Displays the specific error when a chauffeur fails booking compliance checks. */
         if (error.code === "22023") {
@@ -668,6 +677,8 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                 {pageMessage.success === "booking-updated" && ( <p className={pageStyles.successMsgPage}> Booking updated successfully. </p>)}
                 {pageMessage.error === "booking-update-failed" && (  <p className={pageStyles.errorMsgPage}> Could not update booking. Please try again.  </p>)}
                 {pageMessage.error === "chauffeur-time-conflict" && ( <p className={pageStyles.errorMsgPage}> This chauffeur already has another booking during this time. </p>)}
+                {/* Explain when a chauffeur is unavailable because of an offline or holiday period. */}
+                {pageMessage.error === "chauffeur-unavailable-period" && (<p className={pageStyles.errorMsgPage}> The selected chauffeur is unavailable during the requested time.</p>)}
                 {pageMessage.error === "chauffeur-required" && ( <p className={pageStyles.errorMsgPage}> Please assign a chauffeur before using an active booking status. </p> )}
                 {pageMessage.error === "journey-crosses-midnight" && (<p className={pageStyles.errorMsgPage}>This journey crosses midnight and cannot yet create a busy period. </p> )}
                 {pageMessage.error === "chauffeur-not-approved" && ( <p className={pageStyles.errorMsgPage}>Only an approved chauffeur can be assigned.</p>)}
