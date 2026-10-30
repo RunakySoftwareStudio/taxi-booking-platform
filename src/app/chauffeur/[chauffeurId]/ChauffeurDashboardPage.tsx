@@ -120,7 +120,11 @@ async function updateAssignedBookingStatus(formData: FormData) {
     const bookingId = String(formData.get("bookingId") || "");
     const submittedChauffeurId = String(formData.get("chauffeurId") || "");
     const status = String(formData.get("status") || "");
-    if (!bookingId || !submittedChauffeurId || !status) { redirect(`/chauffeur/${submittedChauffeurId}?error=missing-fields`);  }
+    /* Prevent permanent booking cancellation or rejection
+        through the Chauffeur Dashboard.
+        Chauffeur withdrawal will use a separate operation. */
+    if (status === "cancelled" || status === "rejected") {redirect(`/chauffeur/${submittedChauffeurId}?error=status-update-failed`);}
+    if (!bookingId || !submittedChauffeurId || !status) {redirect(`/chauffeur/${submittedChauffeurId}?error=missing-fields`);}
 
     const authSupabase = await createAuthClient();
     const { data: { user } } = await authSupabase.auth.getUser();
@@ -269,7 +273,12 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
     // get list of bookingStatuses types
     const { data: supabaseAdminBookingStatuses, error: bookingStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "booking_status" });
     if (bookingStatusError) { console.error("Could not load booking statuses:", bookingStatusError);}
-    const bookingStatusOptions = (supabaseAdminBookingStatuses ?? []) as string[];
+
+    /* Exclude permanent booking decisions from chauffeur controls.
+    Chauffeur withdrawal will be implemented as a separate action.
+    Both mobile and desktop dropdowns use this list. */
+    const bookingStatusOptions = ((supabaseAdminBookingStatuses ?? []) as string[])
+        .filter((status) => status !== "cancelled" && status !== "rejected");
     const chauffeurAccountStatusTextKey = getChauffeurAccountStatusTextKey(chauffeurRow.account_status);
 
     return (
