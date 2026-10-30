@@ -42,3 +42,7 @@ next-env.d.ts
 
 /Autentification codes/
 /docs/*.docx
+
+# Local database backup files — never commit to GitHub.
+database/schema.baseline.sql
+database/schema.sql.backup
