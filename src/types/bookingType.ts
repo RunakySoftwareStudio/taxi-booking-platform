@@ -48,4 +48,6 @@ export type BookingRequest = {
  */
 export type BookingConfirmationRequest = BookingRequest & {
     journeyQuoteId: string;
+    acceptedTerms: boolean;
+    acceptedTermsVersion: string;
 };

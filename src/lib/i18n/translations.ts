@@ -3008,6 +3008,18 @@ export const translations = {
     routeEstimateNotice: { en: "Travel time is an estimate and may change because of traffic.", nl: "De reistijd is een schatting en kan door verkeer veranderen.", ar: "وقت السفر تقديري وقد يتغير بسبب حركة المرور.", tr: "Yolculuk süresi tahminidir ve trafiğe göre değişebilir.", fa: "زمان سفر تخمینی است و ممکن است به دلیل ترافیک تغییر کند." },
     routeEstimateFailedText: { en: "The route estimate could not be calculated.", nl: "De geschatte route kon niet worden berekend.", ar: "تعذر حساب تقدير الرحلة.", tr: "Rota tahmini hesaplanamadı.", fa: "محاسبه مسیر تخمینی انجام نشد." },
     routeCalculationPendingText: { en: "Please wait until the route calculation is finished.", nl: "Wacht tot de routeberekening is voltooid.", ar: "يرجى الانتظار حتى يكتمل حساب المسار.", tr: "Lütfen rota hesaplaması tamamlanana kadar bekleyin.", fa: "لطفاً تا پایان محاسبه مسیر صبر کنید." },
+    termsPdfLinkText:{
+      en:"Terms and Conditions (PDF).",
+      nl:"Algemene Voorwaarden (PDF).",
+      tr:"Şartlar ve Koşullar (PDF).",
+      ar:"الشروط والأحكام (PDF)",
+      fa:"شرایط و ضوابط (PDF)",},
+    termsAgreementText:{
+      en:"I have read and agree to the Voya Taxi Terms and Conditions.",
+      nl:"Ik heb de Algemene Voorwaarden van Voya Taxi gelezen en ga hiermee akkoord.",
+      tr:"Voya Taxi Şartlar ve Koşullarını okudum ve kabul ediyorum.",
+      ar:"لقد قرأت الشروط والأحكام العامة وأوافق عليها.",
+      fa:"شرایط و ضوابط را خوانده‌ام و با آن‌ها موافقم."},
   },
 
   language: {

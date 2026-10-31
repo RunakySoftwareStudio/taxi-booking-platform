@@ -61,6 +61,21 @@ export async function POST(request: Request) {
    {
         const bookingRequest = (await request.json()) as BookingConfirmationRequest;
         const validationResult = validateBookingRequest(bookingRequest);
+        /* ============================================================
+        VOYA TAXI - TERMS AND CONDITIONS VALIDATION
+
+        A booking can only be created when the customer explicitly
+        accepts the current Terms and Conditions (Version 1.0).
+        ============================================================ */
+        if (
+            bookingRequest.acceptedTerms !== true ||
+            bookingRequest.acceptedTermsVersion !== "1.0"
+        ) {
+            return NextResponse.json(
+                { message: "You must accept the Voya Taxi Terms and Conditions (Version 1.0)." },
+                { status: 400 }
+            );
+        }
         /*============================================================
             PURPOSE: REQUIRE A TEMPORARY JOURNEY QUOTE
 

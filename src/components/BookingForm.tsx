@@ -29,6 +29,21 @@ function getTodayDateInputValue() {
 
 export default function BookingForm() {
     const { languageCode } = useLanguage();
+    /* ============================================================
+    TERMS AND CONDITIONS — LANGUAGE SELECTION
+
+    English and Dutch contain the current agreement terms.
+    Arabic, Turkish and Persian are placeholders for now.
+    Customers using other languages receive the empty terms.
+    ============================================================ */
+    /* Select the Terms and Conditions PDF using the website language. */
+    const termsPdfUrl = ({
+        en: "/terms/Voya_Taxi_Terms_and_Conditions_v1.0_EN.pdf",
+        nl: "/terms/Voya_Taxi_Algemene_Voorwaarden_v1.0_NL.pdf",
+        ar: "/terms/Voya_Taxi_Terms_and_Conditions_v1.0_AR.pdf",
+        tr: "/terms/Voya_Taxi_Terms_and_Conditions_v1.0_TR.pdf",
+        fa: "/terms/Voya_Taxi_Terms_and_Conditions_v1.0_FA.pdf",
+    } as Record<string, string>)[languageCode] ?? "/terms/Voya_Taxi_Terms_and_Conditions_v1.0_EN.pdf";
 
     // getBookingFormText returns translated text for this booking form.
     // This keeps the JSX shorter than repeating getTranslation everywhere.
@@ -71,6 +86,9 @@ export default function BookingForm() {
     const [needsPassengerSupport, setNeedsPassengerSupport] = useState(false);
     const [bookingSessionId, setBookingSessionId] = useState(() => crypto.randomUUID());
 
+    /* Tracks whether the customer accepts Voya Taxi Terms and Conditions. */
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
+
     // When submittedBooking changes from null to a real booking, scroll smoothly to the result area.
     useEffect(() => {
         if (submittedBooking) {
@@ -108,10 +126,12 @@ export default function BookingForm() {
 
         // expiresAt (for example is 20 minutes), is calculated by the server using the pricing profile quote validity
         // and is returned inside TemporaryJourneyQuote by createJourneyQuoteForReview().
-        //const expiresAt = new Date(journeyQuote.expiresAt).getTime();
         //Test for just 10 seconds
-        const expiresAt = Date.now() + 10_000;
+        //const expiresAt = Date.now() + 10_000;
 
+        /* Use the actual quote expiration calculated by the server. */
+        const expiresAt = new Date(journeyQuote.expiresAt).getTime();
+        
         function updateQuoteRemainingTime() {
             const remainingSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
             setQuoteRemainingSeconds(remainingSeconds);
@@ -470,12 +490,21 @@ export default function BookingForm() {
     async function handleConfirmBooking() {
         if (!bookingDraft || !journeyQuote) { return; }
 
+        /* Prevent booking confirmation without accepting the terms. */
+        if (!acceptedTerms) {
+            setErrorMessage("Please accept the Terms and Conditions before confirming your booking.");
+            return;
+        }
+
         setErrorMessage("");
         setIsSending(true);
 
+        /* Include the accepted Terms and Conditions version in the request. */
         const confirmationRequest: BookingConfirmationRequest = {
             ...bookingDraft,
             journeyQuoteId: journeyQuote.quoteId,
+            acceptedTerms,
+            acceptedTermsVersion: "1.0",
         };
 
         try {
@@ -577,6 +606,9 @@ export default function BookingForm() {
         * The next booking starts with a completely new session ID.
         */
         setBookingSessionId(crypto.randomUUID());
+
+        /* Require fresh Terms and Conditions acceptance for each new booking. */
+        setAcceptedTerms(false);
     }
 
   return (
@@ -730,14 +762,32 @@ export default function BookingForm() {
                         )}
                     </div>
 
-                    {errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
+                    {/* Require agreement to the booking terms before final confirmation. */}
+                    <div className="mt-6 flex items-start gap-3">
+                        <input id="acceptedTerms" type="checkbox" checked={acceptedTerms}
+                            onChange={(event) => setAcceptedTerms(event.target.checked)} className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-cyan-500"
+                        />
+                        <label htmlFor="acceptedTerms" className="text-sm leading-6 text-slate-300">
+                            {getBookingFormText("termsAgreementText")}
+
+                            {/* Open the Terms and Conditions PDF for the selected website language. */}
+                            <span className="mt-1 block">
+                                <a href={termsPdfUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline hover:text-cyan-200">
+                                    {getBookingFormText("termsPdfLinkText")}
+                                </a>
+                            </span>
+                        </label>
+                    </div>
+                    {errorMessage && (<p className={tableStyles.errorCell}> {errorMessage} </p> )}
                     {/*====Review booking. Edit button and confirm button.====*/}
                     {quoteRemainingSeconds !== null && quoteRemainingSeconds > 0 && (
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                            {/*Confirm will be disabled if we sending the booking and if quoted price is not valid anymore, 20 minutes is passed.*/}
-                            <button type="button" onClick={handleConfirmBooking} disabled={isSending} className={formStyles.submitSmallButtonUserPage}>
-                                {isSending ? getBookingFormText("sendingButton") : getBookingFormText("confirmBookingButton")}
-                            </button>
+                        {/* Booking confirmation requires acceptance of the Terms and Conditions. */}
+                        <button type="button" onClick={handleConfirmBooking} disabled={isSending || !acceptedTerms}
+                            className={`${formStyles.submitSmallButtonUserPage} disabled:cursor-not-allowed disabled:opacity-50`}
+                        >
+                            {isSending ? getBookingFormText("sendingButton") : getBookingFormText("confirmBookingButton")}
+                        </button>
 
                             <button type="button" onClick={handleBackToEdit} className={formStyles.submitSmallButtonUserPage}>
                                 {getBookingFormText("backToEditButton")}
