@@ -2074,8 +2074,12 @@ CREATE OR REPLACE FUNCTION public.create_booking_with_accepted_journey_quote(
     p_pickup_city TEXT,
     p_destination TEXT,
     p_destination_city TEXT,
+    /* Pickup timezone and exact timestamp.
+    Both values are calculated from the pickup location. */
     p_pickup_date DATE,
     p_pickup_time TIME,
+    p_pickup_timezone TEXT,
+    p_pickup_at TIMESTAMPTZ,
     p_estimated_duration_minutes INTEGER,
 
     p_passengers INTEGER,
@@ -2185,6 +2189,39 @@ BEGIN
         RAISE EXCEPTION 'Journey quote has already been used.';
     END IF;
 
+    /* ============================================================
+    STEP 3A - VALIDATE BOOKING PICKUP TIMEZONE
+
+    Purpose:
+    - Require a valid IANA timezone.
+    - Verify that pickup_at matches the local pickup date/time.
+    - Reject inconsistent timestamps before booking creation.
+
+    The application separately checks ambiguous and nonexistent
+    local times before calling this function.
+    ============================================================ */
+
+    IF p_pickup_timezone IS NULL
+        OR NULLIF(BTRIM(p_pickup_timezone), '') IS NULL
+        OR NOT EXISTS (
+            SELECT 1
+            FROM pg_timezone_names
+            WHERE name = p_pickup_timezone
+        )
+    THEN
+        RAISE EXCEPTION 'Invalid booking pickup timezone.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    IF p_pickup_at IS NULL
+        OR (p_pickup_at AT TIME ZONE p_pickup_timezone)
+            IS DISTINCT FROM (p_pickup_date + p_pickup_time)
+    THEN
+        RAISE EXCEPTION
+            'Booking pickup timestamp does not match its local date and time.'
+        USING ERRCODE = '22023';
+    END IF;
+
     /*
         STEP 4: CREATE THE BOOKING
 
@@ -2201,8 +2238,11 @@ BEGIN
         pickup_city,
         destination,
         destination_city,
+        /* Store the pickup's local date, time and timezone. */
         pickup_date,
         pickup_time,
+        pickup_timezone,
+        pickup_at,
         estimated_duration_minutes,
 
         passengers,
@@ -2232,8 +2272,11 @@ BEGIN
         p_pickup_city,
         p_destination,
         p_destination_city,
+        /* Save the exact pickup instant in the same transaction. */
         p_pickup_date,
         p_pickup_time,
+        p_pickup_timezone,
+        p_pickup_at,
         p_estimated_duration_minutes,
 
         p_passengers,
@@ -2325,6 +2368,8 @@ ON FUNCTION public.create_booking_with_accepted_journey_quote(
     TEXT,
     DATE,
     TIME,
+    TEXT,        -- p_pickup_timezone
+    TIMESTAMPTZ, -- p_pickup_at
     INTEGER,
     INTEGER,
     INTEGER,
@@ -2353,6 +2398,8 @@ ON FUNCTION public.create_booking_with_accepted_journey_quote(
     TEXT,
     DATE,
     TIME,
+    TEXT,        -- p_pickup_timezone
+    TIMESTAMPTZ, -- p_pickup_at
     INTEGER,
     INTEGER,
     INTEGER,
@@ -4001,6 +4048,13 @@ CREATE TABLE public.bookings (
     destination TEXT NOT NULL,
     pickup_date DATE NOT NULL,
     pickup_time TIME NOT NULL,
+
+    /* IANA timezone of the booking pickup location. */
+    pickup_timezone TEXT NULL,
+
+    /* Exact pickup timestamp, including timezone information. */
+    pickup_at TIMESTAMPTZ NULL,
+
     estimated_duration_minutes INTEGER NOT NULL DEFAULT 60,
     passengers INTEGER NOT NULL DEFAULT 1,
     luggage INTEGER DEFAULT 0,
@@ -4069,12 +4123,88 @@ CREATE TABLE public.bookings (
         UNIQUE (journey_quote_id)
 );
 
+/* ============================================================
+   VOYA TAXI - BOOKING PICKUP TIMEZONE DESCRIPTIONS
+
+   Purpose:
+   Document the timezone and exact pickup timestamp.
+============================================================ */
+
+COMMENT ON COLUMN public.bookings.pickup_timezone IS
+'IANA timezone of the booking pickup location, resolved from geographic coordinates.';
+
+COMMENT ON COLUMN public.bookings.pickup_at IS
+'Exact scheduled pickup timestamp, calculated from the pickup local date, time and timezone.';
+
 /* This tells PostgreSQL: Store this explanation as documentation for bookings.pickup_city.*/
 COMMENT ON COLUMN public.bookings.pickup_city IS
 'Privacy-safe pickup city derived from the selected Mapbox location.';
 
 COMMENT ON COLUMN public.bookings.destination_city IS
 'Privacy-safe destination city derived from the selected Mapbox location.';
+
+/* ============================================================
+   VOYA TAXI — BOOKING CANCELLATIONS
+   Date: 2026-10-30
+
+   Purpose:
+   Store permanent booking cancellation information.
+
+   Rules:
+   - Each booking can have only one permanent cancellation.
+   - Client cancellation reason is optional.
+   - Admin cancellation reason is mandatory.
+   - Chauffeur withdrawal is NOT a booking cancellation.
+   - Cancellation records preserve the previously assigned chauffeur.
+============================================================ */
+
+CREATE TABLE IF NOT EXISTS public.booking_cancellations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    booking_id UUID NOT NULL
+        REFERENCES public.bookings(id) ON DELETE RESTRICT,
+    cancelled_by TEXT NOT NULL
+        CHECK (cancelled_by IN ('client', 'admin', 'system')),
+    cancelled_by_user_id UUID NULL
+        REFERENCES auth.users(id) ON DELETE NO ACTION,
+    previous_chauffeur_id UUID NULL
+        REFERENCES public.chauffeurs(id) ON DELETE SET NULL,
+    cancellation_reason TEXT NULL,
+    cancelled_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    /* One permanent cancellation per booking. */
+    CONSTRAINT booking_cancellations_booking_unique UNIQUE (booking_id),
+
+    /* Administrators must provide a meaningful reason. */
+    CONSTRAINT booking_cancellations_admin_reason_required
+        CHECK (cancelled_by <> 'admin' OR NULLIF(BTRIM(cancellation_reason), '') IS NOT NULL)
+);
+
+/* ============================================================
+   BOOKING CANCELLATIONS — SECURITY
+
+   Purpose:
+   - Enable Row Level Security.
+   - Prevent anonymous and authenticated browser users
+     from directly reading or modifying cancellation records.
+   - Allow the trusted server-side service_role to access
+     cancellation history through protected operations.
+============================================================ */
+
+-- Enable Row Level Security.
+ALTER TABLE public.booking_cancellations
+ENABLE ROW LEVEL SECURITY;
+
+-- Block direct access from ordinary application roles.
+REVOKE ALL ON TABLE public.booking_cancellations
+FROM PUBLIC, anon, authenticated;
+
+-- Explicitly allow trusted server-side operations.
+GRANT SELECT, INSERT
+ON TABLE public.booking_cancellations
+TO service_role;
+/* ======================================================================================================================
+    END BOOKING CANCELLATIONS
+======================================================================================================================*/
 
 /* ============================================================
    FINANCIAL CONFIGURATION AND QUOTE INDEXES
@@ -4701,6 +4831,254 @@ EXECUTE FUNCTION public.update_updated_at_column();
   End Automatically update updated_at columns
 =============================================================================================================================*/
 
+/* ============================================================
+   VOYA TAXI - CENTRALIZED BOOKING CANCELLATION
+
+   Purpose:
+   Permanently cancel a booking, preserve cancellation history,
+   remove chauffeur assignment and release reserved time.
+
+   All operations run in one PostgreSQL transaction.
+   Only service_role may execute this function.
+============================================================ */
+
+/* ------------------------------------------------------------
+   SECTION 1 - CREATE THE CANCELLATION FUNCTION
+------------------------------------------------------------ */
+
+CREATE OR REPLACE FUNCTION public.cancel_booking(
+    p_booking_id UUID,
+    p_cancelled_by TEXT,
+    p_cancelled_by_user_id UUID DEFAULT NULL,
+    p_cancellation_reason TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = ''
+AS $function$
+DECLARE
+    v_booking RECORD;
+    v_cancellation_id UUID;
+    v_reason TEXT;
+BEGIN
+
+    /* --------------------------------------------------------
+       SECTION 2 - VALIDATE REQUEST
+
+       Only client and admin cancellation are supported here.
+       System cancellations can be introduced separately.
+    -------------------------------------------------------- */
+
+    IF p_booking_id IS NULL THEN
+        RAISE EXCEPTION 'Booking ID is required.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    IF p_cancelled_by IS NULL
+       OR p_cancelled_by NOT IN ('client', 'admin') THEN
+
+        RAISE EXCEPTION 'Invalid cancellation actor.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    v_reason := NULLIF(BTRIM(p_cancellation_reason), '');
+
+    IF p_cancelled_by = 'admin' AND v_reason IS NULL THEN
+        RAISE EXCEPTION 'Admin cancellation requires a reason.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* --------------------------------------------------------
+       SECTION 3 - LOCK THE BOOKING
+
+       Prevent concurrent changes to the same booking.
+    -------------------------------------------------------- */
+
+    SELECT
+        id,
+        status,
+        chauffeur_id,
+        pickup_at
+    INTO v_booking
+    FROM public.bookings
+    WHERE id = p_booking_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Booking was not found.'
+        USING ERRCODE = 'P0002';
+    END IF;
+
+    /* --------------------------------------------------------
+       SECTION 4 - VALIDATE CANCELLATION STATUS
+
+       Completed, rejected and previously cancelled bookings
+       cannot be cancelled again.
+    -------------------------------------------------------- */
+
+    IF v_booking.status IN ('cancelled', 'completed', 'rejected') THEN
+        RAISE EXCEPTION
+            'Booking cannot be cancelled in its current status.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* --------------------------------------------------------
+       SECTION 5 - ENFORCE CLIENT CANCELLATION DEADLINE
+
+       More than 24 hours must remain before pickup.
+
+       Older bookings without pickup_at cannot be cancelled
+       through this client operation until safely migrated.
+    -------------------------------------------------------- */
+
+    IF p_cancelled_by = 'client'
+       AND (
+           v_booking.pickup_at IS NULL
+           OR v_booking.pickup_at <= NOW() + INTERVAL '24 hours'
+       ) THEN
+
+        RAISE EXCEPTION
+            'Client cancellation requires more than 24 hours before pickup.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* --------------------------------------------------------
+       SECTION 6 - LOCK THE CHAUFFEUR SCHEDULE
+
+       Follow the existing scheduling lock order.
+    -------------------------------------------------------- */
+
+    PERFORM public.lock_chauffeur_schedule_pair(
+        v_booking.chauffeur_id,
+        NULL
+    );
+
+    /* --------------------------------------------------------
+       SECTION 7 - RECORD CANCELLATION HISTORY
+
+       Store the previous chauffeur before clearing assignment.
+    -------------------------------------------------------- */
+
+    INSERT INTO public.booking_cancellations (
+        booking_id,
+        cancelled_by,
+        cancelled_by_user_id,
+        previous_chauffeur_id,
+        cancellation_reason
+    )
+    VALUES (
+        p_booking_id,
+        p_cancelled_by,
+        p_cancelled_by_user_id,
+        v_booking.chauffeur_id,
+        v_reason
+    )
+    RETURNING id INTO v_cancellation_id;
+
+    /* --------------------------------------------------------
+       SECTION 8 - CANCEL AND UNASSIGN BOOKING
+    -------------------------------------------------------- */
+
+    UPDATE public.bookings
+    SET
+        status = 'cancelled',
+        chauffeur_id = NULL,
+        vehicle_id = NULL
+    WHERE id = p_booking_id;
+
+    /* --------------------------------------------------------
+       SECTION 9 - RELEASE RESERVED CHAUFFEUR TIME
+
+       Remove only busy intervals linked to this booking.
+       Do not remove manual unavailable periods.
+    -------------------------------------------------------- */
+
+    DELETE FROM public.chauffeur_availability
+    WHERE booking_id = p_booking_id;
+
+    /* --------------------------------------------------------
+       SECTION 10 - RETURN AUDIT RECORD ID
+    -------------------------------------------------------- */
+
+    RETURN v_cancellation_id;
+
+END;
+$function$;
+
+/* ------------------------------------------------------------
+   SECTION 11 - RESTRICT FUNCTION EXECUTION
+------------------------------------------------------------ */
+
+REVOKE ALL ON FUNCTION public.cancel_booking(
+    UUID, TEXT, UUID, TEXT
+) FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.cancel_booking(
+    UUID, TEXT, UUID, TEXT
+) TO service_role;
+
+
+
+/*==============================================================================================================================
+  End VOYA TAXI - CENTRALIZED BOOKING CANCELLATION
+=============================================================================================================================*/
+
+/* ============================================================
+   VOYA TAXI - BOOKING CANCELLATION PROTECTION
+
+   Purpose:
+   Prevent reactivation of permanently cancelled bookings.
+   Require an audit record for every new cancellation.
+============================================================ */
+
+CREATE OR REPLACE FUNCTION public.prevent_cancelled_booking_reactivation()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $function$
+BEGIN
+    /* Rule 1: A permanently cancelled booking cannot be reactivated. */
+    IF OLD.status = 'cancelled'
+       AND NEW.status IS DISTINCT FROM OLD.status THEN
+
+        RAISE EXCEPTION
+            'A permanently cancelled booking cannot be reactivated.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* Rule 2: A new cancellation must have an audit record. */
+    IF OLD.status IS DISTINCT FROM 'cancelled'
+       AND NEW.status = 'cancelled'
+       AND NOT EXISTS (
+           SELECT 1
+           FROM public.booking_cancellations
+           WHERE booking_id = NEW.id
+       ) THEN
+
+        RAISE EXCEPTION
+            'Booking cancellation requires an audit record.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    RETURN NEW;
+END;
+$function$;
+
+/* ============================================================
+   VOYA TAXI - BOOKING CANCELLATION PROTECTION TRIGGER
+
+   Purpose:
+   Prevent reactivation and require a cancellation audit record.
+============================================================ */
+CREATE TRIGGER prevent_cancelled_booking_reactivation
+BEFORE UPDATE OF status ON public.bookings
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_cancelled_booking_reactivation();
+
+/*==============================================================================================================================
+  End VOYA TAXI - BOOKING CANCELLATION PROTECTION
+=============================================================================================================================*/
 --==============================================================================================================================
 --==============================================================================================================================
 -- ROUTE DISTANCE PER COUNTRY

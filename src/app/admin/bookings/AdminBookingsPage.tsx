@@ -10,19 +10,16 @@
     page.tsx displays them in a table
 =================================================================*/
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/classNames";
 
 import Link from "next/link"; 
 import { Fragment } from "react";
-import { getVehicleMatchResult, type VehicleWheelchairAccess } from "@/lib/vehicleMatching";
-import type { WheelchairRequirement } from "@/types/wheelchairRequirementType";
 import ScrollToBooking from "@/components/ScrollToBooking";
 import SearchableChauffeurFilter from "./SearchableChauffeurFilter";
 import { SlidersHorizontal } from "lucide-react";
 import CopyBookingIdButton from "@/app/admin/chauffeurs/[chauffeurId]/support/CopyBookingIdButton";
-import { getBookingConflictReason, updateBookingStatus } from "@/lib/bookings/updateBookingStatus";
+/* Protect Admin booking operations independently of page access. */
+import IncludeCancelledCheckbox from "./IncludeCancelledCheckbox";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/bookings/page.tsx 
 /**
@@ -46,6 +43,8 @@ type AdminBookingsPageProps = {
         error?: string;
         bookingId?: string;
 
+        /* Include cancelled bookings only when explicitly requested. */
+        includeCancelled?: string;
         /* Admin booking-list search and filter values. */
         search?: string;
         assignment?: string;
@@ -93,228 +92,12 @@ type ChauffeurOption = {
     accepts_pets: boolean; vehicles: ChauffeurVehicleOption[];
 };
 
-/*=============Tscrip rules===================
-   FUNCTION PURPOSE: QUICK BOOKING ASSIGNMENT
-   Updates a booking from the small Save form inside the admin booking list.
-   The form sends:
-   - bookingId: identifies the booking;
-   - chauffeurId: identifies the selected chauffeur;
-   - status: contains the selected booking status.
-
-   The function:
-   - loads the booking requirements;
-   - checks that the chauffeur is approved;
-   - checks pet acceptance;
-   - finds the chauffeur's default vehicle;
-   - checks whether that vehicle matches the booking;
-   - saves chauffeur_id, vehicle_id and status;
-   - updates the chauffeur's automatic busy period;
-   - refreshes the Admin Bookings page.
-
-   TYPESCRIPT NOTES
-    with revalidatePath = Refresh the admin bookings page data after the update.
-    const vs let ==> const is used to define a variable and variable cannot be reassigned. Use let when the value may change
-    const submitted: boolean = true; define a varibale of type boolean assign value true to it.
-    const = creates a real variable/value
-    let   = creates a real variable/value that can change
-    var   = old way to create variables, usually avoid it
-    type  = creates a TypeScript rule/shape for data
-    supabaseAdmin.rpc() = calls a PostgreSQL function stored in Supabase.
-    rpc("get_enum_values") = Run a custom function inside Supabase/PostgreSQL and give me the result.
-    supabaseAdmin.from() = says it is a table.
-    ?   = optional / safe access
-    ??  = fallback when value is null or undefined
-    :   = type annotation OR object property value
-    ::  = not TypeScript; usually PostgreSQL type cast
-====================================*/
-async function updateBookingAdminFields(formData: FormData) {
-    "use server";
-
-    const bookingId = String(formData.get("bookingId") || "");
-    const chauffeurId = String(formData.get("chauffeurId") || "");
-    const status = String(formData.get("status") || "");
-    const activeStatuses = ["accepted", "confirmed", "completed"];
-
-    if (!bookingId || !status) { redirect("/admin/bookings?error=missing-fields"); }
-    if (activeStatuses.includes(status) && !chauffeurId) {redirect("/admin/bookings?error=chauffeur-required"); }
-
-    /* Load the original booking status and email details before updating. */
-    const { data: originalBooking, error: originalBookingError } = await supabaseAdmin
-        .from("bookings")
-        .select(`
-            id, status, pickup_location, destination, pickup_date, pickup_time,
-            passengers, luggage, trip_type, has_pets, notes,
-            clients(name, email, phone)
-        `)
-        .eq("id", bookingId)
-        .maybeSingle();
-
-    /* Stop the update if the original booking cannot be loaded. */
-    if (originalBookingError || !originalBooking) {
-        console.error("Could not load original booking:", originalBookingError);
-        redirect("/admin/bookings?error=booking-update-failed");
-    }
-
-    let vehicleId: string | null = null;
-
-    /* Finds and validates the chauffeur's default vehicle. */
-    if (chauffeurId) {
-        const [
-            { data: bookingRow, error: bookingError },
-            { data: chauffeurRow, error: chauffeurError },
-            { data: defaultVehicle, error: vehicleError },
-        ] = await Promise.all([
-            supabaseAdmin.from("bookings").select(`
-                chauffeur_id, vehicle_id,
-                vehicles(
-                    id, chauffeur_id,vehicle_status,
-                    seats, luggage_capacity,
-                    infant_seat_count, child_seat_count, booster_seat_count,
-                    isofix_available, wheelchair_access, wheelchair_capacity,
-                    mobility_aid_storage, extra_large_luggage
-                ),
-                passengers, luggage, has_pets,
-                infant_seat_count_required, child_seat_count_required,
-                booster_seat_count_required, isofix_required,
-                wheelchair_requirement, wheelchair_passenger_count,
-                mobility_aid_storage_required, extra_large_luggage_required
-            `).eq("id", bookingId).maybeSingle(),
-
-            supabaseAdmin.from("chauffeurs")
-                .select("id, account_status, operational_status, accepts_pets")
-                .eq("id", chauffeurId).maybeSingle(),
-
-            supabaseAdmin.from("vehicles").select(`
-                id, vehicle_status, seats, luggage_capacity,
-                infant_seat_count, child_seat_count, booster_seat_count,
-                isofix_available, wheelchair_access, wheelchair_capacity,
-                mobility_aid_storage, extra_large_luggage
-            `)
-                .eq("chauffeur_id", chauffeurId)
-                .eq("is_default_vehicle", true)
-                .maybeSingle(),
-        ]);
-
-        if (bookingError || chauffeurError || vehicleError) {
-            console.error("Could not validate quick assignment:", { bookingError, chauffeurError, vehicleError, });
-            redirect("/admin/bookings?error=booking-update-failed");
-        }
-        if (!bookingRow) { redirect("/admin/bookings?error=booking-update-failed"); }
-        if (!chauffeurRow || chauffeurRow.account_status !== "approved") { redirect("/admin/bookings?error=chauffeur-not-approved"); }
-        if (chauffeurRow.operational_status !== "available") { redirect("/admin/bookings?error=chauffeur-unavailable");}
-        if (bookingRow.has_pets && !chauffeurRow.accepts_pets) { redirect("/admin/bookings?error=chauffeur-does-not-accept-pets"); }
-        if (!defaultVehicle) {redirect("/admin/bookings?error=default-vehicle-missing"); }
-        if (defaultVehicle.vehicle_status !== "available") { redirect("/admin/bookings?error=default-vehicle-unavailable");}
-
-        const vehicleMatchesBooking = (vehicle: NonNullable<typeof defaultVehicle>) =>
-            getVehicleMatchResult(
-                {
-                    seats: vehicle.seats,
-                    luggageCapacity: vehicle.luggage_capacity,
-                    infantSeatCount: vehicle.infant_seat_count,
-                    childSeatCount: vehicle.child_seat_count,
-                    boosterSeatCount: vehicle.booster_seat_count,
-                    isofixAvailable: vehicle.isofix_available,
-                    wheelchairAccess: vehicle.wheelchair_access as VehicleWheelchairAccess,
-                    wheelchairCapacity: vehicle.wheelchair_capacity,
-                    mobilityAidStorage: vehicle.mobility_aid_storage,
-                    extraLargeLuggage: vehicle.extra_large_luggage,
-                },
-                {
-                    passengers: bookingRow.passengers,
-                    luggage: bookingRow.luggage ?? 0,
-                    infantSeatCountRequired: bookingRow.infant_seat_count_required,
-                    childSeatCountRequired: bookingRow.child_seat_count_required,
-                    boosterSeatCountRequired: bookingRow.booster_seat_count_required,
-                    isofixRequired: bookingRow.isofix_required,
-                    wheelchairRequirement: bookingRow.wheelchair_requirement as WheelchairRequirement,
-                    wheelchairPassengerCount: bookingRow.wheelchair_passenger_count,
-                    mobilityAidStorageRequired: bookingRow.mobility_aid_storage_required,
-                    extraLargeLuggageRequired: bookingRow.extra_large_luggage_required,
-                }
-            ).matches;
-
-        const currentVehicle = Array.isArray(bookingRow.vehicles)
-            ? bookingRow.vehicles[0]
-            : bookingRow.vehicles;
-
-        const currentVehicleCanStay =
-            bookingRow.chauffeur_id === chauffeurId &&
-            bookingRow.vehicle_id !== null &&
-            currentVehicle?.id === bookingRow.vehicle_id &&
-            currentVehicle.chauffeur_id === chauffeurId &&
-            currentVehicle.vehicle_status === "available" &&
-            vehicleMatchesBooking(currentVehicle);
-
-        if (currentVehicleCanStay && currentVehicle) {
-            vehicleId = currentVehicle.id;
-        } else {
-            if (!defaultVehicle) { redirect("/admin/bookings?error=default-vehicle-missing"); }
-            if (!vehicleMatchesBooking(defaultVehicle)) { redirect("/admin/bookings?error=default-vehicle-mismatch"); }
-            vehicleId = defaultVehicle.id;
-        }
-    }
-
-    /* Update the booking through the central service while preserving the existing scheduling RPC. */
-    const { error } = await updateBookingStatus(
-        bookingId,
-        async () => {
-            const { error: rpcError } = await supabaseAdmin.rpc("update_booking_admin_assignment", {
-                p_booking_id: bookingId,
-                p_chauffeur_id: chauffeurId || null,
-                p_vehicle_id: vehicleId,
-                p_status: status,
-            });
-
-            return { error: rpcError };
-        }
-    );
-
-    if (error) {
-        console.error("Could not update booking assignment:", error);
-        /* Show the actual reason for the chauffeur scheduling conflict. */
-        if (error.code === "23P01") {
-            const conflictReason = getBookingConflictReason(error);
-
-            if (conflictReason === "chauffeur-unavailable") {
-                redirect("/admin/bookings?error=chauffeur-unavailable-period");
-            }
-
-            redirect("/admin/bookings?error=chauffeur-time-conflict");
-        }
-
-        /* Displays the specific error when a chauffeur fails booking compliance checks. */
-        if (error.code === "22023") {
-            if (error.message.includes("Chauffeur compliance is not valid for this booking pickup date.")) {
-                redirect("/admin/bookings?error=chauffeur-compliance-invalid");
-            }
-            if (error.message.includes("crosses midnight")) { redirect("/admin/bookings?error=journey-crosses-midnight"); }
-            redirect("/admin/bookings?error=assignment-required");
-        }
-
-        redirect("/admin/bookings?error=booking-update-failed");
-    }
-
-    /* Rechecks and resolves the assignment alert after a valid reassignment. */
-    const { error: alertSyncError } = await supabaseAdmin.rpc("sync_booking_assignment_alert",
-        {
-            p_booking_id: bookingId,
-            p_source_type: "assignment",
-            p_source_id: bookingId,
-        }
-    );
-    if (alertSyncError) {
-        console.error(
-            `Booking ${bookingId} was updated, but its assignment alert could not be synchronized:`,
-            alertSyncError
-        );
-    }
-    revalidatePath("/admin/bookings");
-    redirect("/admin/bookings?success=booking-updated");
-}
-
 export default async function AdminBookingsPage({ searchParams}: AdminBookingsPageProps) {
     const pageMessage = await searchParams;
+
+    /* Cancelled bookings are hidden by default. */
+    const includeCancelled = pageMessage.includeCancelled === "true";
+
     /* Stores the booking selected from the assignment-alert page. */
     const selectedBookingId = pageMessage.bookingId ?? null;
 
@@ -378,6 +161,13 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
             vehicles(id, brand, model, license_plate, vehicle_type, vehicle_year, vehicle_color) `,
              { count: "exact" }
         )
+
+        /* Switch between active and cancelled booking lists. */
+        if (includeCancelled) {
+            bookingsQuery = bookingsQuery.eq("status", "cancelled");
+        } else {
+            bookingsQuery = bookingsQuery.neq("status", "cancelled");
+        }
 
     /*
         Filters bookings by a specific chauffeur when selected.
@@ -459,9 +249,6 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
     if (chauffeursError) { console.error("Could not load approved chauffeurs:", chauffeursError);}
     const bookingRows = (bookings ?? []) as unknown as BookingRow[];
     
-    const { data: bookingStatuses, error:bookingStatusError } = await supabaseAdmin.rpc( "get_enum_values", { p_enum_type_name: "booking_status"});
-    if (bookingStatusError) { console.error("Could not load booking statuses:", bookingStatusError);}
-    const bookingStatusOptions = (bookingStatuses ?? []) as string[];
     //===============helper function:
     function formatShortDate(dateValue: string | null) {
             if (!dateValue) { return "-"; }
@@ -493,62 +280,11 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
         return `${vehicle.brand} ${vehicle.model} — ${vehicle.license_plate}`;
     }
 
-    /* =========================================================================================
-    PURPOSE: FILTER QUICK-SAVE CHAUFFEURS
-
-    Quick Save automatically assigns the chauffeur's default vehicle.
-
-    A chauffeur remains available only when:
-    - pets are accepted when required;
-    - a default vehicle exists;
-    - that default vehicle matches all booking requirements.
-    ========================================================================================= */
-    function getQuickSaveChauffeurs(booking: BookingRow) {
-        return chauffeurOptions.filter((chauffeur) => {
-            if (chauffeur.operational_status !== "available") {return false; }
-            if (booking.has_pets && !chauffeur.accepts_pets) { return false; }
-
-            const defaultVehicle = (chauffeur.vehicles ?? []).find(
-                (vehicle) =>
-                    vehicle.is_default_vehicle &&
-                    vehicle.vehicle_status === "available"
-            );
-            if (!defaultVehicle) { return false; }
-
-            return getVehicleMatchResult(
-                {
-                    seats: defaultVehicle.seats,
-                    luggageCapacity: defaultVehicle.luggage_capacity,
-                    infantSeatCount: defaultVehicle.infant_seat_count,
-                    childSeatCount: defaultVehicle.child_seat_count,
-                    boosterSeatCount: defaultVehicle.booster_seat_count,
-                    isofixAvailable: defaultVehicle.isofix_available,
-                    wheelchairAccess: defaultVehicle.wheelchair_access as VehicleWheelchairAccess,
-                    wheelchairCapacity: defaultVehicle.wheelchair_capacity,
-                    mobilityAidStorage: defaultVehicle.mobility_aid_storage,
-                    extraLargeLuggage: defaultVehicle.extra_large_luggage,
-                },
-                {
-                    passengers: booking.passengers,
-                    luggage: booking.luggage ?? 0,
-                    infantSeatCountRequired: booking.infant_seat_count_required,
-                    childSeatCountRequired: booking.child_seat_count_required,
-                    boosterSeatCountRequired: booking.booster_seat_count_required,
-                    isofixRequired: booking.isofix_required,
-                    wheelchairRequirement: booking.wheelchair_requirement as WheelchairRequirement,
-                    wheelchairPassengerCount: booking.wheelchair_passenger_count,
-                    mobilityAidStorageRequired: booking.mobility_aid_storage_required,
-                    extraLargeLuggageRequired: booking.extra_large_luggage_required,
-                }
-            ).matches;
-
-        });
-    }
-
     /* Builds a booking-list URL while keeping the active Admin filters. */
     function buildBookingsPageUrl(pageNumber: number) {
         const params = new URLSearchParams();
-
+        /* Preserve the cancelled-bookings filter during pagination. */
+        if (includeCancelled) {params.set("includeCancelled", "true");}
         if (assignmentFilter !== "all") {params.set("assignment", assignmentFilter);}
         if (pageMessage.search) {params.set("search", pageMessage.search);}
         if (pageMessage.chauffeurId) {params.set("chauffeurId", pageMessage.chauffeurId);}
@@ -624,7 +360,11 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                             </label>
                             <input id="pickupDate" type="date" name="pickupDate" defaultValue={selectedPickupDate} className={formStyles.selectForm} />
                         </div>
-
+                        {/* Allow Admin to include cancelled bookings in the list. */}
+                        <label className="flex items-center gap-2 text-sm text-slate-300">
+                            {/* Automatically refresh the booking list when toggled. */}
+                            <IncludeCancelledCheckbox includeCancelled={includeCancelled} />
+                        </label>
                         {/* Apply the filter. */}
                         <button type="submit" className={formStyles.filterButton}>
                             Search
@@ -706,31 +446,44 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                 <div className="border-b border-white/10 pb-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <p className="mt-1">
+                                            <p className="mt-2">
                                                 <span className={mobileStyle.inforCaption}>Ref: </span>
                                                 <span className={`${mobileStyle.infoValue} break-all`}>{formatShortBookingReference(booking.id)}</span>
                                             </p>
-                                            <p className="mt-1">
+                                            <p className="mt-2">
                                                 <span className={mobileStyle.inforCaption}>Client name: </span>
                                                 <span className={mobileStyle.infoValue}>{booking.clients?.name}</span>
                                             </p>
-                                            <p className="mt-1">
+                                            <p className="mt-2">
                                                 <span className={mobileStyle.inforCaption}>Email: </span>
                                                 <span className={mobileStyle.infoValue}>{booking.clients?.email}</span>
                                             </p>
-                                            <div className="grid grid-cols-2 mt-1">
+                                            <div className="grid grid-cols-2 mt-2">
                                                 <p>
                                                     <span className={mobileStyle.inforCaption}>Phone: </span>
                                                     <span className={mobileStyle.infoValue}>{booking.clients?.phone}</span>
                                                 </p>                                            
                                             </div>                                       
-                                            <p>
+                                            <p className="mt-2">
                                                 <span className={mobileStyle.inforCaption}> Pickup  </span>
                                                 <span className={mobileStyle.infoValue}>{booking.pickup_location}</span>
                                             </p>
-                                            <div>
+                                            <div className="mt-2">
                                                 <span className={mobileStyle.inforCaption}> Destination:  </span>
                                                 <span className={mobileStyle.infoValue}>{booking.destination}</span>
+                                            </div>
+
+                                            {/* Display booking status and assigned chauffeur on mobile. */}
+                                            <div className="mt-2 grid gap-2">
+                                                <div>
+                                                    <span className={mobileStyle.inforCaption}>Status: </span>
+                                                    <span className={mobileStyle.infoValue}>{booking.status}</span>
+                                                </div>
+
+                                                <div>
+                                                    <span className={mobileStyle.inforCaption}>Assigned chauffeur: </span>
+                                                    <span className={mobileStyle.infoValue}>{booking.chauffeurs?.name ?? "Unassigned"}</span>
+                                                </div>
                                             </div>
                                         </div>                                   
                                     </div>
@@ -814,37 +567,12 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                         <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
                                     </div>
                                 </div>
-
-                                <form action={updateBookingAdminFields} className="mt-2 grid gap-3">
-                                    <div>
-                                        <span className={mobileStyle.inforCaption}>Assigned vehicle: </span>
-                                        <span className={mobileStyle.infoValue}> {getAssignedVehicleLabel(booking.vehicles)} </span>
-                                    </div>
-                                    <div>
-                                        {/* Copies the complete booking UUID to the clipboard. */}
-                                        <CopyBookingIdButton recordId={booking.id} label="Copy Booking ID" />
-                                    </div>
-                                    <div>
-                                        <span className={mobileStyle.inforCaption}>Chauffeur: </span>
-                                        <input type="hidden" name="bookingId" value={booking.id} />
-                                        <span className={mobileStyle.infoValue}>
-                                            <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={`${formStyles.selectForm} w-full`}  >
-                                                <option value="">Unassigned</option>
-                                                {getQuickSaveChauffeurs(booking).map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option> ))}
-                                            </select>
-                                        </span>
-                                    </div>
-                                    <span>
-                                        <span className={mobileStyle.inforCaption}>Status: </span>
-                                        <select name="status" defaultValue={booking.status} className={`${formStyles.selectForm} w-full`} >
-                                            {bookingStatusOptions.map((status) => ( <option key={status} value={status}> {status} </option> ))}
-                                        </select>
-                                    </span>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <button type="submit" className={formStyles.smallButton}> Save </button>
-                                        <Link  href={`/admin/bookings/${booking.id}`}  className={formStyles.smallButton} > Edit </Link>
-                                    </div>
-                                </form>
+                                {/* Open the booking details page for all management operations. */}
+                                <div className="mt-3 flex justify-end">
+                                    <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton}>
+                                        View / Edit Booking
+                                    </Link>
+                                </div>
                             </article>	  ))}
 
                     {bookingRows.length === 0 && (<div className={mobileStyle.article}>  No bookings found yet. </div> )}
@@ -917,28 +645,20 @@ export default async function AdminBookingsPage({ searchParams}: AdminBookingsPa
                                                 </div>
                                             </td>
                                             <td colSpan={5} className={`px-4 pb-4 pt-0 text-sm text-slate-300 ${isSelectedBooking ? "border-r-2 border-red-400" : "" }`}>
-                                                <form action={updateBookingAdminFields} className="flex items-end justify-end gap-3" >
-                                                    <input type="hidden" name="bookingId" value={booking.id} />
-                                                    <label className="grid w-32 shrink-0 gap-2">
-                                                        <span className={tableStyles.cellCaptionSecondRow}> Booking status</span>
-                                                        <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
-                                                            {bookingStatusOptions.map((status) => (<option key={status} value={status}> {status}  </option> ))}
-                                                        </select>
-                                                    </label>
-                                                    <label className="grid w-44 shrink-0 gap-2">
-                                                        <span className={tableStyles.cellCaptionSecondRow}> Assigned chauffeur</span>
-                                                        <select name="chauffeurId" defaultValue={booking.chauffeur_id ?? ""}  className={formStyles.selectForm} >
-                                                            <option value="">Unassigned</option>
-                                                            {getQuickSaveChauffeurs(booking).map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.id}> {chauffeur.name}  </option>  ))}
-                                                        </select>
-                                                    </label>
-                                                    <button type="submit" className={formStyles.smallButton}>
-                                                        Save
-                                                    </button>
-                                                    <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton} >
-                                                        Edit booking
+                                                {/* Display booking status and assigned chauffeur without editing controls. */}
+                                                <div className="flex flex-wrap items-center justify-end gap-4">
+                                                    <span className="text-sm text-cyan-300">
+                                                        Status: <span className="font-semibold text-white">{booking.status}</span>
+                                                    </span>
+
+                                                    <span className="text-sm text-cyan-300">
+                                                        Chauffeur: <span className="ml-1 font-semibold text-white"> {booking.chauffeurs?.name ?? "Unassigned"}</span>
+                                                    </span>
+
+                                                    <Link href={`/admin/bookings/${booking.id}`} className={formStyles.smallButton}>
+                                                        View / Edit Booking
                                                     </Link>
-                                                </form>
+                                                </div>
                                             </td>
                                         </tr>
                                         <tr className={`border-b border-cyan-400/70 bg-cyan-950/10 ${isSelectedBooking ? "bg-red-400/10" : "" }`}>

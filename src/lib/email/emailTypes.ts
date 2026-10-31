@@ -13,6 +13,10 @@ export type BookingEmailData = {
     status: string;
     hasPets: boolean;
     notes: string;
+
+    /* Cancellation details used by client and Admin notifications. */
+    cancellationReason?: string;
+    cancelledBy?: "client" | "admin" | "system";
 };
 
 export type EmailContent = {

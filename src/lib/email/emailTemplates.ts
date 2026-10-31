@@ -164,6 +164,13 @@ export function createAdminNewBookingEmail(inputData: BookingEmailData): EmailCo
 export function createClientBookingCancelledEmail(inputData: BookingEmailData): EmailContent {
     const subject = "Your Voya Taxi booking has been cancelled";
     const formattedTime = formatBookingTime(inputData.time);
+    /* Use different wording for client and Admin cancellations. */
+    const cancelledByClient = inputData.cancelledBy === "client";
+    const cancellationMessage = cancelledByClient
+        ? "You have cancelled your booking."
+        : "Your booking has been cancelled.";
+    /* Show the cancellation reason when one was provided. */
+    const cancellationReason = inputData.cancellationReason?.trim();
     const bookingStatusUrl = createBookingStatusUrl(inputData.id);
 
     const text = `
@@ -177,7 +184,7 @@ Destination: ${inputData.destination}
 Date: ${inputData.date}
 Time: ${formattedTime}
 Status: Cancelled
-
+${cancellationReason ? `Cancellation reason: ${cancellationReason}` : ""}
 ${bookingStatusUrl ? `Check your booking status: ${bookingStatusUrl}` : ""}
 
 Voya Taxi
@@ -187,7 +194,7 @@ Where the journey begins
     const html = `
         <h2>Your Voya Taxi booking has been cancelled</h2>
         <p>Hello ${escapeHtml(inputData.name)},</p>
-        <p>Your booking has been cancelled.</p>
+        <p>${cancellationMessage}</p>
         <p><strong>Booking reference:</strong> ${escapeHtml(inputData.id)}</p>
         <ul>
             <li><strong>Pickup:</strong> ${escapeHtml(inputData.pickup)}</li>
@@ -195,6 +202,7 @@ Where the journey begins
             <li><strong>Date:</strong> ${escapeHtml(inputData.date)}</li>
             <li><strong>Time:</strong> ${escapeHtml(formattedTime)}</li>
             <li><strong>Status:</strong> Cancelled</li>
+            ${cancellationReason ? `<li><strong>Cancellation reason:</strong> ${escapeHtml(cancellationReason)}</li>` : ""}
         </ul>
         ${bookingStatusUrl ? `<p><a href="${escapeHtml(bookingStatusUrl)}">Check booking status</a></p>` : ""}
         <p>Voya Taxi<br />Where the journey begins</p>
@@ -211,6 +219,12 @@ Where the journey begins
 export function createAdminBookingCancelledEmail(inputData: BookingEmailData): EmailContent {
     const subject = `Voya Taxi - Booking cancelled: ${inputData.id}`;
     const formattedTime = formatBookingTime(inputData.time);
+    /* Prepare cancellation details for the administrator. */
+    const cancelledBy = inputData.cancelledBy === "client" ? "Client"
+        : inputData.cancelledBy === "admin" ? "Administrator"
+        : "System";
+
+    const cancellationReason = inputData.cancellationReason?.trim() || "Not provided";
 
     const text = `
 Booking cancelled
@@ -223,6 +237,8 @@ Destination: ${inputData.destination}
 Date: ${inputData.date}
 Time: ${formattedTime}
 Status: Cancelled
+Cancelled by: ${cancelledBy}
+Cancellation reason: ${cancellationReason}
 
 Voya Taxi Administration
     `.trim();
@@ -239,6 +255,8 @@ Voya Taxi Administration
             <li><strong>Date:</strong> ${escapeHtml(inputData.date)}</li>
             <li><strong>Time:</strong> ${escapeHtml(formattedTime)}</li>
             <li><strong>Status:</strong> Cancelled</li>
+            <li><strong>Cancelled by:</strong> ${escapeHtml(cancelledBy)}</li>
+            <li><strong>Cancellation reason:</strong> ${escapeHtml(cancellationReason)}</li>
         </ul>
         <p>Voya Taxi Administration</p>
     `.trim();

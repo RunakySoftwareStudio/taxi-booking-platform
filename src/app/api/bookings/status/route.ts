@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         destination,
         pickup_date,
         pickup_time,
+        pickup_at,
         passengers,
         luggage,
         trip_type,

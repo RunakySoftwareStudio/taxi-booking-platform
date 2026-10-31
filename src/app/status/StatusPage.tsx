@@ -12,7 +12,7 @@
 */
 
 import Link from "next/link";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useState, useEffect } from "react";
 import { formStyles, tableStyles, pageStyles } from "@/styles/classNames";
 import { getTranslation } from "@/lib/i18n/translations";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -24,6 +24,8 @@ type BookingStatusResult = {
     destination: string;
     pickup_date: string;
     pickup_time: string;
+    /* Exact pickup timestamp, including timezone information. */
+    pickup_at: string | null;
     passengers: number;
     luggage: number | null;
     trip_type: string;
@@ -78,9 +80,42 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
     }
 
     const [booking, setBooking] = useState<BookingStatusResult | null>(null);
+    /* Controls whether the cancellation confirmation dialog is visible. */
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
+
+    /* Stores the optional cancellation reason entered by the client. */
+    const [cancellationReason, setCancellationReason] = useState("");
+
+    /* Tracks cancellation requests to prevent repeated submissions. */
+    const [isCancelling, setIsCancelling] = useState(false);
+
     const safeInitialBookingId = initialBookingId ?? "";
     const [errorMessage, setErrorMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+   /* Update the current timestamp outside React's rendering process. */
+    const [currentTime, setCurrentTime] = useState<number | null>(null);
+
+    useEffect(() => {
+        const updateTime = () => setCurrentTime(Date.now());
+        const timerId = window.setInterval(updateTime, 60_000);
+        return () => window.clearInterval(timerId);
+    }, []);
+
+    /* Determine whether client cancellation is allowed by booking status and pickup time. */
+    const canCancelBooking = (() => {
+        if (!booking || isLoading || !booking.pickup_at || currentTime === null) return false;
+
+        const allowedStatuses = ["pending", "assigned"];
+        if (!allowedStatuses.includes(booking.status)) return false;
+
+        const pickupTimestamp = new Date(booking.pickup_at).getTime();
+        if (!Number.isFinite(pickupTimestamp)) return false;
+
+        const hoursUntilPickup = (pickupTimestamp - currentTime) / (1000 * 60 * 60);
+
+        return hoursUntilPickup > 24;
+    })();
 
     async function handleStatusSearch(event: FormEvent<HTMLFormElement>) {
       event.preventDefault();
@@ -111,6 +146,8 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
         }
 
         setBooking(result.booking);
+        /* Update the cancellation clock immediately after loading the booking. */
+        setCurrentTime(Date.now());
       } 
       catch (error) {
           console.error("Could not find booking:", error);
@@ -119,6 +156,54 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
       finally { setIsLoading(false); }
     }
 
+    /* ============================================================
+    CLIENT BOOKING CANCELLATION
+
+    Sends the booking ID, registered email and optional reason
+    to the cancellation API. Updates the displayed booking only
+    after the server confirms successful cancellation.
+  ============================================================ */
+  async function handleConfirmCancellation() {
+      if (!booking || !canCancelBooking || isCancelling) return;
+
+      setIsCancelling(true);
+      setErrorMessage("");
+
+      try {
+          const response = await fetch("/api/bookings/cancel", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                  bookingId: booking.id,
+                  email: booking.clients?.email,
+                  reason: cancellationReason.trim(),
+              }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+              setErrorMessage(result.message || "Booking cancellation failed.");
+              return;
+          }
+
+          /* Update the page after the database confirms cancellation. */
+          setBooking((previousBooking) =>
+              previousBooking
+                  ? { ...previousBooking, status: "cancelled", chauffeurs: null }
+                  : null
+          );
+
+          setShowCancelDialog(false);
+          setCancellationReason("");
+
+      } catch (error) {
+          console.error("Client booking cancellation error:", error);
+          setErrorMessage("Unable to cancel the booking. Please try again.");
+      } finally {
+          setIsCancelling(false);
+      }
+  }
   return (
       <main className={pageStyles.main}>
       <div className={pageStyles.container}> 
@@ -141,9 +226,12 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
                 </label>
             </div>
 
-            <button className={`mt-8 ${formStyles.submitSmallButtonUserPage}`}>
-              {isLoading ? getStatusPageText("searchingButton") : getStatusPageText("checkStatusButton")}
-            </button>
+            <div className="mt-8 flex flex-wrap items-end gap-4">
+                {/* Check the booking status using the existing form. */}
+                <button className={formStyles.submitSmallButtonUserPage}>
+                    {isLoading ? getStatusPageText("searchingButton") : getStatusPageText("checkStatusButton")}
+                </button>
+            </div>
 
             {errorMessage && ( <p className={tableStyles.errorCell}> {errorMessage} </p> )}
           </form>
@@ -222,7 +310,82 @@ export default function StatusPage({ initialBookingId = "" }: StatusPageProps) {
                   </div>
                   ) : ( <p className={pageStyles.errorMsg}> {getStatusPageText("noChauffeurAssigned")} </p> )
               }
+
+              {/* Allow cancellation only when the booking meets eligibility rules. */}
+              <div className="mt-8 flex justify-end">
+                  <button type="button" disabled={!canCancelBooking} onClick={() => {setCancellationReason(""); setShowCancelDialog(true);}}
+                      className={`rounded-lg border px-5 py-2 text-sm font-medium transition-colors ${
+                          !canCancelBooking
+                              ? "cursor-not-allowed border-gray-500 text-gray-400 opacity-50"
+                              : "cursor-pointer border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
+                      }`}
+                  >
+                      Cancel Booking
+                  </button>
+              </div>
             </section>
+          )}
+          {/* Cancellation confirmation dialog. No cancellation is executed yet. */}
+          {showCancelDialog && booking && (
+              <div className="mt-6 rounded-xl border border-gray-600 bg-gray-900/40 p-4">
+                  <div
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="cancel-booking-title"
+                      className="w-full p-6 text-white"
+                  >
+                      <h3 id="cancel-booking-title" className="text-xl font-semibold">
+                          Cancel Booking
+                      </h3>
+
+                      <p className="mt-4 text-sm text-gray-300">
+                          Are you sure you want to cancel this booking?
+                      </p>
+
+                      <p className="mt-3 break-all text-sm text-gray-400">
+                          Booking reference: {booking.id}
+                      </p>
+
+                      {/* The cancellation reason is optional for clients. */}
+                      <label htmlFor="cancellationReason" className="mt-6 block text-sm font-medium">
+                          Cancellation reason (optional)
+                      </label>
+
+                      <textarea
+                          id="cancellationReason"
+                          value={cancellationReason}
+                          onChange={(event) => setCancellationReason(event.target.value)}
+                          rows={3}
+                          maxLength={1000}
+                          placeholder="Enter your reason..."
+                          className="mt-2 w-full rounded-lg border border-gray-600 bg-gray-800 p-3 text-sm text-white"
+                      />
+
+                      <div className="mt-6 flex flex-wrap justify-end gap-3">
+                          <button
+                              type="button"
+                              onClick={() => setShowCancelDialog(false)}
+                              className="rounded-lg border border-gray-500 px-4 py-2 text-sm hover:bg-gray-800"
+                          >
+                              Keep Booking
+                          </button>
+
+                          {/* Submit the cancellation request and prevent duplicate clicks. */}
+                          <button
+                              type="button"
+                              onClick={handleConfirmCancellation}
+                              disabled={isCancelling || !canCancelBooking}
+                              className={`rounded-lg bg-red-700 px-4 py-2 text-sm text-white transition-colors ${
+                                  isCancelling || !canCancelBooking
+                                      ? "cursor-not-allowed opacity-50"
+                                      : "cursor-pointer hover:bg-red-600"
+                              }`}
+                          >
+                              {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
+                          </button>
+                      </div>
+                  </div>
+              </div>
           )}
         </div>
       </main>

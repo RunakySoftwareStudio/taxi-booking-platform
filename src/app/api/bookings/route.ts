@@ -7,6 +7,8 @@ import { sendBookingCreatedEmails } from "@/lib/email/bookingEmailNotifications"
 import { calculateRouteEstimate } from "@/lib/mapbox/mapboxRouteService";
 import type { MapboxCoordinate } from "@/types/mapboxType";
 import { createBookingDataFingerprint } from "@/lib/pricing/createBookingDataFingerprint";
+/* Resolve the pickup timezone and exact UTC timestamp before creating the booking in PostgreSQL. */
+import {resolvePickupTimezone, calculatePickupAt,} from "@/lib/bookings/resolvePickupTimezone";
 
 // Validates coordinates received from the browser before sending them to Mapbox.
 function isValidMapboxCoordinate(value: unknown): value is MapboxCoordinate {
@@ -105,6 +107,31 @@ export async function POST(request: Request) {
         // Validates the selected Mapbox coordinates received from the booking form.
         if ( !isValidMapboxCoordinate(bookingRequest.pickupCoordinate) || !isValidMapboxCoordinate(bookingRequest.destinationCoordinate)) 
             {return NextResponse.json({ message: "The selected route coordinates are invalid." }, { status: 400 } );}
+
+        /* ============================================================
+        BOOKING PICKUP TIMEZONE
+
+        Purpose:
+        - Determine the timezone from the pickup coordinates.
+        - Convert the requested local pickup date/time to UTC.
+        - Reject invalid or ambiguous daylight-saving times.
+        - Preserve the calculated values for atomic booking creation.
+        ============================================================ */
+
+        let pickupTimezone: string;
+        let pickupAt: string;
+
+        try {
+            pickupTimezone = resolvePickupTimezone(bookingRequest.pickupCoordinate);
+            pickupAt = calculatePickupAt(bookingRequest.date, bookingRequest.time, pickupTimezone);
+        } catch (error) {
+            console.error("Invalid booking pickup date or timezone:", error);
+
+            return NextResponse.json(
+                { message: "Invalid pickup date or time. Please select a valid pickup time." },
+                { status: 400 }
+            );
+        }
 
         /*
             PURPOSE: VERIFY THAT THE QUOTE BELONGS TO THIS JOURNEY
@@ -332,8 +359,13 @@ export async function POST(request: Request) {
                 p_pickup_city: pickupCity,
                 p_destination: bookingRequest.destination,
                 p_destination_city: destinationCity,
+
+                /* Store the pickup timezone and exact UTC timestamp
+                within the existing atomic booking creation transaction. */
                 p_pickup_date: bookingRequest.date,
                 p_pickup_time: bookingRequest.time,
+                p_pickup_timezone: pickupTimezone,
+                p_pickup_at: pickupAt,
                 p_estimated_duration_minutes: estimatedDurationMinutes,
 
                 p_passengers: Number(bookingRequest.passengers),

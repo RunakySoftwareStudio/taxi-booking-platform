@@ -91,6 +91,12 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     const [tripType, setTripType] = useState(booking.trip_type);
     const [notes, setNotes] = useState(booking.notes ?? "");
     const [status, setStatus] = useState(booking.status);
+    /* Controls the separate Admin cancellation confirmation section. */
+    const [showCancelSection, setShowCancelSection] = useState(false);
+    /* Stores the mandatory Admin cancellation reason. */
+    const [cancellationReason, setCancellationReason] = useState("");
+    /* Prevent repeated cancellation requests while the API is processing. */
+    const [isCancelling, setIsCancelling] = useState(false);
     const [chauffeurId, setChauffeurId] = useState(booking.chauffeur_id ?? "");
     const [vehicleId, setVehicleId] = useState(booking.vehicle_id ?? "");
     const [clientName, setClientName] = useState(booking.clients?.name ?? "");
@@ -175,38 +181,83 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     const todayDate = getTodayDateInputValue();
     const minimumPickupDate = booking.pickup_date && booking.pickup_date < todayDate ? booking.pickup_date : todayDate;
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
 
-    setSuccessMessage("");
-    setErrorMessage("");
-    setIsSaving(true);
+        setSuccessMessage("");
+        setErrorMessage("");
+        setIsSaving(true);
 
-    try {
-      const response = await fetch(`/api/admin/bookings/${booking.id}`, {
-        method: "PATCH",
-        headers: {"Content-Type": "application/json", },
-        body: JSON.stringify({
-            clientName, clientEmail, clientPhone, pickupLocation, destination,
-            pickupDate, pickupTime, passengers, luggage, tripType, notes,
-            status, hasPets, chauffeurId, vehicleId,
-            infantSeatCountRequired, childSeatCountRequired, boosterSeatCountRequired,
-            isofixRequired, wheelchairRequirement, wheelchairPassengerCount,
-            mobilityAidStorageRequired, extraLargeLuggageRequired, }) });
+        try {
+        const response = await fetch(`/api/admin/bookings/${booking.id}`, {
+            method: "PATCH",
+            headers: {"Content-Type": "application/json", },
+            body: JSON.stringify({
+                clientName, clientEmail, clientPhone, pickupLocation, destination,
+                pickupDate, pickupTime, passengers, luggage, tripType, notes,
+                status, hasPets, chauffeurId, vehicleId,
+                infantSeatCountRequired, childSeatCountRequired, boosterSeatCountRequired,
+                isofixRequired, wheelchairRequirement, wheelchairPassengerCount,
+                mobilityAidStorageRequired, extraLargeLuggageRequired, }) });
 
-      const result = await response.json();
-      if (!response.ok) {setErrorMessage(result.message || "Could not update booking."); return; }
+        const result = await response.json();
+        if (!response.ok) {setErrorMessage(result.message || "Could not update booking."); return; }
 
-      setSuccessMessage("Booking updated successfully.");
-      router.refresh();
-    } 
-    catch (error) {
-      console.error("Could not update booking:", error);
-      setErrorMessage("Could not update booking. Please try again.");
-    } 
-    finally { setIsSaving(false); }
-  }
+        setSuccessMessage("Booking updated successfully.");
+        router.refresh();
+        }
+        catch (error) {
+        console.error("Could not update booking:", error);
+        setErrorMessage("Could not update booking. Please try again.");
+        }
+        finally { setIsSaving(false); }
+    }
+    /* ============================================================
+    ADMIN BOOKING CANCELLATION
 
+    Sends an authenticated Admin cancellation request.
+    A cancellation reason is mandatory.
+    Refreshes booking details after successful cancellation.
+    ============================================================ */
+    async function handleAdminCancellation() {
+        if (isCancelling || !cancellationReason.trim()) return;
+
+        setIsCancelling(true);
+        setErrorMessage("");
+        setSuccessMessage("");
+
+        try {
+            const response = await fetch("/api/bookings/cancel", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    bookingId: booking.id,
+                    reason: cancellationReason.trim(),
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                setErrorMessage(result.message || "Booking cancellation failed.");
+                return;
+            }
+
+            /* Close the confirmation section after successful cancellation. */
+            setShowCancelSection(false);
+            setCancellationReason("");
+            setSuccessMessage("Booking cancelled successfully.");
+
+            /* Reload the booking details with the updated database status. */
+            router.refresh();
+
+        } catch (error) {
+            console.error("Admin booking cancellation error:", error);
+            setErrorMessage("Unable to cancel the booking. Please try again.");
+        } finally {
+            setIsCancelling(false);
+        }
+    }
   return (
     <main>
         <div >
@@ -382,10 +433,83 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                     </div>
             </div>
 
-            <button type="submit" disabled={isSaving} className={`${formStyles.primaryButtonOutside} mt-6`}  >
-                    {isSaving ? "Saving..." : "Save booking"}
+            {/* Cancelled bookings cannot be edited or reassigned. */}
+            {booking.status === "cancelled" && (
+                <p className="mt-6 text-sm text-amber-300">
+                    This booking has been cancelled and cannot be modified or reassigned.
+                </p>
+            )}
+
+            <button type="submit" disabled={isSaving || booking.status === "cancelled"} className={`${formStyles.primaryButtonOutside} mt-6 disabled:cursor-not-allowed disabled:opacity-50`}>
+                {isSaving ? "Saving..." : "Save booking"}
             </button>
         </form>
+        {/* ============================================================
+            ADMIN BOOKING CANCELLATION
+            Separate from normal booking editing.
+        ============================================================ */}
+        {booking.status !== "cancelled" && booking.status !== "completed" && booking.status !== "rejected" && (
+            <section className={`${formStyles.sectionCardBorder4} mt-8`}>
+                <h2 className="text-lg font-semibold text-white">Cancel Booking</h2>
+
+                <p className="mt-3 text-sm text-slate-300">
+                    Cancel this booking and release its assigned chauffeur.
+                    A cancellation reason is required.
+                </p>
+
+                {!showCancelSection ? (
+                    <button
+                        type="button"
+                        onClick={() => setShowCancelSection(true)}
+                        className="mt-6 rounded-lg border border-red-500 px-5 py-2 text-sm text-red-300 hover:bg-red-900/30"
+                    >
+                        Cancel Booking
+                    </button>
+                ) : (
+                    <div className="mt-6">
+                        {/* Admin must explain why the booking is cancelled. */}
+                        <label className="block text-sm text-white">
+                            Cancellation reason (required)
+                            <textarea
+                                value={cancellationReason}
+                                onChange={(event) => setCancellationReason(event.target.value)}
+                                maxLength={1000}
+                                rows={3}
+                                className={`${formStyles.textarea} mt-2`}
+                                placeholder="Enter the cancellation reason..."
+                            />
+                        </label>
+
+                        <div className="mt-5 flex flex-wrap gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowCancelSection(false);
+                                    setCancellationReason("");
+                                }}
+                                className="rounded-lg border border-gray-500 px-5 py-2 text-sm text-white"
+                            >
+                                Keep Booking
+                            </button>
+
+                            {/* Execute Admin cancellation only when a reason is provided. */}
+                            <button
+                                type="button"
+                                onClick={handleAdminCancellation}
+                                disabled={isCancelling || !cancellationReason.trim()}
+                                className={`rounded-lg bg-red-700 px-5 py-2 text-sm text-white transition-colors ${
+                                    isCancelling || !cancellationReason.trim()
+                                        ? "cursor-not-allowed opacity-50"
+                                        : "cursor-pointer hover:bg-red-600"
+                                }`}
+                            >
+                                {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </section>
+        )}
     </main>
   );
 }
