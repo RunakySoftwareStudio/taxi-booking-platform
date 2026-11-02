@@ -785,27 +785,61 @@ export const translations = {
       tr: "Rezervasyon durumu başarıyla güncellendi.",
       fa: "وضعیت رزرو با موفقیت به‌روزرسانی شد.",
     },
+    /*
+    * CHAUFFEUR BOOKING COMPLETION
+    *
+    * Messages for the protected booking completion workflow.
+    * Displayed after the completion server action redirects.
+    */
+    bookingCompletedSuccess: {
+        en: "Booking completed successfully.",
+        nl: "De rit is succesvol als voltooid gemarkeerd.",
+        ar: "تم إكمال الحجز بنجاح",
+        tr: "Rezervasyon başarıyla tamamlandı.",
+        fa: ".رزرو با موفقیت تکمیل شد",
+    },
+    bookingCompletionTooEarly: {
+        en: "The scheduled journey has not ended yet.",
+        nl: "De geplande rit is nog niet afgelopen.",
+        ar: ".لم تنتهِ الرحلة المجدولة بعد",
+        tr: "Planlanan yolculuk henüz sona ermedi.",
+        fa: ".سفر برنامه‌ریزی‌شده هنوز به پایان نرسیده است",
+    },
+    bookingCompletionMissingPickup: {
+        en: "Booking completion requires a valid pickup timestamp.",
+        nl: "Voor het voltooien van de rit is een geldige ophaaldatum en -tijd vereist.",
+        ar: "يتطلب إكمال الحجز تاريخًا ووقتًا صالحين للاستلام",
+        tr: "Rezervasyonu tamamlamak için geçerli bir alış tarihi ve saati gereklidir.",
+        fa: ".برای تکمیل رزرو، تاریخ و ساعت معتبر سوار شدن الزامی است",
+    },
+    bookingCompletionFailed: {
+        en: "Unable to complete this booking.",
+        nl: "Deze rit kan niet als voltooid worden gemarkeerd.",
+        ar: ".تعذر إكمال هذا الحجز",
+        tr: "Bu rezervasyon tamamlanamadı.",
+        fa: ".تکمیل این رزرو امکان‌پذیر نیست",
+    },
     missingFieldsError: {
       en: "Please select the required booking information.",
       nl: "Selecteer de vereiste boekingsinformatie.",
-      ar: "يرجى تحديد معلومات الحجز المطلوبة.",
+      ar: ".يرجى تحديد معلومات الحجز المطلوبة",
       tr: "Lütfen gerekli rezervasyon bilgilerini seçin.",
-      fa: "لطفاً اطلاعات ضروری رزرو را انتخاب کنید.",
+      fa: ".لطفاً اطلاعات ضروری رزرو را انتخاب کنید",
     },
     statusUpdateFailedError: {
       en: "Could not update booking status. Please try again.",
       nl: "Boekingsstatus kon niet worden bijgewerkt. Probeer het opnieuw.",
-      ar: "تعذر تحديث حالة الحجز. يرجى المحاولة مرة أخرى.",
+      ar: ".تعذر تحديث حالة الحجز. يرجى المحاولة مرة أخرى",
       tr: "Rezervasyon durumu güncellenemedi. Lütfen tekrar deneyin.",
-      fa: "وضعیت رزرو به‌روزرسانی نشد. لطفاً دوباره تلاش کنید.",
+      fa: ".وضعیت رزرو به‌روزرسانی نشد. لطفاً دوباره تلاش کنید",
     },
     /* Explains why a chauffeur cannot accept a booking when compliance is invalid. */
     chauffeurComplianceInvalidError: {
       en: "Chauffeur compliance is not valid for this booking pickup date.",
       nl: "De chauffeur voldoet niet aan de vereisten voor de ophaaldatum van deze boeking.",
-      ar: "اعتماد أهلية السائق غير صالح في تاريخ الانطلاق المحدد لهذا الحجز.",
+      ar: ".اعتماد أهلية السائق غير صالح في تاريخ الانطلاق المحدد لهذا الحجز",
       tr: "Şoförün uygunluğu bu rezervasyonun alınış tarihinde geçerli değil.",
-      fa: "تأیید صلاحیت راننده برای تاریخ سوار شدن این رزرو معتبر نیست.",
+      fa: ".تأیید صلاحیت راننده برای تاریخ سوار شدن این رزرو معتبر نیست",
     },
     emailLabel: {
       en: "Email",
@@ -1345,6 +1379,37 @@ export const translations = {
         ar: "مقاعد الأطفال أو نقل الكراسي المتحركة أو متطلبات الأمتعة الخاصة.",
         tr: "Çocuk koltuğu, tekerlekli sandalye taşıma veya özel bagaj gereksinimleri.",
         fa: "صندلی کودک، حمل ویلچر یا نیازهای ویژه بار.",
+    },
+    /* Dedicated chauffeur booking completion button. */
+    markCompletedButton: {
+        en: "Mark Completed",
+        nl: "Markeer als voltooid",
+        ar: "تحديد كمكتمل",
+        tr: "Tamamlandı olarak işaretle",
+        fa: "علامت‌گذاری به‌عنوان تکمیل‌شده",
+    },
+    /*
+    Confirmation before permanently completing a booking.
+    */
+    bookingCompletionConfirm: {
+        en: "Are you sure this journey has been completed? This action cannot be undone.",
+        nl: "Weet u zeker dat deze rit is voltooid? Deze actie kan niet ongedaan worden gemaakt.",
+        ar: ".هل أنت متأكد من اكتمال هذه الرحلة؟ لا يمكن التراجع عن هذا الإجراء",
+        tr: "Bu yolculuğun tamamlandığından emin misiniz? Bu işlem geri alınamaz.",
+        fa: ".آیا مطمئن هستید که این سفر تکمیل شده است؟ این اقدام قابل بازگشت نیست",
+    },
+    /*
+        BOOKING COMPLETION — CANCEL BUTTON
+
+        Translated label for closing the confirmation dialog
+        without submitting the completion request.
+    */
+    bookingCompletionCancel: {
+        en: "Cancel",
+        nl: "Annuleren",
+        ar: "إلغاء",
+        tr: "İptal",
+        fa: "لغو",
     },
   },
 

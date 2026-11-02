@@ -11,6 +11,7 @@ import { TranslatedText } from "@/components/TranslatedText";
 import { updateBookingStatus } from "@/lib/bookings/updateBookingStatus";
 import { isChauffeurStatusTransitionAllowed } from "@/lib/bookings/isChauffeurStatusTransitionAllowed";
 import type { BookingStatus } from "@/types/bookingStatusType";
+import BookingCompletionButton from "@/components/BookingCompletionButton";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx
 type TypeChauffeurRow = { id: string;  name: string;  email: string;  phone: string;  service_area: string | null;  account_status: string;};
@@ -32,6 +33,13 @@ type TypeAssignedBookingRow = {
         id: string; brand: string; model: string; license_plate: string;
     } | null;
     clients: { name: string; email: string; phone: string } | null;
+    /*
+        BOOKING COMPLETION DATA
+        Exact pickup timestamp and scheduled journey duration.
+        Legacy bookings may not have a pickup_at value.
+    */
+    pickup_at: string | null;
+    estimated_duration_minutes: number;
 };
 
 //type TypePromiseChauffeurId = { params: Promise<{ chauffeurId: string; }>;};
@@ -212,6 +220,104 @@ async function updateAssignedBookingStatus(formData: FormData) {
     redirect(`/chauffeur/${authorizedChauffeurId}?success=status-updated`);
 }
 
+/*
+    CHAUFFEUR BOOKING COMPLETION
+
+    Completes a booking assigned to the authenticated chauffeur.
+
+    PostgreSQL independently validates the booking status,
+    assigned chauffeur and vehicle, and scheduled journey end.
+
+    Completion metadata is recorded atomically by complete_booking().
+*/
+async function completeAssignedBooking(formData: FormData) {
+    "use server";
+
+    const bookingId = String(formData.get("bookingId") || "");
+    const submittedChauffeurId = String(formData.get("chauffeurId") || "");
+
+    if (!bookingId || !submittedChauffeurId) {
+        redirect("/login");
+    }
+
+    /* Authenticate the user and resolve their chauffeur identity. */
+    const authSupabase = await createAuthClient();
+    const { data: { user } } = await authSupabase.auth.getUser();
+
+    if (!user) {
+        redirect("/login");
+    }
+
+    const { data: profile, error: profileError } = await authSupabase
+        .from("user_profiles")
+        .select("role, chauffeur_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (profileError || !profile) {
+        redirect("/unauthorized");
+    }
+
+    const isAdminUser = profile.role === "admin";
+
+    if (!isAdminUser && profile.chauffeur_id !== submittedChauffeurId) {
+        redirect("/unauthorized");
+    }
+
+    const authorizedChauffeurId = isAdminUser
+        ? submittedChauffeurId
+        : profile.chauffeur_id;
+
+    if (!authorizedChauffeurId) {
+        redirect("/unauthorized");
+    }
+
+    /*
+        Verify booking ownership before using the privileged
+        Supabase client to execute the completion RPC.
+    */
+    const { data: assignedBooking, error: bookingError } =
+        await supabaseAdmin
+            .from("bookings")
+            .select("id, chauffeur_id, vehicle_id, status")
+            .eq("id", bookingId)
+            .eq("chauffeur_id", authorizedChauffeurId)
+            .maybeSingle();
+
+    if (bookingError || !assignedBooking) {
+        console.error("Could not verify chauffeur completion:", bookingError);
+        redirect(
+            `/chauffeur/${authorizedChauffeurId}?error=booking-completion-failed`
+        );
+    }
+
+    /*
+        RECORD THE ACTUAL COMPLETION SOURCE
+
+        Admin actions are recorded as admin completions.
+        Chauffeur actions are recorded as chauffeur completions.
+    */
+    const { error } = await supabaseAdmin.rpc("complete_booking", {
+        p_booking_id: bookingId,
+        p_completed_by: isAdminUser ? "admin" : "chauffeur",
+    });
+
+    if (error) {
+        console.error("Chauffeur booking completion failed:", error);
+        if (error.message.includes("valid pickup timestamp")) {
+            redirect(`/chauffeur/${authorizedChauffeurId}?error=booking-completion-missing-pickup`);
+        }
+        if (error.message.includes("scheduled journey has not ended")) {
+            redirect(`/chauffeur/${authorizedChauffeurId}?error=booking-completion-too-early` );
+        }
+        redirect(`/chauffeur/${authorizedChauffeurId}?error=booking-completion-failed`);
+    }
+
+    /* Refresh booking information after successful completion. */
+    revalidatePath(`/chauffeur/${authorizedChauffeurId}`);
+    revalidatePath("/admin/bookings");
+    redirect(`/chauffeur/${authorizedChauffeurId}?success=booking-completed`);
+}
 
 export default async function ChauffeurDashboardPage({params,searchParams}: ChauffeurDashboardPageProps) {
   const pageMessage = await searchParams;
@@ -263,15 +369,21 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
         );
     }
 
-    // get the list of bookings of this chauffeurid in booking table
+    /*
+        CHAUFFEUR BOOKING COMPLETION DATA
+
+        Retrieve the exact pickup timestamp and estimated
+        journey duration for the protected completion workflow.
+    */
     const { data: supabaseAdminBookings, error: bookingsError } = await supabaseAdmin
         .from("bookings")
         .select(`
-                id, vehicle_id, pickup_location, destination, pickup_date, pickup_time,
-                passengers, luggage, has_pets, trip_type, status, notes,
-                clients(name, email, phone),
-                vehicles(id, brand, model, license_plate)
-            `)
+            id, vehicle_id, pickup_location, destination, pickup_date, pickup_time,
+            pickup_at, estimated_duration_minutes,
+            passengers, luggage, has_pets, trip_type, status, notes,
+            clients(name, email, phone),
+            vehicles(id, brand, model, license_plate)
+        `)
         .eq("chauffeur_id", chauffeurId)
         .order("pickup_date", { ascending: true })
         .order("pickup_time", { ascending: true });
@@ -298,12 +410,21 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
     // get list of bookingStatuses types
     const { data: supabaseAdminBookingStatuses, error: bookingStatusError } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "booking_status" });
     if (bookingStatusError) { console.error("Could not load booking statuses:", bookingStatusError);}
+    /*
+        CHAUFFEUR BOOKING STATUS OPTIONS
 
-    /* Exclude permanent booking decisions from chauffeur controls.
-    Chauffeur withdrawal will be implemented as a separate action.
-    Both mobile and desktop dropdowns use this list. */
-    const bookingStatusOptions = ((supabaseAdminBookingStatuses ?? []) as string[])
-        .filter((status) => status !== "cancelled" && status !== "rejected");
+        Exclude terminal statuses from the ordinary dropdown.
+        Booking completion will use a separate protected action.
+        Both mobile and desktop controls use this list.
+    */
+    const bookingStatusOptions =
+        ((supabaseAdminBookingStatuses ?? []) as string[])
+            .filter(
+                (status) =>
+                    status !== "cancelled" &&
+                    status !== "rejected" &&
+                    status !== "completed"
+            );
     const chauffeurAccountStatusTextKey = getChauffeurAccountStatusTextKey(chauffeurRow.account_status);
 
     return (
@@ -316,13 +437,57 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 <p className={pageStyles.pageLabelUpper}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="chauffeurLabel" /> </p>
                 <h1 className={pageStyles.pageTitle}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="welcomePrefix" /> {chauffeurRow.name} </h1>
                 <p className={pageStyles.pageDescription}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="description" /> </p>
-
-                {pageMessage.success === "status-updated" && (<p className={pageStyles.successMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdatedSuccess" /> </p>)}
-                {pageMessage.error === "missing-fields" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="missingFieldsError" /> </p>)}
-                {pageMessage.error === "status-update-failed" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdateFailedError" /> </p>)}
+                {/*
+                    Display translated confirmation and validation errors returned by the protected completion server action.
+                */}
+                {pageMessage.success === "status-updated" && (
+                    <p className={pageStyles.successMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdatedSuccess" />
+                    </p>
+                )}
+                {pageMessage.success === "booking-completed" && (
+                    <p className={pageStyles.successMsgPage}>
+                        <TranslatedText
+                            sectionName="chauffeurDashboardPage" textKey="bookingCompletedSuccess"/>
+                    </p>
+                )}
+                {pageMessage.error === "booking-completion-too-early" && (
+                    <p className={pageStyles.errorMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingCompletionTooEarly"/>
+                    </p>
+                )}
+                {pageMessage.error === "booking-completion-missing-pickup" && (
+                    <p className={pageStyles.errorMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingCompletionMissingPickup"/>
+                    </p>
+                )}
+                {pageMessage.error === "booking-completion-failed" && (
+                    <p className={pageStyles.errorMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingCompletionFailed"/>
+                    </p>
+                )}
+                {pageMessage.error === "missing-fields" && (
+                    <p className={pageStyles.errorMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="missingFieldsError" />
+                    </p>)
+                }
+                {pageMessage.error === "status-update-failed" && (
+                    <p className={pageStyles.errorMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="statusUpdateFailedError"/>
+                    </p>)
+                }
                 {/* Explains when chauffeur compliance prevents accepting a booking. */}
-                {pageMessage.error === "chauffeur-compliance-invalid" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="chauffeurComplianceInvalidError" /> </p>)}
-                {pageMessage.error === "booking-time-conflict" && (<p className={pageStyles.errorMsgPage}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingTimeConflictError" /> </p> )}
+                {pageMessage.error === "chauffeur-compliance-invalid" && (
+                    <p className={pageStyles.errorMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="chauffeurComplianceInvalidError"/>
+                    </p>
+                )}
+                {pageMessage.error === "booking-time-conflict" && (
+                    <p className={pageStyles.errorMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingTimeConflictError"/>
+                    </p>
+                )}
+
                 {/* Aligns labels with the active language while keeping email and phone characters left-to-right. */}
                 <div className={`${formStyles.info} mt-8 grid gap-4 sm:grid-cols-3`}>
                     <div className="text-start">
@@ -550,96 +715,118 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 <div className="mt-6 grid gap-4 lg:hidden">
                 {bookingRows.map((booking) => (
                     <article key={booking.id}  className={mobileStyle.article}>
-                    <div className="border-b border-white/10 pb-4">
-                            <div>
-                                <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="clientLabel" />: </span> </span>
-                                <span className= {mobileStyle.infoValue}>{booking.clients?.name || <TranslatedText sectionName="chauffeurDashboardPage" textKey="unknownClient" />}</span>
-                            </div>
-                            <div>
-                                <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="mailLabel" />: </span></span>
-                                <span className= {mobileStyle.infoValue} >{booking.clients?.email}</span>
-                            </div>
-                            <div>
-                                <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="phoneLabel" />: </span> </span>
-                                <span className= {mobileStyle.infoValue} >{booking.clients?.phone}</span>
-                            </div>
-                            <div>
-                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="pickupLabel" />: </span> </span>
-                                <span className={mobileStyle.infoValue}>{booking.pickup_location}</span>
-                            </div>
-                            <div>
-                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="destinationLabel" />: </span></span>
-                                <span className={mobileStyle.infoValue}>{booking.destination}</span>
-                            </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div>
-                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="dateLabel" />: </span> </span>
-                            <span className={mobileStyle.infoValue}>{formatShortDate(booking.pickup_date)}</span>
-                        </div>
-                        <div>
-                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="timeLabel" />: </span></span>
-                            <span className={mobileStyle.infoValue}>{formatShortTime(booking.pickup_time)}</span>
+                        <div className="border-b border-white/10 pb-4">
+                                <div>
+                                    <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="clientLabel" />: </span> </span>
+                                    <span className= {mobileStyle.infoValue}>{booking.clients?.name || <TranslatedText sectionName="chauffeurDashboardPage" textKey="unknownClient" />}</span>
+                                </div>
+                                <div>
+                                    <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="mailLabel" />: </span></span>
+                                    <span className= {mobileStyle.infoValue} >{booking.clients?.email}</span>
+                                </div>
+                                <div>
+                                    <span className= {mobileStyle.inforCaption}><span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="phoneLabel" />: </span> </span>
+                                    <span className= {mobileStyle.infoValue} >{booking.clients?.phone}</span>
+                                </div>
+                                <div>
+                                    <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="pickupLabel" />: </span> </span>
+                                    <span className={mobileStyle.infoValue}>{booking.pickup_location}</span>
+                                </div>
+                                <div>
+                                    <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="destinationLabel" />: </span></span>
+                                    <span className={mobileStyle.infoValue}>{booking.destination}</span>
+                                </div>
                         </div>
 
-                        <div>
-                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="paxLabel" />: </span> </span>
-                            <span className={mobileStyle.infoValue}>{booking.passengers}</span>
-                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                            <div>
+                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="dateLabel" />: </span> </span>
+                                <span className={mobileStyle.infoValue}>{formatShortDate(booking.pickup_date)}</span>
+                            </div>
+                            <div>
+                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="timeLabel" />: </span></span>
+                                <span className={mobileStyle.infoValue}>{formatShortTime(booking.pickup_time)}</span>
+                            </div>
 
-                        <div>
-                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="tripLabel" />: </span> </span>
+                            <div>
+                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="paxLabel" />: </span> </span>
+                                <span className={mobileStyle.infoValue}>{booking.passengers}</span>
+                            </div>
+
+                            <div>
+                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="tripLabel" />: </span> </span>
+                                <span className={mobileStyle.infoValue}>
+                                    {getTripTypeTextKey(booking.trip_type) ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={getTripTypeTextKey(booking.trip_type)} /> : booking.trip_type}
+                                </span>
+                            </div>
+                            <div>
+                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="hasPetsLabel" />: </span>  </span>
+                                <span  className={booking.has_pets ? tableStyles.cellGreenText : tableStyles.cellRedText} >
+                                    {booking.has_pets ?
+                                    (<TranslatedText sectionName="chauffeurDashboardPage" textKey="yes"/>) :
+                                    ( <TranslatedText sectionName="chauffeurDashboardPage" textKey="no"/> )}
+                                </span>
+                            </div>
+                            <div>
+                                <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="luggageLabel" />: </span> </span>
+                                <span className={mobileStyle.infoValue}>{booking.luggage}</span>
+                            </div>
+                        </div>
+                        <div className="col-span-2 mt-4">
+                            <span className={mobileStyle.inforCaption}>
+                                <TranslatedText sectionName="chauffeurDashboardPage"  textKey="assignedVehicleLabel" />:{" "}
+                            </span>
                             <span className={mobileStyle.infoValue}>
-                                {getTripTypeTextKey(booking.trip_type) ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={getTripTypeTextKey(booking.trip_type)} /> : booking.trip_type}
+                                {booking.vehicles
+                                    ? getAssignedVehicleLabel(booking.vehicles)
+                                    : (<TranslatedText sectionName="chauffeurDashboardPage" textKey="vehicleNotAssigned" /> )}
                             </span>
                         </div>
-                        <div>
-                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="hasPetsLabel" />: </span>  </span>
-                            <span  className={booking.has_pets ? tableStyles.cellGreenText : tableStyles.cellRedText} >
-                                {booking.has_pets ?
-                                (<TranslatedText sectionName="chauffeurDashboardPage" textKey="yes"/>) :
-                                ( <TranslatedText sectionName="chauffeurDashboardPage" textKey="no"/> )}
-                            </span>
+                        <div className="mt-4">
+                            <span className={mobileStyle.inforCaption}>  <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span>  </span>
+                            <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
                         </div>
-                        <div>
-                            <span className={mobileStyle.inforCaption}> <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="luggageLabel" />: </span> </span>
-                            <span className={mobileStyle.infoValue}>{booking.luggage}</span>
-                        </div>
-                    </div>
-                    <div className="col-span-2 mt-4">
-                        <span className={mobileStyle.inforCaption}>
-                            <TranslatedText sectionName="chauffeurDashboardPage"  textKey="assignedVehicleLabel" />:{" "}
-                        </span>
-                        <span className={mobileStyle.infoValue}>
-                            {booking.vehicles
-                                ? getAssignedVehicleLabel(booking.vehicles)
-                                : (<TranslatedText sectionName="chauffeurDashboardPage" textKey="vehicleNotAssigned" /> )}
-                        </span>
-                    </div>
-                    <div className="mt-4">
-                        <span className={mobileStyle.inforCaption}>  <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span>  </span>
-                        <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
-                    </div>
-                    <form action={updateAssignedBookingStatus} className="mt-5 grid gap-3">
-                        <input type="hidden" name="bookingId" value={booking.id} />
-                        <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
+                        <form action={updateAssignedBookingStatus} className="mt-5 grid gap-3">
+                            <input type="hidden" name="bookingId" value={booking.id} />
+                            <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
 
-                        <select name="status"  defaultValue={booking.status}  className={`${tableStyles.selectTable} w-full`}>
-                           {bookingStatusOptions.map((status) => {
-                                const bookingStatusTextKey = getBookingStatusTextKey(status);
-                                return (
-                                    <option key={status} value={status}>
-                                        {bookingStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={bookingStatusTextKey} /> : status}
-                                    </option>
-                                );
-                            })}
-                        </select>
+                            <select name="status"  defaultValue={booking.status}  className={`${tableStyles.selectTable} w-full`}>
+                            {bookingStatusOptions.map((status) => {
+                                    const bookingStatusTextKey = getBookingStatusTextKey(status);
+                                    return (
+                                        <option key={status} value={status}>
+                                            {bookingStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={bookingStatusTextKey} /> : status}
+                                        </option>
+                                    );
+                                })}
+                            </select>
 
-                        <button type="submit" className={formStyles.smallButton}>
-                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
-                        </button>
-                    </form>
+                            <button type="submit" className={formStyles.smallButton}>
+                                <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
+                            </button>
+                        </form>
+                        {/*
+                            Show completion only for active assigned bookings
+                            with a valid pickup timestamp and vehicle.
+                            PostgreSQL independently validates journey timing.
+                        */}
+                        {["pending", "accepted", "confirmed"].includes(booking.status) &&
+                            booking.vehicle_id &&
+                            booking.pickup_at &&
+                            Number.isFinite(Date.parse(booking.pickup_at)) && (
+                            <form action={completeAssignedBooking} className="mt-3">
+                                <input type="hidden" name="bookingId" value={booking.id}/>
+                                <input  type="hidden" name="chauffeurId" value={chauffeurRow.id}/>
+                                {/*
+                                    DESKTOP BOOKING COMPLETION CONFIRMATION
+                                    Reuses the multilingual confirmation component
+                                    before submitting the protected server action.
+                                */}
+                                <BookingCompletionButton className={formStyles.smallButton}>
+                                    <TranslatedText sectionName="chauffeurDashboardPage" textKey="markCompletedButton"/>
+                                </BookingCompletionButton>
+                            </form>
+                        )}
                     </article>
                 ))}
 
@@ -722,6 +909,23 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                                 <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
                                             </button>
                                         </form>
+                                        {/*
+                                            Show completion only for active assigned bookings
+                                            with a valid pickup timestamp and vehicle.
+                                            PostgreSQL independently validates journey timing.
+                                        */}
+                                        {["pending", "accepted", "confirmed"].includes(booking.status) &&
+                                            booking.vehicle_id &&
+                                            booking.pickup_at &&
+                                            Number.isFinite(Date.parse(booking.pickup_at)) && (
+                                                <form action={completeAssignedBooking} className="mt-3 flex justify-end" >
+                                                    <input type="hidden" name="bookingId" value={booking.id}/>
+                                                    <input type="hidden" name="chauffeurId" value={chauffeurRow.id}/>
+                                                    <BookingCompletionButton className={formStyles.smallButton}>
+                                                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="markCompletedButton"/>
+                                                    </BookingCompletionButton>
+                                                </form>
+                                        )}
                                     </td>
                                 </tr>
                             </Fragment>
