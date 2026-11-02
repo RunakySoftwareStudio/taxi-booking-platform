@@ -12,6 +12,14 @@ type BookingForEdit = {
     destination: string;
     pickup_date: string;
     pickup_time: string;
+    /*
+        BOOKING COMPLETION ELIGIBILITY
+
+        Used to determine whether the scheduled journey has ended.
+        Historical bookings may not have an exact pickup timestamp.
+    */
+    pickup_at: string | null;
+    estimated_duration_minutes: number;
     passengers: number;
     luggage: number | null;
     trip_type: string;
@@ -97,6 +105,14 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
     const [cancellationReason, setCancellationReason] = useState("");
     /* Prevent repeated cancellation requests while the API is processing. */
     const [isCancelling, setIsCancelling] = useState(false);
+    /* ============================================================
+    ADMIN BOOKING COMPLETION
+
+    Controls the separate booking completion confirmation.
+    Prevents repeated requests while completion is processing.
+    ============================================================ */
+    const [showCompleteSection, setShowCompleteSection] = useState(false);
+    const [isCompleting, setIsCompleting] = useState(false);
     const [chauffeurId, setChauffeurId] = useState(booking.chauffeur_id ?? "");
     const [vehicleId, setVehicleId] = useState(booking.vehicle_id ?? "");
     const [clientName, setClientName] = useState(booking.clients?.name ?? "");
@@ -179,7 +195,9 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
          Otherwise,use todayDate as the minimum date.
     =======================================================================================*/
     const todayDate = getTodayDateInputValue();
-    const minimumPickupDate = booking.pickup_date && booking.pickup_date < todayDate ? booking.pickup_date : todayDate;
+    const minimumPickupDate = booking.pickup_date && booking.pickup_date < todayDate
+        ? booking.pickup_date
+        : todayDate;
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -212,6 +230,48 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
         }
         finally { setIsSaving(false); }
     }
+    /* ============================================================
+    ADMIN BOOKING COMPLETION
+
+    Officially completes the saved booking through the protected
+    Admin API. The server verifies authorization and records
+    completed_at and completed_by atomically in PostgreSQL.
+
+    Unsaved form changes are not included in this request.
+    ============================================================ */
+    async function handleAdminCompletion() {
+        if (isCompleting || isSaving) return;
+
+        setIsCompleting(true);
+        setErrorMessage("");
+        setSuccessMessage("");
+
+        try {
+            const response = await fetch(
+                `/api/admin/bookings/${booking.id}/complete`,
+                { method: "POST" }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                setErrorMessage(result.message || "Booking completion failed.");
+                return;
+            }
+
+            /* Close confirmation and refresh the saved booking. */
+            setShowCompleteSection(false);
+            setSuccessMessage("Booking completed successfully.");
+            router.refresh();
+
+        } catch (error) {
+            console.error("Admin booking completion error:", error);
+            setErrorMessage("Unable to complete the booking. Please try again.");
+        } finally {
+            setIsCompleting(false);
+        }
+    }
+
     /* ============================================================
     ADMIN BOOKING CANCELLATION
 
@@ -314,8 +374,24 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                             </select>
                         </div>
                         <div className={formStyles.label}> Booking status
-                            <select  value={status}  onChange={(event) => setStatus(event.target.value)}  required  className={formStyles.selectWFull}>
-                                {bookingStatusOptions.map((statusOption) => ( <option key={statusOption} value={statusOption}> {statusOption}  </option>  ))}
+                            {/*
+                                BOOKING STATUS SELECTION
+
+                                Completion is handled separately so its official timestamp
+                                and source are recorded through the protected completion API.
+
+                                An already completed booking keeps its status visible.
+                            */}
+                            <select value={status} onChange={(event) => setStatus(event.target.value)}
+                                disabled={booking.status === "completed"} required className={formStyles.selectWFull}
+                            >
+                                {bookingStatusOptions
+                                    .filter((statusOption) => statusOption !== "completed" || booking.status === "completed")
+                                    .map((statusOption) => (
+                                        <option key={statusOption} value={statusOption}>
+                                            {statusOption}
+                                        </option>
+                                    ))}
                             </select>
                         </div>
                         <div className="flex items-center gap-4 px-4 pb-2 pt-6 text-sm text-slate-300 align-top ">
@@ -440,13 +516,92 @@ export default function AdminBookingEditForm({booking, chauffeurs, bookingStatus
                 </p>
             )}
 
-            <button type="submit" disabled={isSaving || booking.status === "cancelled"} className={`${formStyles.primaryButtonOutside} mt-6 disabled:cursor-not-allowed disabled:opacity-50`}>
+            {/* Completed bookings are protected as historical financial records. */}
+            {booking.status === "completed" && (
+                <p className="mt-6 text-sm text-amber-300">
+                    This booking has been completed and is now read-only.
+                    Its status, chauffeur assignment and completion details
+                    are protected to preserve financial history.
+                </p>
+            )}
+
+            <button type="submit" disabled={isSaving || booking.status === "cancelled" || booking.status === "completed"} className={`${formStyles.primaryButtonOutside} mt-6 disabled:cursor-not-allowed disabled:opacity-50`}>
                 {isSaving ? "Saving..." : "Save booking"}
             </button>
         </form>
         {/* ============================================================
+            ADMIN BOOKING COMPLETION
+
+            Completes an eligible booking through a separate
+            confirmation action, without submitting form changes.
+
+            Eligibility uses the saved booking information.
+
+        ============================================================ */}
+        {/* Show completion only when the saved booking is eligible. */}
+        {["pending", "accepted", "confirmed"].includes(booking.status) &&
+            booking.chauffeur_id &&
+            booking.vehicle_id && (
+            <section className={`${formStyles.sectionCardBorder4} mt-8`}>
+                <h2 className="text-lg font-semibold text-white">
+                    Complete Booking
+                </h2>
+
+                <p className="mt-3 text-sm text-slate-300">
+                    Confirm that this journey has been completed.
+                    Manual completion is permitted only after the scheduled
+                    journey end time. A valid pickup timestamp is required.
+                    The official completion date and source will be recorded
+                    for future financial processing.
+                </p>
+
+                <p className="mt-3 text-xs text-amber-300">
+                    Save any booking changes before completing it.
+                    This action cannot be reversed through normal booking editing.
+                </p>
+
+                {!showCompleteSection ? (
+                    <button
+                        type="button"
+                        onClick={() => setShowCompleteSection(true)}
+                        disabled={isSaving || isCompleting}
+                        className="mt-6 rounded-lg border border-emerald-500 px-5 py-2 text-sm text-emerald-300 hover:bg-emerald-900/30 disabled:opacity-50"
+                    >
+                        Mark Completed
+                    </button>
+                ) : (
+                    <div className="mt-6">
+                        <p className="text-sm text-white">
+                            Are you sure you want to mark this booking as completed?
+                        </p>
+
+                        <div className="mt-5 flex flex-wrap gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowCompleteSection(false)}
+                                disabled={isCompleting}
+                                className="rounded-lg border border-gray-500 px-5 py-2 text-sm text-white disabled:opacity-50"
+                            >
+                                Keep Booking
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleAdminCompletion}
+                                disabled={isCompleting || isSaving}
+                                className="rounded-lg bg-emerald-700 px-5 py-2 text-sm text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isCompleting ? "Completing..." : "Confirm Completion"}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </section>
+        )}
+
+        {/* ============================================================
             ADMIN BOOKING CANCELLATION
-            Separate from normal booking editing.
+            Separate from normal booking editing
         ============================================================ */}
         {booking.status !== "cancelled" && booking.status !== "completed" && booking.status !== "rejected" && (
             <section className={`${formStyles.sectionCardBorder4} mt-8`}>

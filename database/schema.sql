@@ -4071,6 +4071,15 @@ CREATE TABLE public.bookings (
     trip_type trip_type NOT NULL,
     notes TEXT,
     status booking_status NOT NULL DEFAULT 'pending',
+
+    /*
+        Booking completion metadata.
+        Records when completion was officially confirmed
+        and whether Admin, Chauffeur or System completed it.
+    */
+    completed_at TIMESTAMPTZ NULL,
+    completed_by TEXT NULL,
+
     has_pets BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -4105,6 +4114,41 @@ CREATE TABLE public.bookings (
         ),
 
     /*
+        Only supported completion sources are allowed.
+    */
+    CONSTRAINT bookings_completed_by_valid
+        CHECK (
+            completed_by IS NULL
+            OR completed_by IN ('admin', 'chauffeur', 'system')
+        ),
+
+    /*
+        Completion timestamp and completion source
+        must always be provided together.
+    */
+    CONSTRAINT bookings_completion_metadata_pair
+        CHECK (
+            (completed_at IS NULL AND completed_by IS NULL)
+            OR
+            (completed_at IS NOT NULL AND completed_by IS NOT NULL)
+        ),
+
+    /*
+        Ensure completion metadata matches the booking status.
+        Only completed bookings may contain completion metadata.
+    */
+    CONSTRAINT bookings_completion_status_consistent
+        CHECK (
+            (status = 'completed'
+                AND completed_at IS NOT NULL
+                AND completed_by IS NOT NULL)
+            OR
+            (status <> 'completed'
+                AND completed_at IS NULL
+                AND completed_by IS NULL)
+        ),
+
+    /*
     Active bookings require both a chauffeur assignment and an exact assigned vehicle.
     The API separately verifies that the chauffeur is approved and that the selected vehicle matches the booking.
     pending, rejected and cancelled bookings may remain unassigned.
@@ -4129,6 +4173,12 @@ CREATE TABLE public.bookings (
    Purpose:
    Document the timezone and exact pickup timestamp.
 ============================================================ */
+/* Official booking completion information. */
+COMMENT ON COLUMN public.bookings.completed_at IS
+'Timestamp when the booking was officially confirmed completed, not necessarily when the journey physically ended.';
+
+COMMENT ON COLUMN public.bookings.completed_by IS
+'Completion initiator: admin, chauffeur, or system.';
 
 COMMENT ON COLUMN public.bookings.pickup_timezone IS
 'IANA timezone of the booking pickup location, resolved from geographic coordinates.';
@@ -10907,6 +10957,21 @@ BEGIN
     END IF;
 
     /* -----------------------------------------------------------
+    PROTECT COMPLETED BOOKINGS
+
+    Completed bookings preserve their historical assignment
+    and linked chauffeur busy interval.
+
+    Ordinary assignment updates must not recreate or modify
+    their availability history.
+    ----------------------------------------------------------- */
+    IF v_existing_status = 'completed' THEN
+        RAISE EXCEPTION
+            'A completed booking cannot be modified through the assignment operation.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* -----------------------------------------------------------
     CHAUFFEUR SCHEDULE LOCK - BOOKING ASSIGNMENT
 
     Coordinates booking changes involving the previous and
@@ -11405,6 +11470,275 @@ BEGIN
     ======================================================== */
 END;
 $$;
+
+/* ============================================================
+   VOYA TAXI — PROTECT ADMIN BOOKING DETAILS RPC
+
+   Purpose:
+   Restrict Admin booking updates to server-side operations.
+
+   Applied manually to Supabase on 2026-11-01.
+============================================================ */
+
+REVOKE ALL ON FUNCTION public.update_booking_admin_details(
+    uuid, text, text, text, text, text,
+    date, time without time zone,
+    integer, integer, public.trip_type, text, boolean,
+    integer, integer, integer, boolean,
+    public.wheelchair_requirement_type, integer,
+    boolean, boolean,
+    uuid, uuid, public.booking_status
+) FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.update_booking_admin_details(
+    uuid, text, text, text, text, text,
+    date, time without time zone,
+    integer, integer, public.trip_type, text, boolean,
+    integer, integer, integer, boolean,
+    public.wheelchair_requirement_type, integer,
+    boolean, boolean,
+    uuid, uuid, public.booking_status
+) TO service_role;
+/*======================================================================
+    END GRANT EXECUTE ON FUNCTION public.update_booking_admin_details(
+========================================================================*/
+
+/* ============================================================
+   VOYA TAXI - PROTECTED BOOKING COMPLETION
+
+   Purpose:
+   Complete eligible bookings and record:
+   - Official completion timestamp.
+   - Trusted completion source (admin/chauffeur/system).
+
+   Requirements:
+   - Preserve booking assignment and availability rules.
+   - Prevent unauthorized completion and reopening.
+   - Update status and completion metadata atomically.
+
+   Deployment:
+   Prepare and test before applying to Supabase.
+   Do not update historical bookings.
+============================================================ */
+/* ============================================================
+   PROTECTED BOOKING COMPLETION
+
+   Purpose:
+   Mark an eligible assigned booking as completed and record
+   its official completion timestamp and source atomically.
+
+   Only trusted server operations may invoke this function.
+============================================================ */
+
+CREATE OR REPLACE FUNCTION public.complete_booking(
+    p_booking_id UUID,
+    p_completed_by TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = ''
+AS $function$
+DECLARE
+    v_status public.booking_status;
+    v_chauffeur_id UUID;
+    v_vehicle_id UUID;
+    /* Exact timezone-aware scheduled pickup timestamp. */
+    v_pickup_at TIMESTAMPTZ;
+
+    /* Estimated journey duration in minutes. */
+    v_duration_minutes INTEGER;
+BEGIN
+    /* SECTION 1: Validate the requested completion source. */
+    IF p_booking_id IS NULL OR
+       p_completed_by IS NULL OR
+       p_completed_by NOT IN ('admin', 'chauffeur', 'system') THEN
+        RAISE EXCEPTION 'Invalid booking completion request.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* ============================================================
+    SECTION 2: READ AND LOCK THE BOOKING
+
+    Retrieve the current status, assigned chauffeur, vehicle,
+    exact pickup timestamp and estimated journey duration.
+
+    FOR UPDATE prevents concurrent booking changes while
+    completion eligibility is being checked.
+    ============================================================ */
+    SELECT
+        status,
+        chauffeur_id,
+        vehicle_id,
+        pickup_at,
+        estimated_duration_minutes
+    INTO
+        v_status,
+        v_chauffeur_id,
+        v_vehicle_id,
+        v_pickup_at,
+        v_duration_minutes
+    FROM public.bookings
+    WHERE id = p_booking_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Booking was not found.'
+        USING ERRCODE = 'P0002';
+    END IF;
+
+    /* SECTION 3: Verify completion eligibility. */
+    IF v_status NOT IN ('pending', 'accepted', 'confirmed') THEN
+        RAISE EXCEPTION 'Booking cannot be completed from its current status.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    IF v_chauffeur_id IS NULL OR v_vehicle_id IS NULL THEN
+        RAISE EXCEPTION 'Booking completion requires a chauffeur and vehicle.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    /* ============================================================
+    SECTION 3A: VERIFY SCHEDULED JOURNEY END
+
+    Manual completion requires a reliable pickup timestamp.
+    The scheduled journey must have ended before completion.
+
+    Historical bookings without pickup_at cannot be completed
+    until their timestamp has been established reliably.
+    ============================================================ */
+
+    IF v_pickup_at IS NULL THEN
+        RAISE EXCEPTION
+            'Booking completion requires a valid pickup timestamp.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    IF v_duration_minutes IS NULL OR v_duration_minutes <= 0 THEN
+        RAISE EXCEPTION
+            'Booking completion requires a valid journey duration.'
+        USING ERRCODE = '22023';
+    END IF;
+
+    IF NOW() < (
+        v_pickup_at + make_interval(mins => v_duration_minutes)
+    ) THEN
+        RAISE EXCEPTION
+            'The scheduled journey has not ended yet.'
+        USING ERRCODE = '22023';
+    END IF;
+
+        /* SECTION 4: Record completion without modifying availability. */
+        UPDATE public.bookings
+        SET
+            status = 'completed',
+            completed_at = NOW(),
+            completed_by = p_completed_by
+        WHERE id = p_booking_id;
+
+    END;
+    $function$;
+
+/* ============================================================
+   SECURITY — PROTECTED BOOKING COMPLETION
+
+   Only trusted server-side service-role operations may
+   execute the booking completion function.
+============================================================ */
+
+REVOKE ALL ON FUNCTION public.complete_booking(
+    UUID, TEXT
+) FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.complete_booking(
+    UUID, TEXT
+) TO service_role;
+
+/* ============================================================
+   VOYA TAXI - PROTECT BOOKING COMPLETION METADATA
+
+   Purpose:
+   Ensure completed bookings have reliable completion metadata.
+   Prevent ordinary updates from reopening completed bookings
+   or changing previously recorded completion information.
+============================================================ */
+
+CREATE OR REPLACE FUNCTION public.protect_booking_completion()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $function$
+BEGIN
+    /* SECTION 1: Protect already completed bookings. */
+    IF OLD.status = 'completed' THEN
+
+        IF NEW.status IS DISTINCT FROM OLD.status THEN
+            RAISE EXCEPTION 'A completed booking cannot be reopened.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        IF NEW.completed_at IS DISTINCT FROM OLD.completed_at
+           OR NEW.completed_by IS DISTINCT FROM OLD.completed_by THEN
+            RAISE EXCEPTION 'Booking completion metadata cannot be changed.'
+            USING ERRCODE = '22023';
+        END IF;
+        /* Preserve the historical chauffeur and vehicle assignment. */
+        IF NEW.chauffeur_id IS DISTINCT FROM OLD.chauffeur_id
+           OR NEW.vehicle_id IS DISTINCT FROM OLD.vehicle_id THEN
+
+            RAISE EXCEPTION
+                'A completed booking assignment cannot be changed.'
+            USING ERRCODE = '22023';
+
+        END IF;
+    END IF;
+
+    /* SECTION 2: Validate new completion transitions. */
+    IF OLD.status IS DISTINCT FROM 'completed'
+       AND NEW.status = 'completed' THEN
+
+        IF OLD.status NOT IN ('pending', 'accepted', 'confirmed') THEN
+            RAISE EXCEPTION 'Invalid booking completion transition.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        IF NEW.chauffeur_id IS NULL OR NEW.vehicle_id IS NULL THEN
+            RAISE EXCEPTION 'Booking completion requires a chauffeur and vehicle.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        IF NEW.completed_at IS NULL OR NEW.completed_by IS NULL THEN
+            RAISE EXCEPTION 'Booking completion metadata is required.'
+            USING ERRCODE = '22023';
+        END IF;
+
+    END IF;
+
+    /* SECTION 3: Prevent completion metadata on active bookings. */
+    IF NEW.status <> 'completed'
+       AND (
+           NEW.completed_at IS NOT NULL
+           OR NEW.completed_by IS NOT NULL
+       ) THEN
+
+        RAISE EXCEPTION
+            'Completion metadata is only allowed for completed bookings.'
+        USING ERRCODE = '22023';
+
+    END IF;
+
+    RETURN NEW;
+END;
+$function$;
+
+/* Run the completion guard before each booking update. */
+CREATE TRIGGER protect_booking_completion
+BEFORE UPDATE ON public.bookings
+FOR EACH ROW
+EXECUTE FUNCTION public.protect_booking_completion();
+/*==============================================================
+    End PROTECTED BOOKING COMPLETION
+================================================================*/
 
 /* ============================================================
    VALIDATES ONE BOOKING ASSIGNMENT

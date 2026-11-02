@@ -11,19 +11,22 @@ type AdminBookingEditPageProps = { params: Promise<{ bookingId: string; }>;};
 
 export default async function AdminBookingEditPage({ params}: AdminBookingEditPageProps) {  
     const { bookingId } = await params;
+
+    /* Include exact pickup time and duration for completion eligibility. */
     const { data: bookingRow, error } = await supabaseAdmin
         .from("bookings")
         .select(`
-                id, pickup_date, pickup_location, destination, pickup_time,
-                passengers, luggage, trip_type, notes, status, chauffeur_id, vehicle_id, has_pets,
-                infant_seat_count_required, child_seat_count_required,
-                booster_seat_count_required, isofix_required,
-                wheelchair_requirement, wheelchair_passenger_count,
-                mobility_aid_storage_required, extra_large_luggage_required,
-                clients(name, email, phone)
-            `)
-        .eq("id", bookingId)
-        .maybeSingle();
+            id, pickup_date, pickup_location, destination, pickup_time,
+            pickup_at, estimated_duration_minutes,
+            passengers, luggage, trip_type, notes, status, chauffeur_id, vehicle_id, has_pets,
+            infant_seat_count_required, child_seat_count_required,
+            booster_seat_count_required, isofix_required,
+            wheelchair_requirement, wheelchair_passenger_count,
+            mobility_aid_storage_required, extra_large_luggage_required,
+            clients(name, email, phone)
+        `)
+    .eq("id", bookingId)
+    .maybeSingle();
 
     /* ===== Handle booking lookup result ===== */
     if (error) {
@@ -75,7 +78,20 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
                     <p className="mt-2 text-xs text-slate-400"> Use this reference together with the client email on the public booking status page. </p>
                 </div>
 
-                <AdminBookingEditForm  booking={bookingForEdit} chauffeurs={chauffeurs ?? []} bookingStatusOptions={(bookingStatuses ?? []) as string[]} tripTypeOptions={(tripTypes ?? []) as string[]} />            </div>
+                {/* ============================================================
+                    ADMIN BOOKING EDIT FORM
+
+                    Reinitialize the form when the saved booking status
+                    changes, including after official completion.
+                ============================================================ */}
+                <AdminBookingEditForm
+                    key={`${bookingForEdit.id}-${bookingForEdit.status}`}
+                    booking={bookingForEdit}
+                    chauffeurs={chauffeurs ?? []}
+                    bookingStatusOptions={(bookingStatuses ?? []) as string[]}
+                    tripTypeOptions={(tripTypes ?? []) as string[]}
+                />
+            </div>
         </main>
     );
 }

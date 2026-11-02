@@ -9,6 +9,8 @@ import { formatShortDate, formatShortTime } from "@/lib/formatDateTime";
 import { Fragment } from "react";
 import { TranslatedText } from "@/components/TranslatedText";
 import { updateBookingStatus } from "@/lib/bookings/updateBookingStatus";
+import { isChauffeurStatusTransitionAllowed } from "@/lib/bookings/isChauffeurStatusTransitionAllowed";
+import type { BookingStatus } from "@/types/bookingStatusType";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx
 type TypeChauffeurRow = { id: string;  name: string;  email: string;  phone: string;  service_area: string | null;  account_status: string;};
@@ -147,13 +149,36 @@ async function updateAssignedBookingStatus(formData: FormData) {
     // Confirms that the booking belongs to the authorized chauffeur.
     const { data: assignedBooking, error: bookingCheckError } = await supabaseAdmin
         .from("bookings")
-        .select("id, vehicle_id")
+        .select("id, vehicle_id, status")
         .eq("id", bookingId)
         .eq("chauffeur_id", authorizedChauffeurId)
         .maybeSingle();
 
     if (bookingCheckError || !assignedBooking) {
         console.error("Could not verify chauffeur booking:", bookingCheckError);
+        redirect(`/chauffeur/${authorizedChauffeurId}?error=status-update-failed`);
+    }
+
+    /*
+        CHAUFFEUR STATUS TRANSITION PROTECTION
+
+        Validate the requested status against the booking's
+        current database status before updating it.
+
+        Prevent chauffeurs from reopening completed,
+        cancelled or rejected bookings.
+    */
+    const allowedStatuses: BookingStatus[] = [
+        "pending", "accepted", "rejected",
+        "confirmed", "completed", "cancelled",
+    ];
+
+    if (!allowedStatuses.includes(status as BookingStatus) ||
+        !isChauffeurStatusTransitionAllowed(
+            assignedBooking.status as BookingStatus,
+            status as BookingStatus
+        )
+    ) {
         redirect(`/chauffeur/${authorizedChauffeurId}?error=status-update-failed`);
     }
 

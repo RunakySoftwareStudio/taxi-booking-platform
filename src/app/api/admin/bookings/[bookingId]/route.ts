@@ -80,7 +80,58 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     const { data: allowedStatuses } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "booking_status"  });
     const bookingStatusOptions = (allowedStatuses ?? []) as string[];
-    if (!bookingStatusOptions.includes(status)) { return NextResponse.json({ message: "Invalid booking status." }, { status: 400 });  }
+    if (!bookingStatusOptions.includes(status)) {
+        return NextResponse.json(
+            { message: "Invalid booking status." },
+            { status: 400 });
+    }
+
+    /*
+        PROTECT OFFICIAL BOOKING COMPLETION
+
+        Read the current database status before allowing an edit.
+        New completion requests must use the dedicated completion API.
+        Completed bookings cannot be reopened through ordinary editing.
+
+        The PostgreSQL trigger will provide final protection against
+        concurrent updates.
+    */
+    const { data: currentBooking, error: bookingLookupError } = await supabaseAdmin
+        .from("bookings")
+        .select("status")
+        .eq("id", bookingId)
+        .maybeSingle();
+
+    if (bookingLookupError) {
+        console.error("Could not load booking status:", bookingLookupError);
+        return NextResponse.json(
+            { message: "Could not verify the booking status." },
+            { status: 500 }
+        );
+    }
+
+    if (!currentBooking) {
+        return NextResponse.json(
+            { message: "Booking not found." },
+            { status: 404 }
+        );
+    }
+
+    /* Completion must be performed through the dedicated operation. */
+    if (status === "completed" && currentBooking.status !== "completed") {
+        return NextResponse.json(
+            { message: "Use the separate Mark Completed action to complete this booking." },
+            { status: 400 }
+        );
+    }
+
+    /* Never reopen an already completed booking through ordinary editing. */
+    if (currentBooking.status === "completed" && status !== "completed") {
+        return NextResponse.json(
+            { message: "A completed booking cannot be reopened." },
+            { status: 400 }
+        );
+    }
 
     const { data: allowedTripTypes } = await supabaseAdmin.rpc("get_enum_values", { p_enum_type_name: "trip_type"});
     const tripTypeOptions = (allowedTripTypes ?? []) as string[];

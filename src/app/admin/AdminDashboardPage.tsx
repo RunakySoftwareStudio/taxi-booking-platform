@@ -173,6 +173,11 @@ export default async function AdminDashboardPage() {
             href: "/admin/availability",
         },
         {
+            title: "Financial settings",
+            description: "Manage chauffeur service fees, discounts, and surcharges for clients and chauffeurs.",
+            href: "/admin/financial-settings",
+        },
+        {
             title: "Pricing management",
             description: "Manage pricing profiles, rates, schedules, and version history.",
             href: "/admin/pricing",

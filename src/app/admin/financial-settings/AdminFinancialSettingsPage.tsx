@@ -1,0 +1,68 @@
+import Link from "next/link";
+import { pageStyles, formStyles } from "@/styles/classNames";
+
+/*
+    AdminFinancialSettingsPage
+
+    Displays the financial management sections for Voya Taxi.
+    Settings and database operations will be added separately.
+*/
+export default function AdminFinancialSettingsPage() {
+    return (
+        <main className={pageStyles.main}>
+            <div className={pageStyles.container}>
+                <Link href="/admin" className={formStyles.link}>
+                    ← Back to Admin Dashboard
+                </Link>
+
+                <h1 className="mt-6 text-2xl font-bold text-white">
+                    Financial Settings
+                </h1>
+
+                <p className="mt-2 text-slate-300">
+                    Manage Voya Taxi service fees, discounts, and surcharges.
+                </p>
+
+                {/* Chauffeur service compensation */}
+                <section className="mt-8 rounded-lg border border-slate-700 p-6">
+                    <h2 className="text-xl font-semibold text-white">
+                        Chauffeur Service Compensation
+                    </h2>
+                    <p className="mt-2 text-slate-300">
+                        Configure the percentage charged to chauffeurs for using
+                        the Voya Taxi booking platform.
+                    </p>
+                    <p className="mt-4 text-sm text-slate-400">
+                        Default service fee: Not configured
+                    </p>
+                </section>
+
+                {/* Client discounts and surcharges */}
+                <section className="mt-6 rounded-lg border border-slate-700 p-6">
+                    <h2 className="text-xl font-semibold text-white">
+                        Client Discounts &amp; Surcharges
+                    </h2>
+                    <p className="mt-2 text-slate-300">
+                        Configure discounts and additional charges for clients.
+                    </p>
+                    <p className="mt-4 text-sm text-slate-400">
+                        No adjustments configured.
+                    </p>
+                </section>
+
+                {/* Chauffeur discounts and surcharges */}
+                <section className="mt-6 rounded-lg border border-slate-700 p-6">
+                    <h2 className="text-xl font-semibold text-white">
+                        Chauffeur Discounts &amp; Surcharges
+                    </h2>
+                    <p className="mt-2 text-slate-300">
+                        Configure adjustments to chauffeur service fees.
+                    </p>
+                    <p className="mt-4 text-sm text-slate-400">
+                        No adjustments configured.
+                    </p>
+                </section>
+            </div>
+        </main>
+    );
+}
