@@ -12,6 +12,11 @@ import { updateBookingStatus } from "@/lib/bookings/updateBookingStatus";
 import { isChauffeurStatusTransitionAllowed } from "@/lib/bookings/isChauffeurStatusTransitionAllowed";
 import type { BookingStatus } from "@/types/bookingStatusType";
 import BookingCompletionButton from "@/components/BookingCompletionButton";
+/* Confirmation dialog for withdrawing from an assigned booking. */
+import BookingWithdrawalButton from "@/components/BookingWithdrawalButton";
+/* Sends Admin and chauffeur withdrawal notification previews.
+   Both emails are routed to the configured Admin address. */
+import { sendChauffeurWithdrawalEmails } from "@/lib/email/chauffeurWithdrawalEmailNotifications";
 
 //export const dynamic = "force-dynamic"; //Keep dynamic only in: src/app/admin/chauffeurs/[chauffeurid]/page.tsx
 type TypeChauffeurRow = { id: string;  name: string;  email: string;  phone: string;  service_area: string | null;  account_status: string;};
@@ -221,6 +226,150 @@ async function updateAssignedBookingStatus(formData: FormData) {
 }
 
 /*
+    CHAUFFEUR BOOKING WITHDRAWAL
+
+    Allows an authenticated chauffeur to withdraw from
+    an assigned booking before its scheduled journey end.
+
+    The booking remains active and returns to the
+    unassigned pool.
+
+    PostgreSQL atomically:
+    - Validates the booking and withdrawal deadline.
+    - Changes the booking status to pending.
+    - Clears the chauffeur and vehicle assignments.
+    - Releases the linked chauffeur busy interval.
+*/
+async function withdrawAssignedBooking(formData: FormData) {
+    "use server";
+
+    const bookingId = String(formData.get("bookingId") || "");
+    const submittedChauffeurId = String(formData.get("chauffeurId") || "");
+    if (!bookingId || !submittedChauffeurId) { redirect("/login");}
+
+    /* SECTION 1 — Authenticate the current user. */
+    const authSupabase = await createAuthClient();
+    const { data: { user } } = await authSupabase.auth.getUser();
+    if (!user) {redirect("/login");}
+
+    /* SECTION 2 — Resolve the authorized chauffeur identity. */
+    const { data: profile, error: profileError } = await authSupabase
+        .from("user_profiles")
+        .select("role, chauffeur_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (profileError || !profile) {redirect("/unauthorized");}
+
+    const isAdminUser = profile.role === "admin";
+    if (!isAdminUser && profile.chauffeur_id !== submittedChauffeurId) {
+        redirect("/unauthorized");
+    }
+
+    const authorizedChauffeurId = isAdminUser
+        ? submittedChauffeurId
+        : profile.chauffeur_id;
+
+    if (!authorizedChauffeurId) {redirect("/unauthorized");}
+
+    /*
+        SECTION 3 — Verify the assignment and capture notification data.
+
+        Retrieve customer and journey information before withdrawal,
+        because PostgreSQL clears the chauffeur assignment afterward.
+
+        The protected RPC independently verifies current ownership.
+    */
+    const { data: assignedBooking, error: bookingCheckError } = await supabaseAdmin
+        .from("bookings")
+        .select(`
+            id,
+            pickup_location,
+            destination,
+            pickup_date,
+            pickup_time,
+            clients(name)
+        `)
+        .eq("id", bookingId)
+        .eq("chauffeur_id", authorizedChauffeurId)
+        .maybeSingle();
+
+    if (bookingCheckError || !assignedBooking) {
+        console.error("Could not verify booking withdrawal:", bookingCheckError);
+        redirect(`/chauffeur/${authorizedChauffeurId}?error=withdrawal-failed` );
+    }
+
+    /*
+        SECTION 3.1 — Retrieve chauffeur notification details.
+
+        Capture the chauffeur's name and email before withdrawal.
+        The email address identifies the intended recipient in
+        the preview, but is never used for actual delivery
+        during development.
+    */
+    const { data: withdrawalChauffeur, error: chauffeurLookupError } =
+        await supabaseAdmin
+            .from("chauffeurs")
+            .select("name, email")
+            .eq("id", authorizedChauffeurId)
+            .maybeSingle();
+
+    if (chauffeurLookupError) {
+        console.error(
+            "Could not load chauffeur withdrawal notification details:",
+            chauffeurLookupError
+        );
+    }
+
+    /*
+        SECTION 4 — Execute the protected PostgreSQL withdrawal.
+        The database independently verifies the current chauffeur assignment, booking status and deadline.
+        No separate assignment update is needed.
+    */
+    const { error } = await supabaseAdmin.rpc("withdraw_chauffeur_booking",{p_booking_id: bookingId, p_chauffeur_id: authorizedChauffeurId,} );
+    if (error) {
+        console.error("Could not withdraw chauffeur booking:", error);
+        redirect(`/chauffeur/${authorizedChauffeurId}?error=withdrawal-failed`);
+    }
+
+    /*
+        SECTION 4.1 — Send withdrawal notification previews.
+
+        This runs only after PostgreSQL confirms withdrawal.
+
+        Both Admin and chauffeur previews are delivered only
+        to ADMIN_BOOKING_EMAIL during development.
+
+        Notification failures must never reverse a successful
+        booking withdrawal or change its success message.
+    */
+    try {
+        const notificationResult = await sendChauffeurWithdrawalEmails({
+            bookingId: assignedBooking.id,
+            clientName: assignedBooking.clients?.[0]?.name ?? "Unknown client",
+            pickupLocation: assignedBooking.pickup_location ?? "",
+            destination: assignedBooking.destination ?? "",
+            pickupDate: assignedBooking.pickup_date ?? "",
+            pickupTime: assignedBooking.pickup_time ?? "",
+            chauffeurName: withdrawalChauffeur?.name ?? "Unknown chauffeur",
+            chauffeurEmail: withdrawalChauffeur?.email ?? "",
+        });
+
+        /* Report delivery failures without changing the booking result. */
+        if (!notificationResult.admin.success || !notificationResult.chauffeur.success) {
+            console.error("Chauffeur withdrawal notification delivery failed:", notificationResult);
+        }
+    } catch (notificationError) {
+        console.error("Could not send chauffeur withdrawal notification previews:", notificationError);
+    }
+
+    /* SECTION 5 — Refresh affected booking pages. */
+    revalidatePath(`/chauffeur/${authorizedChauffeurId}`);
+    revalidatePath("/admin/bookings");
+    redirect(`/chauffeur/${authorizedChauffeurId}?success=booking-withdrawn`);
+}
+
+/*
     CHAUFFEUR BOOKING COMPLETION
 
     Completes a booking assigned to the authenticated chauffeur.
@@ -426,7 +575,15 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                     status !== "completed"
             );
     const chauffeurAccountStatusTextKey = getChauffeurAccountStatusTextKey(chauffeurRow.account_status);
+    /*
+        Capture the current time once during the server request.
 
+        Use the same reference timestamp when determining
+        withdrawal button visibility for all bookings.
+        PostgreSQL remains responsible for enforcing the
+        actual withdrawal deadline.
+    */
+    const withdrawalReferenceTime = new Date().getTime();
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
@@ -451,6 +608,14 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             sectionName="chauffeurDashboardPage" textKey="bookingCompletedSuccess"/>
                     </p>
                 )}
+                {/*
+                    Display confirmation when the chauffeur successfully withdraws from an assigned booking.
+                */}
+                {pageMessage.success === "booking-withdrawn" && (
+                    <p className={pageStyles.successMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingWithdrawnSuccess"/>
+                    </p>
+                )}
                 {pageMessage.error === "booking-completion-too-early" && (
                     <p className={pageStyles.errorMsgPage}>
                         <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingCompletionTooEarly"/>
@@ -464,6 +629,14 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                 {pageMessage.error === "booking-completion-failed" && (
                     <p className={pageStyles.errorMsgPage}>
                         <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingCompletionFailed"/>
+                    </p>
+                )}
+                {/*
+                    Display an error when withdrawal is rejected by the protected server action or PostgreSQL function.
+                */}
+                {pageMessage.error === "withdrawal-failed" && (
+                    <p className={pageStyles.errorMsgPage}>
+                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingWithdrawalFailed"/>
                     </p>
                 )}
                 {pageMessage.error === "missing-fields" && (
@@ -786,25 +959,44 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                             <span className={mobileStyle.inforCaption}>  <span className={mobileStyle.inforCaption}> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span>  </span>
                             <span className={mobileStyle.infoValue}> {booking.notes || "-----"} </span>
                         </div>
-                        <form action={updateAssignedBookingStatus} className="mt-5 grid gap-3">
-                            <input type="hidden" name="bookingId" value={booking.id} />
-                            <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
+                        {/*
+                            MOBILE BOOKING STATUS PROTECTION
+                            Active bookings retain editable status controls.
+                            Terminal bookings display their actual saved status without allowing changes.
+                        */}
+                        {["pending", "accepted", "confirmed"].includes(booking.status) ? (
+                            <form action={updateAssignedBookingStatus} className="mt-5 flex items-end gap-2">
+                                <input type="hidden" name="bookingId" value={booking.id} />
+                                <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
 
-                            <select name="status"  defaultValue={booking.status}  className={`${tableStyles.selectTable} w-full`}>
-                            {bookingStatusOptions.map((status) => {
-                                    const bookingStatusTextKey = getBookingStatusTextKey(status);
-                                    return (
-                                        <option key={status} value={status}>
-                                            {bookingStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={bookingStatusTextKey} /> : status}
-                                        </option>
-                                    );
-                                })}
-                            </select>
+                                <select name="status" defaultValue={booking.status} className={`${tableStyles.selectTable} min-w-0 flex-1`}>
+                                {bookingStatusOptions.map((status) => {
+                                        const bookingStatusTextKey = getBookingStatusTextKey(status);
+                                        return (
+                                            <option key={status} value={status}>
+                                                {bookingStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={bookingStatusTextKey} /> : status}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
 
-                            <button type="submit" className={formStyles.smallButton}>
-                                <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
-                            </button>
-                        </form>
+                                <button type="submit" className={`${formStyles.smallButton} shrink-0`}>
+                                    <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
+                                </button>
+                            </form>
+                            ) : (
+                            <div className="mt-5 rounded-lg border border-slate-700 bg-slate-900 p-3">
+                                <span className="text-sm font-semibold text-cyan-300">
+                                    <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingStatusLabel"/>:
+                                </span>
+
+                                <span className="ml-2 text-sm font-semibold text-white">
+                                    {getBookingStatusTextKey(booking.status) ? (
+                                        <TranslatedText sectionName="chauffeurDashboardPage" textKey={getBookingStatusTextKey(booking.status)}/>
+                                    ) : booking.status}
+                                </span>
+                            </div>
+                        )}
                         {/*
                             Show completion only for active assigned bookings
                             with a valid pickup timestamp and vehicle.
@@ -827,6 +1019,31 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                 </BookingCompletionButton>
                             </form>
                         )}
+                        {/*
+                            MOBILE CHAUFFEUR BOOKING WITHDRAWAL
+
+                            Display withdrawal only for active bookings whose
+                            scheduled journey end is still in the future.
+
+                            The protected PostgreSQL function independently
+                            validates the deadline when submitted.
+                        */}
+                        {["pending", "accepted", "confirmed"].includes(booking.status) &&
+                            booking.vehicle_id && booking.pickup_at &&
+                            Number.isFinite(Date.parse(booking.pickup_at)) &&
+                            booking.estimated_duration_minutes != null &&
+                            new Date(booking.pickup_at).getTime() + booking.estimated_duration_minutes * 60_000 > withdrawalReferenceTime &&
+                            (
+                                <form action={withdrawAssignedBooking} className="mt-3">
+                                    <input type="hidden" name="bookingId" value={booking.id} />
+                                    <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
+
+                                    <BookingWithdrawalButton className={formStyles.smallButton}>
+                                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="withdrawBookingButton"/>
+                                    </BookingWithdrawalButton>
+                                </form>
+                            )
+                        }
                     </article>
                 ))}
 
@@ -874,58 +1091,107 @@ export default async function ChauffeurDashboardPage({params,searchParams}: Chau
                                         {getTripTypeTextKey(booking.trip_type) ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={getTripTypeTextKey(booking.trip_type)} /> : booking.trip_type}
                                     </td>
                                 </tr>
-                                <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
+                                <tr className="bg-cyan-950/10">
                                 {/* Keeps notes aligned with the active language, while mixed text remains readable. */}
-                                    <td colSpan={4} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
+                                    <td colSpan={3} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
                                             <span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="notesLabel" />: </span>
                                             <span className="wrap-break-word"> {booking.notes || "-----"}</span>
                                         </div>
                                     </td>
-                                    <td colSpan={3} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
+                                    <td colSpan={4} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
                                         <div className="rounded-xl bg-slate-950/30 px-3 py-2">
                                             <span className="font-semibold text-cyan-300"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="assignedVehicleLabel" />: </span>
                                             <span className="wrap-break-word"> {booking.vehicles ? getAssignedVehicleLabel(booking.vehicles) : <TranslatedText sectionName="chauffeurDashboardPage" textKey="vehicleNotAssigned" />}</span>
                                         </div>
                                     </td>
                                     <td colSpan={2} className="px-4 pb-4 pt-0 text-sm text-slate-300 text-start">
-                                        <form action={updateAssignedBookingStatus} className="flex items-end justify-end gap-3" >
-                                            <input type="hidden" name="bookingId" value={booking.id} />
-                                            <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
-                                            <label className="grid min-w-40 shrink-0 gap-1">
-                                                <span className="font-semibold text-cyan-300 px-2 py-1"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingStatusLabel"/> </span>
-                                                <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
-                                                    {bookingStatusOptions.map((status) => {
-                                                        const bookingStatusTextKey = getBookingStatusTextKey(status);
-                                                        return (
-                                                            <option key={status} value={status}>
-                                                                {bookingStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={bookingStatusTextKey} /> : status}
-                                                            </option>
-                                                        );
-                                                    })}
-                                                </select>
-                                            </label>
-                                            <button type="submit" className={formStyles.smallButton}>
-                                                <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
-                                            </button>
-                                        </form>
                                         {/*
-                                            Show completion only for active assigned bookings
-                                            with a valid pickup timestamp and vehicle.
-                                            PostgreSQL independently validates journey timing.
+                                            DESKTOP BOOKING STATUS PROTECTION
+
+                                            Active bookings retain editable status controls.
+                                            Completed, cancelled and rejected bookings display
+                                            their saved status without allowing modifications.
                                         */}
-                                        {["pending", "accepted", "confirmed"].includes(booking.status) &&
-                                            booking.vehicle_id &&
-                                            booking.pickup_at &&
-                                            Number.isFinite(Date.parse(booking.pickup_at)) && (
-                                                <form action={completeAssignedBooking} className="mt-3 flex justify-end" >
-                                                    <input type="hidden" name="bookingId" value={booking.id}/>
-                                                    <input type="hidden" name="chauffeurId" value={chauffeurRow.id}/>
-                                                    <BookingCompletionButton className={formStyles.smallButton}>
-                                                        <TranslatedText sectionName="chauffeurDashboardPage" textKey="markCompletedButton"/>
-                                                    </BookingCompletionButton>
-                                                </form>
+                                        {["pending", "accepted", "confirmed"].includes(booking.status) ? (
+                                            <form action={updateAssignedBookingStatus} className="flex items-end justify-end gap-3" >
+                                                <input type="hidden" name="bookingId" value={booking.id} />
+                                                <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
+                                                <label className="grid min-w-40 shrink-0 gap-1">
+                                                    <span className="font-semibold text-cyan-300 px-2 py-1"> <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingStatusLabel"/> </span>
+                                                    <select  name="status"  defaultValue={booking.status}  className={formStyles.selectForm}  >
+                                                        {bookingStatusOptions.map((status) => {
+                                                            const bookingStatusTextKey = getBookingStatusTextKey(status);
+                                                            return (
+                                                                <option key={status} value={status}>
+                                                                    {bookingStatusTextKey ? <TranslatedText sectionName="chauffeurDashboardPage" textKey={bookingStatusTextKey} /> : status}
+                                                                </option>
+                                                            );
+                                                        })}
+                                                    </select>
+                                                </label>
+                                                <button type="submit" className={formStyles.smallButton}>
+                                                    <TranslatedText sectionName="chauffeurDashboardPage" textKey="saveButton" />
+                                                </button>
+                                            </form>
+                                            ) : (
+                                            <div className="flex items-center justify-end gap-2 py-2">
+                                                <span className="text-sm font-semibold text-cyan-300">
+                                                    <TranslatedText sectionName="chauffeurDashboardPage" textKey="bookingStatusLabel"/>:
+                                                </span>
+
+                                                <span className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-semibold text-white">
+                                                    {getBookingStatusTextKey(booking.status)
+                                                    ? (<TranslatedText sectionName="chauffeurDashboardPage" textKey={getBookingStatusTextKey(booking.status)}/>)
+                                                    : booking.status}
+                                                </span>
+                                            </div>
                                         )}
+
+                                    </td>
+                                </tr>
+                                {/*
+                                    DESKTOP BOOKING ACTION ROW
+                                    Keep booking completion and chauffeur withdrawal together on a separate third row.
+                                    Each action retains its own confirmation dialog, server action, and database eligibility checks.
+                                */}
+                                <tr className="border-b border-cyan-400/30 bg-cyan-950/10">
+                                    <td colSpan={9} className="px-4 pb-4 pt-2">
+                                        <div className="flex flex-wrap items-center justify-end gap-3">
+
+                                            {/* Mark Completed — database validates journey completion. */}
+                                            {["pending", "accepted", "confirmed"].includes(booking.status) &&
+                                                booking.vehicle_id &&
+                                                booking.pickup_at &&
+                                                Number.isFinite(Date.parse(booking.pickup_at)) && (
+                                                    <form action={completeAssignedBooking}>
+                                                        <input type="hidden" name="bookingId" value={booking.id} />
+                                                        <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
+
+                                                        <BookingCompletionButton className={formStyles.smallButton}>
+                                                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="markCompletedButton"/>
+                                                        </BookingCompletionButton>
+                                                    </form>
+                                                )}
+
+                                            {/* Withdraw — available strictly before scheduled journey end. */}
+                                            {["pending", "accepted", "confirmed"].includes(booking.status) &&
+                                                booking.vehicle_id &&
+                                                booking.pickup_at &&
+                                                Number.isFinite(Date.parse(booking.pickup_at)) &&
+                                                booking.estimated_duration_minutes != null &&
+                                                new Date(booking.pickup_at).getTime() +
+                                                    booking.estimated_duration_minutes * 60_000 > withdrawalReferenceTime && (
+                                                    <form action={withdrawAssignedBooking}>
+                                                        <input type="hidden" name="bookingId" value={booking.id} />
+                                                        <input type="hidden" name="chauffeurId" value={chauffeurRow.id} />
+
+                                                        <BookingWithdrawalButton className={formStyles.smallButton}>
+                                                            <TranslatedText sectionName="chauffeurDashboardPage" textKey="withdrawBookingButton"/>
+                                                        </BookingWithdrawalButton>
+                                                    </form>
+                                                )}
+                                        </div>
                                     </td>
                                 </tr>
                             </Fragment>

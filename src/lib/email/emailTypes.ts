@@ -62,3 +62,29 @@ export type AssignmentAlertEmailData = {
     statusReason: string;
     bookings: AssignmentAlertEmailBooking[];
 };
+
+/* ============================================================
+   CHAUFFEUR WITHDRAWAL EMAIL DATA
+
+   Information used to prepare two notification previews:
+   - Admin: a chauffeur withdrew from an assignment.
+   - Chauffeur: confirmation of their withdrawal.
+
+   The customer's booking remains active.
+   No client withdrawal notification is generated.
+============================================================ */
+
+export type ChauffeurWithdrawalEmailData = {
+    bookingId: string;
+
+    /* Customer and journey information. */
+    clientName: string;
+    pickupLocation: string;
+    destination: string;
+    pickupDate: string;
+    pickupTime: string;
+
+    /* Chauffeur information for the notification previews. */
+    chauffeurName: string;
+    chauffeurEmail: string;
+};

@@ -1411,6 +1411,59 @@ export const translations = {
         tr: "İptal",
         fa: "لغو",
     },
+    /*
+        CHAUFFEUR BOOKING WITHDRAWAL
+
+        Multilingual button labels and confirmation messages.
+        Withdrawal releases the chauffeur assignment but
+        does not cancel the customer's booking.
+    */
+    withdrawBookingButton: {
+        en: "Withdraw from Booking",
+        nl: "Terugtrekken uit rit",
+        ar: "الانسحاب من الحجز",
+        tr: "Rezervasyondan çekil",
+        fa: "انصراف از رزرو",
+    },
+    bookingWithdrawalConfirm: {
+        en: "Are you sure you want to withdraw from this booking? The customer's reservation will remain active and become available for reassignment.",
+        nl: "Weet u zeker dat u zich wilt terugtrekken uit deze rit? De reservering van de klant blijft actief en kan opnieuw aan een chauffeur worden toegewezen.",
+        ar: ".هل أنت متأكد من رغبتك في الانسحاب من هذا الحجز؟ سيبقى حجز العميل نشطًا وسيكون متاحًا لإعادة تعيين سائق آخر",
+        tr: "Bu rezervasyondan çekilmek istediğinizden emin misiniz? Müşterinin rezervasyonu aktif kalacak ve başka bir sürücüye yeniden atanabilecektir.",
+        fa: ".آیا مطمئن هستید که می‌خواهید از این رزرو انصراف دهید؟ رزرو مشتری فعال باقی می‌ماند و امکان واگذاری مجدد آن به راننده دیگری وجود خواهد داشت",
+    },
+    bookingWithdrawalConfirmButton: {
+        en: "Confirm Withdrawal",
+        nl: "Terugtrekking bevestigen",
+        ar: "تأكيد الانسحاب",
+        tr: "Çekilmeyi onayla",
+        fa: "تأیید انصراف",
+    },
+    bookingWithdrawalCancel: {
+        en: "Cancel",
+        nl: "Annuleren",
+        ar: "إلغاء",
+        tr: "İptal",
+        fa: "لغو",
+    },
+    /*
+        CHAUFFEUR WITHDRAWAL — RESULT MESSAGES
+        Display translated feedback after the protected withdrawal server action completes or fails.
+    */
+    bookingWithdrawnSuccess: {
+        en: "You have successfully withdrawn from this booking. The reservation remains active and is available for reassignment.",
+        nl: "U heeft zich succesvol teruggetrokken uit deze rit. De reservering blijft actief en kan opnieuw worden toegewezen.",
+        ar: ".لقد انسحبت بنجاح من هذا الحجز. سيبقى الحجز نشطًا ومتاحًا لإعادة تعيين سائق آخر",
+        tr: "Bu rezervasyondan başarıyla çekildiniz. Rezervasyon aktif kalacak ve başka bir sürücüye yeniden atanabilecektir.",
+        fa: ".شما با موفقیت از این رزرو انصراف دادید. رزرو فعال باقی می‌ماند و امکان واگذاری مجدد آن وجود دارد",
+    },
+    bookingWithdrawalFailed: {
+        en: "Unable to withdraw from this booking. The journey may have ended or the assignment may have changed.",
+        nl: "Terugtrekken uit deze rit is niet mogelijk. Mogelijk is de rit al afgelopen of is de toewijzing gewijzigd.",
+        ar: ".تعذر الانسحاب من هذا الحجز. ربما انتهت الرحلة أو تغير تعيين السائق",
+        tr: "Bu rezervasyondan çekilinemedi. Yolculuk sona ermiş veya sürücü ataması değişmiş olabilir.",
+        fa: ".انصراف از این رزرو امکان‌پذیر نیست. ممکن است سفر پایان یافته یا تخصیص راننده تغییر کرده باشد",
+    },
   },
 
   chauffeurOpenBookingsPage: {
