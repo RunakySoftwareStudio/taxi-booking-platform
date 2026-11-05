@@ -13531,3 +13531,438 @@ COMMIT;
 ============================================================ */
 
 GRANT SELECT ON TABLE public.user_profiles TO authenticated;
+
+/* ============================================================
+   VOYA TAXI — FINANCIAL MANAGEMENT & INVOICING
+   ============================================================
+
+   Purpose:
+   Manage financial obligations between Voya Taxi and
+   chauffeurs using the booking platform.
+
+   This section includes:
+   1. Historical chauffeur service-fee percentages.
+   2. Completed journey commission records.
+   3. Client and chauffeur financial adjustments.
+   4. Chauffeur invoicing and payment tracking.
+
+   Commission calculations use the accepted journey
+   quotation amount excluding passenger VAT.
+
+   Only completed bookings are eligible for commission.
+
+   VOYA TAXI — FINANCIAL MANAGEMENT & INVOICING
+    │
+    ├── FINANCIAL SERVICE FEE RATES
+    │   └── Table, constraints, RLS and permissions
+    │
+    ├── DEFAULT SERVICE FEE MANAGEMENT
+    │   └── PostgreSQL RPC
+    │
+    ├── CHAUFFEUR COMMISSIONS (future)
+    │
+    ├── FINANCIAL ADJUSTMENTS (future)
+    │
+    └── INVOICING (future)
+============================================================ */
+    /* ============================================================
+    VOYA TAXI — FINANCIAL SERVICE FEE RATES
+
+    Purpose:
+    Store historical service-fee percentages for:
+    1. All chauffeurs (default rate).
+    2. Individual chauffeurs (specific rate).
+
+    A NULL chauffeur_id represents the default rate.
+
+    Rates use inclusive start and exclusive end dates.
+    NULL effective_until means no scheduled end.
+
+    Overlapping rate periods are prohibited.
+    ============================================================ */
+
+    /*------------------------------------------
+    SECTION 1 — Enable GiST equality support for UUIDs.
+    Required for preventing overlapping chauffeur-specific rate periods using an exclusion constraint.
+    --------------------------------------------*/
+    CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+    /*--------------------------------------
+    SECTION 2 — Create the historical service-fee table.
+    No default commission percentage is inserted yet.
+    ----------------------------------------*/
+    CREATE TABLE public.financial_service_fee_rates (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+        chauffeur_id UUID NULL
+            REFERENCES public.chauffeurs(id) ON DELETE RESTRICT,
+
+        percentage NUMERIC(7,4) NOT NULL,
+
+        effective_from DATE NOT NULL,
+        effective_until DATE NULL,
+
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+        CONSTRAINT financial_service_fee_percentage_valid CHECK (percentage >= 0 AND percentage <= 100),
+        CONSTRAINT financial_service_fee_dates_valid CHECK (effective_until IS NULL OR effective_until > effective_from)
+    );
+
+    /*-------------------------------------------------
+    SECTION 3 — Prevent overlapping chauffeur-specific rates.
+    For the same chauffeur, only one rate may apply to a given calendar date.
+    -----------------------------------------------*/
+    ALTER TABLE public.financial_service_fee_rates
+    ADD CONSTRAINT financial_service_fee_chauffeur_no_overlap
+    EXCLUDE USING gist (
+        chauffeur_id WITH =,
+        daterange(effective_from, effective_until,'[)') WITH &&
+    )
+    WHERE (chauffeur_id IS NOT NULL);
+
+    /*------------------------------------------
+    SECTION 4 — Prevent overlapping default rates.
+    Only one default rate may apply on any date.
+    -------------------------------------------------*/
+    ALTER TABLE public.financial_service_fee_rates
+    ADD CONSTRAINT financial_service_fee_default_no_overlap
+    EXCLUDE USING gist (
+        daterange(effective_from, effective_until,'[)') WITH &&
+    )
+    WHERE (chauffeur_id IS NULL);
+
+    /*---------------------------------------
+    SECTION 5 — Enable Row Level Security.
+    Financial configuration must not be accessible directly to anonymous or authenticated clients.
+    Future Admin operations will use an authenticated, authorized server-side service.
+    -------------------------------------*/
+    ALTER TABLE public.financial_service_fee_rates
+    ENABLE ROW LEVEL SECURITY;
+
+    /*-----------------------------------------
+    SECTION 6 — Restrict database permissions.
+    Only the service_role receives direct table access.
+    The application must verify Admin authorization.
+    ------------------------------------------------*/
+    REVOKE ALL ON TABLE public.financial_service_fee_rates
+    FROM PUBLIC, anon, authenticated;
+
+    GRANT SELECT, INSERT, UPDATE, DELETE
+    ON TABLE public.financial_service_fee_rates
+    TO service_role;
+
+    /*---------------------------------------------
+    SECTION 7 — Documentation.
+    -----------------------------------------------*/
+    COMMENT ON TABLE public.financial_service_fee_rates IS
+    'Historical default and chauffeur-specific Voya Taxi service-fee rates.';
+
+    COMMENT ON COLUMN public.financial_service_fee_rates.chauffeur_id IS
+    'NULL represents the default rate; otherwise references an individual chauffeur.';
+
+    COMMENT ON COLUMN public.financial_service_fee_rates.percentage IS
+    'Service fee percentage applied to the VAT-exclusive journey fare.';
+
+    COMMENT ON COLUMN public.financial_service_fee_rates.effective_until IS
+    'Exclusive end date. NULL means the rate has no scheduled end.';
+    /* ======================================================================================================
+    END VOYA TAXI — FINANCIAL SERVICE FEE RATES
+    =====================================================================================================*/
+
+    /* ============================================================
+    VOYA TAXI — SERVICE FEE CLOSURE TRACKING
+
+    Purpose:
+    Record why a service-fee period was closed.
+
+    Business rules:
+    1. NULL means the rate is open-ended.
+    2. 'replaced' means another rate replaced this rate.
+    3. 'manual' means Admin intentionally ended the rate.
+    4. A rate may only have a closure reason when it has
+        an effective end date.
+    5. An ended rate must have a closure reason.
+
+    Historical financial rates must remain protected.
+    ============================================================ */
+
+    /* SECTION 1 — Add closure reason to service-fee rates. */
+    ALTER TABLE public.financial_service_fee_rates
+    ADD COLUMN closure_reason TEXT NULL;
+
+    /* SECTION 2 — Restrict closure reasons to valid values. */
+    ALTER TABLE public.financial_service_fee_rates
+    ADD CONSTRAINT financial_service_fee_closure_reason_valid
+    CHECK (
+        (effective_until IS NULL AND closure_reason IS NULL)
+        OR
+        (effective_until IS NOT NULL
+        AND closure_reason IN ('system_ended', 'admin_ended'))
+    );
+
+    /* SECTION 3 — Document the new column. */
+    COMMENT ON COLUMN public.financial_service_fee_rates.closure_reason IS
+    'NULL for open-ended rates; system_ended when automatically closed by scheduling a new rate; admin_ended when intentionally ended by Admin.';
+    /* ======================================================================================================
+    END VOYA TAXI — SERVICE FEE CLOSURE TRACKING
+    =====================================================================================================*/
+
+    /* ============================================================
+    VOYA TAXI — DEFAULT SERVICE FEE MANAGEMENT
+
+    Purpose:
+    Safely schedule a new default chauffeur service-fee rate
+    while preserving historical financial configuration.
+
+    Only the service_role may execute this function.
+    The Next.js server must independently verify Admin access.
+    ============================================================ */
+    CREATE OR REPLACE FUNCTION public.set_default_service_fee_rate(
+        p_percentage NUMERIC,
+        p_effective_from DATE
+    )
+    RETURNS UUID
+    LANGUAGE plpgsql
+    SECURITY INVOKER
+    SET search_path = ''
+    AS $$
+    DECLARE
+        v_previous_rate public.financial_service_fee_rates%ROWTYPE;
+        v_new_rate_id UUID;
+        v_today DATE;
+    BEGIN
+        /*-------------------------------
+        SECTION 1 — Validate input.
+        Use the Netherlands calendar date consistently for service-fee configuration.
+        -----------------------------------*/
+        v_today := (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Amsterdam')::DATE;
+
+        IF p_percentage IS NULL
+        OR p_percentage < 0
+        OR p_percentage > 100 THEN
+            RAISE EXCEPTION 'Service-fee percentage must be between 0 and 100.';
+        END IF;
+
+        /*
+        A new service-fee rate must start on a future date.
+        This prevents same-day changes from affecting
+        journeys completed earlier today.
+        */
+        IF p_effective_from IS NULL
+        OR p_effective_from <= v_today THEN
+            RAISE EXCEPTION
+                'Effective date must be later than today.';
+        END IF;
+
+        /*--------------------------------------------
+        SECTION 2 — Serialize default-rate changes.
+        Prevent two simultaneous Admin requests from modifying the default schedule concurrently.
+        ----------------------------------------------*/
+        PERFORM pg_catalog.pg_advisory_xact_lock(506, 1);
+
+        /*-----------------------------------------
+        SECTION 3 — Find the latest default rate.
+        -----------------------------------------*/
+        SELECT *
+        INTO v_previous_rate
+        FROM public.financial_service_fee_rates
+        WHERE chauffeur_id IS NULL
+        ORDER BY effective_from DESC
+        LIMIT 1
+        FOR UPDATE;
+
+        /*-----------------------------------------
+        SECTION 4 — Prevent conflicting schedules.
+        Existing future rates must be preserved.
+        A new rate can only start after the latest configured rate's start date.
+        -------------------------------------------*/
+        IF v_previous_rate.id IS NOT NULL
+        AND p_effective_from <= v_previous_rate.effective_from THEN
+            RAISE EXCEPTION
+                'New effective date must be after the latest configured rate start date.';
+        END IF;
+
+        /*
+        Only an open-ended latest rate may be replaced.
+        A closed latest rate requires a separate scheduling operation, preventing accidental gaps or changes to existing historical periods.
+        */
+        IF v_previous_rate.id IS NOT NULL
+        AND v_previous_rate.effective_until IS NOT NULL THEN
+            RAISE EXCEPTION
+                'Latest default service-fee rate is already closed.';
+        END IF;
+
+        /*--------------------------------------------
+        SECTION 5 — Close the previous rate if necessary.
+        End dates are exclusive.
+        Previously completed historical periods remain unchanged.
+        --------------------------------------------*/
+        IF v_previous_rate.id IS NOT NULL
+        AND (
+            v_previous_rate.effective_until IS NULL
+            OR v_previous_rate.effective_until > p_effective_from
+        ) THEN
+            /* Close the previous rate and record the closure reason. */
+            UPDATE public.financial_service_fee_rates
+            SET effective_until = p_effective_from,
+                closure_reason = 'system_ended'
+            WHERE id = v_previous_rate.id;
+        END IF;
+
+        /*---------------------------------------------
+        SECTION 6 — Insert the new default rate.
+        An open-ended rate remains applicable until a later rate is scheduled.
+        -------------------------------------------------*/
+        INSERT INTO public.financial_service_fee_rates (
+            chauffeur_id,
+            percentage,
+            effective_from,
+            effective_until
+        )
+        VALUES (
+            NULL,
+            p_percentage,
+            p_effective_from,
+            NULL
+        )
+        RETURNING id INTO v_new_rate_id;
+
+        RETURN v_new_rate_id;
+    END;
+    $$;
+
+    /*---------------------------------------------
+    SECTION 7 — Restrict execution permissions.
+    No direct browser or authenticated-client access.
+    ------------------------------------------*/
+    REVOKE ALL ON FUNCTION public.set_default_service_fee_rate(NUMERIC, DATE)
+    FROM PUBLIC, anon, authenticated;
+
+    GRANT EXECUTE
+    ON FUNCTION public.set_default_service_fee_rate(NUMERIC, DATE)
+    TO service_role;
+
+    /*--------------------------
+    SECTION 8 — Documentation.
+    ------------------------------*/
+    COMMENT ON FUNCTION public.set_default_service_fee_rate(NUMERIC, DATE) IS
+    'Schedules a default chauffeur service-fee rate, closes overlapping previous open-ended periods and preserves historical rates.';
+    /* ======================================================================================================
+    END VOYA TAXI — DEFAULT SERVICE FEE MANAGEMENT
+    =====================================================================================================*/
+
+    /* ============================================================
+    VOYA TAXI — DEFAULT SERVICE FEE REMOVAL
+
+    Purpose:
+    Remove the latest unused future default service-fee
+    rate and safely restore the previous rate if needed.
+
+    Security:
+    Only service_role may execute this function.
+    Next.js must independently verify Admin authorization.
+
+    Business rules:
+    1. Only the latest scheduled default rate can be removed.
+    2. The effective start date must still be in the future.
+    3. Restore the previous rate to Ongoing when safely possible.
+    4. Reject removal if the previous period cannot be restored.
+    5. Execute deletion and restoration atomically.
+
+    Limitation:
+    Financial commission-reference checks are not yet implemented.
+    ============================================================ */
+
+    CREATE OR REPLACE FUNCTION public.remove_default_service_fee_rate(
+        p_rate_id UUID
+    )
+    RETURNS UUID
+    LANGUAGE plpgsql
+    SECURITY INVOKER
+    SET search_path = ''
+    AS $$
+    DECLARE
+        v_latest public.financial_service_fee_rates%ROWTYPE;
+        v_previous public.financial_service_fee_rates%ROWTYPE;
+        v_today DATE;
+    BEGIN
+        /* SECTION 1 — Validate the request. */
+        IF p_rate_id IS NULL THEN
+            RAISE EXCEPTION 'Service-fee rate ID is required.';
+        END IF;
+
+        v_today := (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Amsterdam')::DATE;
+
+        /* SECTION 2 — Serialize default-rate changes. */
+        PERFORM pg_catalog.pg_advisory_xact_lock(506, 1);
+
+        /* SECTION 3 — Lock and identify the latest default rate. */
+        SELECT * INTO v_latest
+        FROM public.financial_service_fee_rates
+        WHERE chauffeur_id IS NULL
+        ORDER BY effective_from DESC
+        LIMIT 1
+        FOR UPDATE;
+
+        IF v_latest.id IS NULL OR v_latest.id <> p_rate_id THEN
+            RAISE EXCEPTION 'Only the latest default service-fee rate can be removed.';
+        END IF;
+
+        IF v_latest.effective_from <= v_today THEN
+            RAISE EXCEPTION 'Historical or active service-fee rates cannot be removed.';
+        END IF;
+
+        /* SECTION 4 — Locate the preceding default rate. */
+        SELECT * INTO v_previous
+        FROM public.financial_service_fee_rates
+        WHERE chauffeur_id IS NULL
+        AND effective_from < v_latest.effective_from
+        ORDER BY effective_from DESC
+        LIMIT 1
+        FOR UPDATE;
+
+        /*
+        Only automatically ended periods may be restored.
+        Admin-ended periods must remain protected.
+        */
+        IF v_previous.id IS NOT NULL
+        AND (
+            v_previous.effective_until IS DISTINCT FROM v_latest.effective_from
+            OR v_previous.closure_reason IS DISTINCT FROM 'system_ended'
+        ) THEN
+            RAISE EXCEPTION 'Previous service-fee period cannot be safely restored.';
+        END IF;
+
+        /* SECTION 5 — Delete the future rate. */
+        DELETE FROM public.financial_service_fee_rates
+        WHERE id = v_latest.id;
+
+        /* SECTION 6 — Reopen the previous rate, if present. */
+        IF v_previous.id IS NOT NULL THEN
+            /* Restore the previous rate and clear its closure reason. */
+            UPDATE public.financial_service_fee_rates
+            SET effective_until = NULL,
+                closure_reason = NULL
+            WHERE id = v_previous.id;
+        END IF;
+
+        RETURN p_rate_id;
+    END;
+    $$;
+
+    /* SECTION 7 — Restrict execution permissions. */
+    REVOKE ALL ON FUNCTION public.remove_default_service_fee_rate(UUID)
+    FROM PUBLIC, anon, authenticated;
+
+    GRANT EXECUTE ON FUNCTION public.remove_default_service_fee_rate(UUID)
+    TO service_role;
+
+    /* SECTION 8 — Documentation. */
+    COMMENT ON FUNCTION public.remove_default_service_fee_rate(UUID) IS
+    'Removes the latest future default service-fee rate and safely restores the preceding period when applicable.';
+    /* ===========================================================
+        END VOYA TAXI — DEFAULT SERVICE FEE REMOVAL
+    =============================================================*/
+/* ======================================================================================================
+END VOYA TAXI — FINANCIAL MANAGEMENT & INVOICING
+=========================================================================================================*/

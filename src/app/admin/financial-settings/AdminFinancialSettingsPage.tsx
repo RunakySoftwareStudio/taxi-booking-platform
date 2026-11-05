@@ -8,33 +8,23 @@ import { pageStyles, formStyles } from "@/styles/classNames";
     Settings and database operations will be added separately.
 */
 export default function AdminFinancialSettingsPage() {
+
     return (
         <main className={pageStyles.main}>
             <div className={pageStyles.container}>
-                <Link href="/admin" className={formStyles.link}>
-                    ← Back to Admin Dashboard
-                </Link>
-
-                <h1 className="mt-6 text-2xl font-bold text-white">
-                    Financial Settings
-                </h1>
-
-                <p className="mt-2 text-slate-300">
-                    Manage Voya Taxi service fees, discounts, and surcharges.
-                </p>
+                <Link href="/admin" className={formStyles.link}> ← Back to Admin Dashboard</Link>
+                <h1 className="mt-6 text-2xl font-bold text-white"> Financial Settings</h1>
+                <p className="mt-2 text-slate-300"> Manage Voya Taxi service fees, discounts, and surcharges.</p>
 
                 {/* Chauffeur service compensation */}
                 <section className="mt-8 rounded-lg border border-slate-700 p-6">
-                    <h2 className="text-xl font-semibold text-white">
-                        Chauffeur Service Compensation
-                    </h2>
-                    <p className="mt-2 text-slate-300">
-                        Configure the percentage charged to chauffeurs for using
-                        the Voya Taxi booking platform.
-                    </p>
-                    <p className="mt-4 text-sm text-slate-400">
-                        Default service fee: Not configured
-                    </p>
+                    <h2 className="text-xl font-semibold text-white"> Chauffeur Service Compensation</h2>
+                    <p className="mt-2 text-slate-300">Configure the percentage charged to chauffeurs for using the Voya Taxi booking platform.</p>
+                    {/* Navigate to service-fee rate management. */}
+                    <Link href="/admin/financial-settings/service-fees"
+                        className="mt-4 inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500">
+                        Manage Service Fee Rates
+                    </Link>
                 </section>
 
                 {/* Client discounts and surcharges */}
@@ -62,6 +52,8 @@ export default function AdminFinancialSettingsPage() {
                         No adjustments configured.
                     </p>
                 </section>
+
+
             </div>
         </main>
     );
