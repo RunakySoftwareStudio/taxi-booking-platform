@@ -14211,6 +14211,421 @@ GRANT SELECT ON TABLE public.user_profiles TO authenticated;
     /* ===========================================================
         END update_booking_financial_exclusion
     =============================================================*/
+    /* ============================================================
+    VOYA TAXI — CHAUFFEUR BOOKING COMMISSIONS
+
+    Purpose:
+    Store one historical service-fee commission per
+    completed and financially eligible booking.
+
+    Financial rules:
+    - One commission record per booking.
+    - Commission basis excludes passenger VAT.
+    - Applied percentage and amounts are frozen snapshots.
+    - Historical financial references cannot be deleted.
+    - Commission generation requires a protected RPC.
+    - Financially excluded bookings must never generate
+        commissions.
+
+    This migration creates the table only.
+    It does not generate commission records.
+    ============================================================ */
+
+    CREATE TABLE public.chauffeur_booking_commissions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+        /* One commission per completed booking. */
+        booking_id UUID NOT NULL UNIQUE
+            REFERENCES public.bookings(id) ON DELETE RESTRICT,
+
+        /* Preserve the chauffeur responsible for the service fee. */
+        chauffeur_id UUID NOT NULL
+            REFERENCES public.chauffeurs(id) ON DELETE RESTRICT,
+
+        /* Reference the accepted journey quotation. */
+        journey_quote_id UUID NOT NULL
+            REFERENCES public.journey_quotes(quote_id) ON DELETE RESTRICT,
+
+        /* Reference the applicable historical service-fee rate. */
+        service_fee_rate_id UUID NOT NULL
+            REFERENCES public.financial_service_fee_rates(id) ON DELETE RESTRICT,
+
+        /* Official completion timestamp used for rate selection. */
+        completed_at TIMESTAMPTZ NOT NULL,
+
+        /* Frozen journey amount excluding passenger VAT. */
+        journey_amount_excluding_vat NUMERIC(12,4) NOT NULL,
+
+        /* Frozen service-fee percentage applied to the journey. */
+        applied_percentage NUMERIC(7,4) NOT NULL,
+
+        /* Frozen calculated chauffeur service fee, excluding invoice VAT. */
+        commission_amount NUMERIC(12,4) NOT NULL,
+
+        /* Preserve the currency from the accepted quotation. */
+        currency_code VARCHAR(3) NOT NULL,
+
+        /* Timestamp when the commission record was generated. */
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+        /* --------------------------------------------------------
+        FINANCIAL VALIDATION CONSTRAINTS
+        -------------------------------------------------------- */
+
+        CONSTRAINT chauffeur_booking_commissions_journey_amount_valid
+            CHECK (journey_amount_excluding_vat >= 0),
+
+        CONSTRAINT chauffeur_booking_commissions_percentage_valid
+            CHECK (applied_percentage BETWEEN 0 AND 100),
+
+        CONSTRAINT chauffeur_booking_commissions_amount_valid
+            CHECK (commission_amount >= 0),
+
+        CONSTRAINT chauffeur_booking_commissions_currency_valid
+            CHECK (currency_code ~ '^[A-Z]{3}$')
+    );
+
+    /* Improve financial reporting by chauffeur and completion date. */
+    CREATE INDEX chauffeur_booking_commissions_chauffeur_date_idx
+    ON public.chauffeur_booking_commissions (
+        chauffeur_id,
+        completed_at
+    );
+
+    /* ============================================================
+    SECURITY — CHAUFFEUR BOOKING COMMISSIONS
+
+    Commission records are created by trusted server-side
+    operations. Historical snapshots must not be silently
+    modified or deleted by application database roles.
+    ============================================================ */
+
+    ALTER TABLE public.chauffeur_booking_commissions
+    ENABLE ROW LEVEL SECURITY;
+
+    /* Deny direct access to ordinary application users. */
+    REVOKE ALL ON TABLE public.chauffeur_booking_commissions
+    FROM PUBLIC, anon, authenticated;
+
+    /* Limit service_role to reading and inserting commissions. */
+    REVOKE ALL ON TABLE public.chauffeur_booking_commissions
+    FROM service_role;
+
+    GRANT SELECT, INSERT
+    ON TABLE public.chauffeur_booking_commissions
+    TO service_role;
+
+    /* Document the financial purpose directly in PostgreSQL. */
+    COMMENT ON TABLE public.chauffeur_booking_commissions IS
+    'Historical chauffeur service-fee commissions for completed,
+    financially eligible bookings. Each record preserves the applied rate,
+    VAT-exclusive journey amount and calculated commission.';
+
+    COMMENT ON COLUMN public.chauffeur_booking_commissions.commission_amount IS
+    'Frozen chauffeur service fee calculated from the journey amount
+    excluding passenger VAT. Does not include VAT potentially
+    charged on the Voya Taxi service-fee invoice.';
+    /* ===========================================================
+        END VOYA TAXI — CHAUFFEUR BOOKING COMMISSIONS
+    =============================================================*/
+
+    /* ============================================================
+    VOYA TAXI — CHAUFFEUR COMMISSION GENERATION
+
+    Purpose:
+    Generate one historical chauffeur service-fee commission
+    for a completed, financially eligible booking.
+
+    Business rules:
+    - Completed bookings only.
+    - Financially excluded bookings are rejected.
+    - Accepted journey quotation required.
+    - Commission basis excludes passenger VAT.
+    - Chauffeur-specific rates override default rates.
+    - Rate selection uses the Amsterdam completion date.
+    - Existing commissions are returned without recalculation.
+    - Booking row locking coordinates with financial exclusion.
+    ============================================================ */
+
+    CREATE OR REPLACE FUNCTION public.generate_chauffeur_booking_commission(
+        p_booking_id UUID
+    )
+    RETURNS UUID
+    LANGUAGE plpgsql
+    SECURITY INVOKER
+    SET search_path = ''
+    AS $function$
+    DECLARE
+        v_status public.booking_status;
+        v_excluded BOOLEAN;
+        v_chauffeur_id UUID;
+        v_quote_id UUID;
+        v_completed_at TIMESTAMPTZ;
+        v_completion_date DATE;
+
+        v_quote_status public.journey_quote_status;
+        v_currency_code VARCHAR(3);
+        v_journey_amount NUMERIC(12,4);
+        v_vat_amount NUMERIC(12,4);
+        v_total_before_rounding NUMERIC(12,4);
+
+        v_rate_id UUID;
+        v_percentage NUMERIC(7,4);
+        v_commission_amount NUMERIC(12,4);
+        v_commission_id UUID;
+    BEGIN
+        /* SECTION 1: Validate the booking identifier. */
+        IF p_booking_id IS NULL THEN
+            RAISE EXCEPTION 'Booking ID is required.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        /* SECTION 2: Lock and retrieve the booking. */
+        SELECT
+            status,
+            is_financially_excluded,
+            chauffeur_id,
+            journey_quote_id,
+            completed_at
+        INTO
+            v_status,
+            v_excluded,
+            v_chauffeur_id,
+            v_quote_id,
+            v_completed_at
+        FROM public.bookings
+        WHERE id = p_booking_id
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Booking was not found.'
+            USING ERRCODE = 'P0002';
+        END IF;
+
+        /* SECTION 3: Return an existing frozen commission. */
+        SELECT id INTO v_commission_id
+        FROM public.chauffeur_booking_commissions
+        WHERE booking_id = p_booking_id;
+
+        IF FOUND THEN
+            RETURN v_commission_id;
+        END IF;
+
+        /* SECTION 4: Verify financial eligibility. */
+        IF v_status <> 'completed' OR v_completed_at IS NULL THEN
+            RAISE EXCEPTION 'Only completed bookings can generate commissions.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        IF v_excluded IS DISTINCT FROM FALSE THEN
+            RAISE EXCEPTION 'Financially excluded bookings cannot generate commissions.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        IF v_chauffeur_id IS NULL OR v_quote_id IS NULL THEN
+            RAISE EXCEPTION 'Booking requires a chauffeur and accepted quotation.'
+            USING ERRCODE = '22023';
+        END IF;
+
+       /* Use the official completion date in Amsterdam.
+            := means: assigns (v_completed_at AT TIME ZONE 'Europe/Amsterdam')::DATE; to v_completion_date.
+            SELECT '2026-11-06'::DATE; means SELECT CAST('2026-11-06' AS DATE);
+        */
+        v_completion_date := (v_completed_at AT TIME ZONE 'Europe/Amsterdam')::DATE;
+
+        /* SECTION 5: Retrieve the accepted quotation. */
+        SELECT
+            status,
+            currency_code,
+            basic_fare_excluding_vat,
+            vat_amount,
+            total_including_vat_before_rounding
+        INTO
+            v_quote_status,
+            v_currency_code,
+            v_journey_amount,
+            v_vat_amount,
+            v_total_before_rounding
+        FROM public.journey_quotes
+        WHERE quote_id = v_quote_id
+        FOR SHARE;
+
+        IF NOT FOUND OR v_quote_status IS DISTINCT FROM 'accepted' THEN
+            RAISE EXCEPTION 'An accepted journey quotation is required.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        /* Validate the historical VAT-exclusive calculation basis. */
+        IF v_journey_amount IS NULL
+        OR v_journey_amount < 0
+        OR v_vat_amount IS NULL
+        OR v_total_before_rounding IS NULL
+        OR v_journey_amount <>
+            (v_total_before_rounding - v_vat_amount) THEN
+            RAISE EXCEPTION 'Journey quotation amounts are inconsistent.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        /* SECTION 6: Select the applicable historical service fee.
+        Chauffeur-specific rates take priority over the default. */
+        SELECT
+            id,
+            percentage
+        INTO
+            v_rate_id,
+            v_percentage
+        FROM public.financial_service_fee_rates
+        WHERE (chauffeur_id = v_chauffeur_id OR chauffeur_id IS NULL)
+        AND effective_from <= v_completion_date
+        AND (
+            effective_until IS NULL
+            OR v_completion_date < effective_until
+        )
+        ORDER BY
+            (chauffeur_id IS NOT NULL) DESC,
+            effective_from DESC
+        LIMIT 1
+        FOR SHARE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION
+                'No applicable chauffeur service-fee rate exists for this completion date.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        /* SECTION 7: Calculate the frozen commission amount.
+            := means: assigns ROUND(v_journey_amount * v_percentage / 100, 4); to v_commission_amount.
+        */
+        v_commission_amount := ROUND(v_journey_amount * v_percentage / 100, 4);
+
+        /* SECTION 8: Insert the historical commission snapshot. */
+        INSERT INTO public.chauffeur_booking_commissions (
+            booking_id,
+            chauffeur_id,
+            journey_quote_id,
+            service_fee_rate_id,
+            completed_at,
+            journey_amount_excluding_vat,
+            applied_percentage,
+            commission_amount,
+            currency_code
+        )
+        VALUES (
+            p_booking_id,
+            v_chauffeur_id,
+            v_quote_id,
+            v_rate_id,
+            v_completed_at,
+            v_journey_amount,
+            v_percentage,
+            v_commission_amount,
+            v_currency_code
+        )
+        RETURNING id INTO v_commission_id;
+
+        RETURN v_commission_id;
+    END;
+    $function$;
+
+    /* ============================================================
+    SECURITY — COMMISSION GENERATION
+    Only trusted service-role operations can execute the RPC.
+    ============================================================ */
+
+    REVOKE ALL ON FUNCTION public.generate_chauffeur_booking_commission(UUID)
+    FROM PUBLIC, anon, authenticated;
+
+    GRANT EXECUTE
+    ON FUNCTION public.generate_chauffeur_booking_commission(UUID)
+    TO service_role;
+    /* ===========================================================
+        END VOYA TAXI — CHAUFFEUR COMMISSION GENERATION
+    =============================================================*/
+
+    /*============================================================
+        VOYA TAXI — SERVICE-FEE RATE HISTORY PROTECTION
+
+        Preserve historical service-fee rates while allowing
+        controlled future rate scheduling and restoration.
+    ==============================================================*/
+
+    CREATE OR REPLACE FUNCTION public.protect_service_fee_rate_history()
+    RETURNS TRIGGER
+    LANGUAGE plpgsql
+    SET search_path = ''
+    AS $$
+    DECLARE
+        v_today DATE;
+    BEGIN
+        v_today := (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Amsterdam')::DATE;
+
+        /* SECTION 1: Historical and active rates cannot be deleted. */
+        IF TG_OP = 'DELETE' THEN
+            IF OLD.effective_from <= v_today THEN
+                RAISE EXCEPTION
+                    'Historical or active service-fee rates cannot be deleted.'
+                USING ERRCODE = '22023';
+            END IF;
+
+            RETURN OLD;
+        END IF;
+
+        /* SECTION 2: Preserve rate identity and financial meaning. */
+        IF ROW(
+            NEW.id,
+            NEW.chauffeur_id,
+            NEW.percentage,
+            NEW.effective_from,
+            NEW.created_at
+        ) IS DISTINCT FROM ROW(
+            OLD.id,
+            OLD.chauffeur_id,
+            OLD.percentage,
+            OLD.effective_from,
+            OLD.created_at
+        ) THEN
+            RAISE EXCEPTION
+                'Service-fee rate identity and percentage cannot be changed.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        /* SECTION 3: No changes to the rate period. */
+        IF NEW.effective_until IS NOT DISTINCT FROM OLD.effective_until
+        AND NEW.closure_reason IS NOT DISTINCT FROM OLD.closure_reason THEN
+            RETURN NEW;
+        END IF;
+
+        /* SECTION 4: Allow closing an open rate on a future date. */
+        IF OLD.effective_until IS NULL
+        AND NEW.effective_until > v_today
+        AND NEW.closure_reason = 'system_ended' THEN
+            RETURN NEW;
+        END IF;
+
+        /* SECTION 5: Allow restoring a future system-closed period. */
+        IF OLD.effective_until > v_today
+        AND OLD.closure_reason = 'system_ended'
+        AND NEW.effective_until IS NULL
+        AND NEW.closure_reason IS NULL THEN
+            RETURN NEW;
+        END IF;
+
+        RAISE EXCEPTION
+            'Service-fee rate period cannot be modified.'
+        USING ERRCODE = '22023';
+    END;
+    $$;
+
+    /* Install the protection on the rate table. */
+    CREATE TRIGGER protect_service_fee_rate_history
+    BEFORE UPDATE OR DELETE
+    ON public.financial_service_fee_rates
+    FOR EACH ROW
+    EXECUTE FUNCTION public.protect_service_fee_rate_history();
+    /*============================================================
+        END VOYA TAXI — SERVICE-FEE RATE HISTORY PROTECTION
+    ==============================================================*/
+
 /* ======================================================================================================
 END VOYA TAXI — FINANCIAL MANAGEMENT & INVOICING
 =========================================================================================================*/
