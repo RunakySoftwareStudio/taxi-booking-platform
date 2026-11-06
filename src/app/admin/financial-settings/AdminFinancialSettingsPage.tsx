@@ -53,7 +53,24 @@ export default function AdminFinancialSettingsPage() {
                     </p>
                 </section>
 
+                {/* Chauffeur invoicing and commission management */}
+                <section className="mt-6 rounded-lg border border-slate-700 p-6">
+                    <h2 className="text-xl font-semibold text-white">Chauffeur Invoices</h2>
+                    <p className="mt-2 text-slate-300">
+                        Manage completed journey commissions, generate chauffeur invoices, and review historical billing records.
+                    </p>
+                    <p className="mt-4 text-sm text-slate-400">Invoice management is not configured yet.</p>
+                </section>
 
+                {/* Payment settings and chauffeur invoice payments */}
+                <section className="mt-6 rounded-lg border border-slate-700 p-6">
+                    <h2 className="text-xl font-semibold text-white">Payment Management</h2>
+                    <p className="mt-2 text-slate-300">
+                        Manage Voya Taxi bank details, payment terms, chauffeur invoice payments,
+                        and outstanding balances.
+                    </p>
+                    <p className="mt-4 text-sm text-slate-400">Payment management is not configured yet.</p>
+                </section>
             </div>
         </main>
     );

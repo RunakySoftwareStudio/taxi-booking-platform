@@ -4083,7 +4083,18 @@ CREATE TABLE public.bookings (
     has_pets BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    /*
+        BOOKING FINANCIAL EXCLUSION
+        Excludes test bookings, complimentary journeys and other
+        approved exceptions from chauffeur commission invoicing.
+        The administrator must record the reason.
+    */
+    is_financially_excluded BOOLEAN NOT NULL DEFAULT FALSE,
+    financial_exclusion_reason TEXT NULL,
 
+    /* ----------------------------------------------------
+    VOYA TAXI - BOOKING CONSTRAINT
+    ------------------------------------------------------*/
     CONSTRAINT bookings_infant_seat_count_required_valid
         CHECK (infant_seat_count_required >= 0),
 
@@ -4123,8 +4134,7 @@ CREATE TABLE public.bookings (
         ),
 
     /*
-        Completion timestamp and completion source
-        must always be provided together.
+        Completion timestamp and completion source must always be provided together.
     */
     CONSTRAINT bookings_completion_metadata_pair
         CHECK (
@@ -4162,37 +4172,61 @@ CREATE TABLE public.bookings (
             )
         ),
 
-    /*One quote can create no more than one booking.*/
+    /*
+        Require a meaningful reason for financial exclusion.
+        Included bookings must not retain an exclusion reason.
+    */
+    CONSTRAINT bookings_financial_exclusion_reason_consistent
+        CHECK (
+            (
+                is_financially_excluded = TRUE
+                AND financial_exclusion_reason IS NOT NULL
+                AND LENGTH(TRIM(financial_exclusion_reason)) > 0
+            )
+            OR
+            (
+                is_financially_excluded = FALSE
+                AND financial_exclusion_reason IS NULL
+            )
+        ),
+
+    /* One quotation can create no more than one booking. */
     CONSTRAINT bookings_journey_quote_unique
         UNIQUE (journey_quote_id)
-);
+    );
 
-/* ============================================================
-   VOYA TAXI - BOOKING PICKUP TIMEZONE DESCRIPTIONS
+    /* ----------------------------------------------------
+    VOYA TAXI - BOOKING PICKUP TIMEZONE DESCRIPTIONS
+    Purpose: Document the timezone and exact pickup timestamp.
+    ------------------------------------------------------*/
+    /* Official booking completion information. */
+    COMMENT ON COLUMN public.bookings.completed_at IS
+    'Timestamp when the booking was officially confirmed completed, not necessarily when the journey physically ended.';
 
-   Purpose:
-   Document the timezone and exact pickup timestamp.
-============================================================ */
-/* Official booking completion information. */
-COMMENT ON COLUMN public.bookings.completed_at IS
-'Timestamp when the booking was officially confirmed completed, not necessarily when the journey physically ended.';
+    COMMENT ON COLUMN public.bookings.completed_by IS
+    'Completion initiator: admin, chauffeur, or system.';
 
-COMMENT ON COLUMN public.bookings.completed_by IS
-'Completion initiator: admin, chauffeur, or system.';
+    COMMENT ON COLUMN public.bookings.pickup_timezone IS
+    'IANA timezone of the booking pickup location, resolved from geographic coordinates.';
 
-COMMENT ON COLUMN public.bookings.pickup_timezone IS
-'IANA timezone of the booking pickup location, resolved from geographic coordinates.';
+    COMMENT ON COLUMN public.bookings.pickup_at IS
+    'Exact scheduled pickup timestamp, calculated from the pickup local date, time and timezone.';
 
-COMMENT ON COLUMN public.bookings.pickup_at IS
-'Exact scheduled pickup timestamp, calculated from the pickup local date, time and timezone.';
+    /* This tells PostgreSQL: Store this explanation as documentation for bookings.pickup_city.*/
+    COMMENT ON COLUMN public.bookings.pickup_city IS
+    'Privacy-safe pickup city derived from the selected Mapbox location.';
 
-/* This tells PostgreSQL: Store this explanation as documentation for bookings.pickup_city.*/
-COMMENT ON COLUMN public.bookings.pickup_city IS
-'Privacy-safe pickup city derived from the selected Mapbox location.';
-
-COMMENT ON COLUMN public.bookings.destination_city IS
-'Privacy-safe destination city derived from the selected Mapbox location.';
-
+    COMMENT ON COLUMN public.bookings.destination_city IS
+    'Privacy-safe destination city derived from the selected Mapbox location.';
+    /* Exclude test or explicitly exempt bookings from financial processing. */
+    COMMENT ON COLUMN public.bookings.is_financially_excluded IS
+    'When TRUE, prevents the booking from generating chauffeur commissions or invoice items. Intended for test bookings and other explicitly excluded reservations. Does not affect booking status or operational workflows.';
+    /* Document why a booking was excluded from financial processing. */
+    COMMENT ON COLUMN public.bookings.financial_exclusion_reason IS
+    'Administrative explanation for excluding a booking from chauffeur commission invoicing, such as testing, complimentary journeys or waived service fees.';
+/* =================================================================================================================================
+    End Taxi trip booking requests
+==================================================================================================================================== */
 /* ============================================================
    VOYA TAXI — BOOKING CANCELLATIONS
    Date: 2026-10-30
@@ -13962,6 +13996,220 @@ GRANT SELECT ON TABLE public.user_profiles TO authenticated;
     'Removes the latest future default service-fee rate and safely restores the preceding period when applicable.';
     /* ===========================================================
         END VOYA TAXI — DEFAULT SERVICE FEE REMOVAL
+    =============================================================*/
+    /* ============================================================
+    VOYA TAXI — BOOKING FINANCIAL EXCLUSION AUDIT
+
+    Preserve administrative financial exclusion decisions,
+    including previous values, new values and administrator
+    identity. Audit entries are append-only.
+    ============================================================ */
+
+    CREATE TABLE public.booking_financial_exclusion_audit (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+        booking_id UUID NOT NULL
+            REFERENCES public.bookings(id) ON DELETE RESTRICT,
+
+        action TEXT NOT NULL
+            CHECK (action IN ('excluded', 'included', 'reason_updated')),
+
+        changed_by_user_id UUID NOT NULL
+            REFERENCES auth.users(id) ON DELETE RESTRICT,
+
+        changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+        reason TEXT NOT NULL
+            CHECK (LENGTH(TRIM(reason)) > 0),
+
+        old_values JSONB NOT NULL,
+        new_values JSONB NOT NULL
+    );
+
+    /* Restrict audit access to trusted server-side operations. */
+    ALTER TABLE public.booking_financial_exclusion_audit
+    ENABLE ROW LEVEL SECURITY;
+
+    REVOKE ALL ON TABLE public.booking_financial_exclusion_audit
+    FROM PUBLIC, anon, authenticated;
+
+    /* Prevent service_role from modifying or deleting financial audit history. */
+    REVOKE UPDATE, DELETE, TRUNCATE
+    ON TABLE public.booking_financial_exclusion_audit
+    FROM service_role;
+
+    GRANT SELECT, INSERT
+    ON TABLE public.booking_financial_exclusion_audit
+    TO service_role;
+
+    /* Explain the table's purpose in PostgreSQL. */
+    COMMENT ON TABLE public.booking_financial_exclusion_audit IS
+    'Append-only history of administrative financial exclusion changes,
+    including previous values, new values, administrator identity and reason.';
+    /* ===========================================================
+        END VOYA TAXI — BOOKING FINANCIAL EXCLUSION AUDIT
+    =============================================================*/
+    /* ============================================================
+    VOYA TAXI — BOOKING FINANCIAL EXCLUSION RPC
+
+    Purpose:
+    Allow trusted Admin API operations to update financial
+    exclusion settings and record an audit entry atomically.
+
+    Business rules:
+    - Exclusion requires a meaningful reason.
+    - Removing exclusion clears the stored reason.
+    - Completed bookings remain operationally unchanged.
+    - Unchanged values do not create duplicate audit entries.
+    - Existing commission records must be protected.
+    ============================================================ */
+    CREATE OR REPLACE FUNCTION public.update_booking_financial_exclusion(
+        p_booking_id UUID,
+        p_is_financially_excluded BOOLEAN,
+        p_financial_exclusion_reason TEXT,
+        p_changed_by_user_id UUID
+    )
+    RETURNS BOOLEAN
+    LANGUAGE plpgsql
+    SECURITY INVOKER
+    SET search_path = ''
+    AS $function$
+    DECLARE
+        v_previous_excluded BOOLEAN;
+        v_previous_reason TEXT;
+        v_new_reason TEXT;
+        v_action TEXT;
+        v_commission_exists BOOLEAN;
+    BEGIN
+        /* SECTION 1: Validate input and administrator identity. */
+        IF p_booking_id IS NULL
+        OR p_is_financially_excluded IS NULL
+        OR p_changed_by_user_id IS NULL THEN
+            RAISE EXCEPTION 'Invalid financial exclusion request.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM public.user_profiles
+            WHERE user_id = p_changed_by_user_id
+            AND role = 'admin'
+        ) THEN
+            RAISE EXCEPTION 'Administrator identity is invalid.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        /* SECTION 2: Validate and normalize the exclusion reason. */
+        v_new_reason := NULLIF(BTRIM(p_financial_exclusion_reason), '');
+
+        IF p_is_financially_excluded AND v_new_reason IS NULL THEN
+            RAISE EXCEPTION 'Financial exclusion requires a reason.'
+            USING ERRCODE = '22023';
+        END IF;
+
+        IF NOT p_is_financially_excluded THEN
+            v_new_reason := NULL;
+        END IF;
+
+        /* SECTION 3: Lock the booking against concurrent updates. */
+        SELECT is_financially_excluded, financial_exclusion_reason
+        INTO v_previous_excluded, v_previous_reason
+        FROM public.bookings
+        WHERE id = p_booking_id
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Booking was not found.'
+            USING ERRCODE = 'P0002';
+        END IF;
+
+        /* SECTION 4: Skip unchanged values without writing an audit. */
+        IF v_previous_excluded = p_is_financially_excluded
+        AND v_previous_reason IS NOT DISTINCT FROM v_new_reason THEN
+            RETURN FALSE;
+        END IF;
+
+        /* SECTION 5: Protect bookings with existing commissions.
+
+        The commission table will be introduced later.
+        Once it exists, financial exclusion changes are
+        blocked for bookings with commission records.
+        */
+        IF TO_REGCLASS('public.chauffeur_booking_commissions') IS NOT NULL THEN
+            EXECUTE
+                'SELECT EXISTS (
+                    SELECT 1
+                    FROM public.chauffeur_booking_commissions
+                    WHERE booking_id = $1
+                )'
+            INTO v_commission_exists
+            USING p_booking_id;
+
+            IF v_commission_exists THEN
+                RAISE EXCEPTION
+                    'Financial exclusion cannot be changed after commission creation.'
+                USING ERRCODE = '22023';
+            END IF;
+        END IF;
+
+        /* SECTION 6: Determine the financial audit action. */
+        v_action := CASE
+            WHEN NOT v_previous_excluded AND p_is_financially_excluded
+                THEN 'excluded'
+            WHEN v_previous_excluded AND NOT p_is_financially_excluded
+                THEN 'included'
+            ELSE 'reason_updated'
+        END;
+
+        /* SECTION 7: Update financial fields only. */
+        UPDATE public.bookings
+        SET
+            is_financially_excluded = p_is_financially_excluded,
+            financial_exclusion_reason = v_new_reason
+        WHERE id = p_booking_id;
+
+        /* SECTION 8: Record the change within the same transaction. */
+        INSERT INTO public.booking_financial_exclusion_audit (
+            booking_id,
+            action,
+            changed_by_user_id,
+            reason,
+            old_values,
+            new_values
+        )
+        VALUES (
+            p_booking_id,
+            v_action,
+            p_changed_by_user_id,
+            CASE
+                WHEN v_action = 'included'
+                    THEN 'Financial exclusion removed by administrator.'
+                ELSE v_new_reason
+            END,
+            JSONB_BUILD_OBJECT(
+                'is_financially_excluded', v_previous_excluded,
+                'financial_exclusion_reason', v_previous_reason
+            ),
+            JSONB_BUILD_OBJECT(
+                'is_financially_excluded', p_is_financially_excluded,
+                'financial_exclusion_reason', v_new_reason
+            )
+        );
+
+        RETURN TRUE;
+    END;
+    $function$;
+
+    /* Restrict execution to trusted server-side operations. */
+    REVOKE ALL ON FUNCTION public.update_booking_financial_exclusion(
+        UUID, BOOLEAN, TEXT, UUID
+    ) FROM PUBLIC, anon, authenticated;
+
+    GRANT EXECUTE ON FUNCTION public.update_booking_financial_exclusion(
+        UUID, BOOLEAN, TEXT, UUID
+    ) TO service_role;
+    /* ===========================================================
+        END update_booking_financial_exclusion
     =============================================================*/
 /* ======================================================================================================
 END VOYA TAXI — FINANCIAL MANAGEMENT & INVOICING

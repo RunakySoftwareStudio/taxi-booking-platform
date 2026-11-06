@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import AdminBookingEditForm from "@/components/AdminBookingEditForm";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { formStyles, pageStyles } from "@/styles/classNames";
-
+import AdminBookingFinancialExclusion from "@/components/AdminBookingFinancialExclusion";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +17,11 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
         .from("bookings")
         .select(`
             id, pickup_date, pickup_location, destination, pickup_time,
-            pickup_at, estimated_duration_minutes,
-            passengers, luggage, trip_type, notes, status, chauffeur_id, vehicle_id, has_pets,
-            infant_seat_count_required, child_seat_count_required,
-            booster_seat_count_required, isofix_required,
-            wheelchair_requirement, wheelchair_passenger_count,
-            mobility_aid_storage_required, extra_large_luggage_required,
+            pickup_at, estimated_duration_minutes, passengers, luggage,
+            trip_type, notes, status, is_financially_excluded, financial_exclusion_reason, chauffeur_id,
+            vehicle_id, has_pets, infant_seat_count_required, child_seat_count_required,
+            booster_seat_count_required, isofix_required, wheelchair_requirement,
+            wheelchair_passenger_count, mobility_aid_storage_required, extra_large_luggage_required,
             clients(name, email, phone)
         `)
     .eq("id", bookingId)
@@ -72,10 +71,25 @@ export default async function AdminBookingEditPage({ params}: AdminBookingEditPa
                 <h1 className={pageStyles.pageTitle}>Edit booking</h1>
                 <p className={pageStyles.pageDescription}> Update booking details, status, and assigned chauffeur. </p>
 
-                <div className="mt-6 rounded-2xl border border-cyan-400/30 bg-slate-900/70 p-4">
-                    <p className="text-sm font-semibold text-cyan-300"> Booking reference </p>
-                    <p className="mt-2 break-all font-mono text-sm text-slate-200"> {bookingRow.id} </p>
-                    <p className="mt-2 text-xs text-slate-400"> Use this reference together with the client email on the public booking status page. </p>
+                {/* Booking reference and financial exclusion overview */}
+                <div className="mt-6 grid gap-6 rounded-2xl border border-cyan-400/30 bg-slate-900/70 p-4 md:grid-cols-2">
+                    <div>
+                        <p className="text-sm font-semibold text-cyan-300">Booking reference</p>
+                        <p className="mt-2 break-all font-mono text-sm text-slate-200">{bookingRow.id}</p>
+                        <p className="mt-2 text-xs text-slate-400">
+                            Use this reference together with the client email on the public booking status page.
+                        </p>
+                    </div>
+
+                    {/* Admin-only financial exclusion controls */}
+                    <div className="border-t border-slate-700 pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+                        {/* Load the saved financial exclusion status and reason. */}
+                        <AdminBookingFinancialExclusion
+                            bookingId={bookingRow.id}
+                            isFinanciallyExcluded={bookingRow.is_financially_excluded}
+                            financialExclusionReason={bookingRow.financial_exclusion_reason}
+                        />
+                    </div>
                 </div>
 
                 {/* ============================================================
