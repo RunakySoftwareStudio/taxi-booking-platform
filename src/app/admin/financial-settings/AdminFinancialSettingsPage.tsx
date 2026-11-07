@@ -59,7 +59,11 @@ export default function AdminFinancialSettingsPage() {
                     <p className="mt-2 text-slate-300">
                         Manage completed journey commissions, generate chauffeur invoices, and review historical billing records.
                     </p>
-                    <p className="mt-4 text-sm text-slate-400">Invoice management is not configured yet.</p>
+                    {/* Navigate to chauffeur commission management. */}
+                    <Link href="/admin/financial-settings/commissions"
+                        className="mt-4 inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500">
+                        Manage Commissions
+                    </Link>
                 </section>
 
                 {/* Payment settings and chauffeur invoice payments */}
