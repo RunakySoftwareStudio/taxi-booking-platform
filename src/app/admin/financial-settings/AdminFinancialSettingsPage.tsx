@@ -53,17 +53,24 @@ export default function AdminFinancialSettingsPage() {
                     </p>
                 </section>
 
-                {/* Chauffeur invoicing and commission management */}
+                {/* Chauffeur invoicing and commission management. */}
                 <section className="mt-6 rounded-lg border border-slate-700 p-6">
                     <h2 className="text-xl font-semibold text-white">Chauffeur Invoices</h2>
                     <p className="mt-2 text-slate-300">
                         Manage completed journey commissions, generate chauffeur invoices, and review historical billing records.
                     </p>
-                    {/* Navigate to chauffeur commission management. */}
-                    <Link href="/admin/financial-settings/commissions"
-                        className="mt-4 inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500">
-                        Manage Commissions
-                    </Link>
+
+                    {/* Navigation to commission and invoice management. */}
+                    <div className="mt-4 flex flex-wrap gap-3">
+                        <Link href="/admin/financial-settings/commissions"
+                            className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500">
+                            Manage Commissions
+                        </Link>
+                        <Link href="/admin/financial-settings/invoices"
+                            className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500">
+                            Manage Invoices
+                        </Link>
+                    </div>
                 </section>
 
                 {/* Payment settings and chauffeur invoice payments */}
