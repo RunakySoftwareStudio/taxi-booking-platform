@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdminUser } from "@/lib/auth/requireAdminUser";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, formStyles } from "@/styles/classNames";
+import InvoiceVatSelector from "./InvoiceVatSelector";
 
 /*
     Admin Chauffeur Invoice Details
@@ -60,6 +61,11 @@ export default async function AdminChauffeurInvoiceDetailPage({
                         <p>Status: <span className="capitalize">{invoice.status}</span></p>
                         <p>Subtotal excluding VAT: {invoice.currency_code} {invoice.subtotal_excluding_vat}</p>
                         <p>VAT rate: {invoice.vat_percentage ?? "Not selected"}{invoice.vat_percentage == null ? "" : "%"}</p>
+
+                        {/* VAT selection is available only for draft invoices. */}
+                        {invoice.status === "draft" && (
+                            <InvoiceVatSelector invoiceId={invoice.id} currentVatPercentage={invoice.vat_percentage}/>
+                        )}
                         <p>VAT amount: {invoice.currency_code} {invoice.vat_amount}</p>
                         <p className="border-t border-slate-700 pt-3 font-semibold text-white">
                             Total including VAT: {invoice.currency_code} {invoice.total_including_vat}
@@ -86,8 +92,8 @@ export default async function AdminChauffeurInvoiceDetailPage({
                     <h2 className="text-xl font-semibold text-white">Invoice Items</h2>
 
                     <div className="mt-4 overflow-x-auto">
-                        {!invoiceItems?.length 
-                        ? (<p className="text-sm text-slate-400">No invoice items found.</p>) 
+                        {!invoiceItems?.length
+                        ? (<p className="text-sm text-slate-400">No invoice items found.</p>)
                         : (
                             <table className="w-full text-left text-sm">
                                 <thead className="border-b border-slate-700 text-slate-300">
