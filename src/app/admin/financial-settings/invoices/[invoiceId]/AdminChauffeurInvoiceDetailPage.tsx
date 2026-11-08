@@ -4,7 +4,7 @@ import { requireAdminUser } from "@/lib/auth/requireAdminUser";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { pageStyles, formStyles } from "@/styles/classNames";
 import InvoiceVatSelector from "./InvoiceVatSelector";
-
+import IssueInvoiceButton from "./IssueInvoiceButton";
 /*
     Admin Chauffeur Invoice Details
 
@@ -65,6 +65,11 @@ export default async function AdminChauffeurInvoiceDetailPage({
                         {/* VAT selection is available only for draft invoices. */}
                         {invoice.status === "draft" && (
                             <InvoiceVatSelector invoiceId={invoice.id} currentVatPercentage={invoice.vat_percentage}/>
+                        )}
+
+                        {/* Official invoice issuance is available only for draft invoices. */}
+                        {invoice.status === "draft" && (
+                            <IssueInvoiceButton invoiceId={invoice.id} />
                         )}
                         <p>VAT amount: {invoice.currency_code} {invoice.vat_amount}</p>
                         <p className="border-t border-slate-700 pt-3 font-semibold text-white">
