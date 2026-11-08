@@ -80,7 +80,12 @@ export default function AdminFinancialSettingsPage() {
                         Manage Voya Taxi bank details, payment terms, chauffeur invoice payments,
                         and outstanding balances.
                     </p>
-                    <p className="mt-4 text-sm text-slate-400">Payment management is not configured yet.</p>
+
+                    {/* Navigate to Voya Taxi's invoice sender and payment settings. */}
+                    <Link href="/admin/financial-settings/platform-invoice-settings"
+                        className="mt-4 inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500">
+                        Manage Platform Invoice Settings
+                    </Link>
                 </section>
             </div>
         </main>
