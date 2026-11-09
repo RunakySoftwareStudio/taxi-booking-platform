@@ -52,7 +52,14 @@ export default async function AdminChauffeurInvoiceDetailPage({
                 <p className="mt-2 text-slate-300">
                     Billing month: {invoice.billing_month}
                 </p>
-
+                {/* Download the stored invoice as a PDF through the protected Admin API. */}
+                <div className="mt-5">
+                    <a href={`/api/admin/invoices/${invoice.id}/pdf`}
+                        className="inline-flex items-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500"
+                    >
+                        {invoice.status === "draft" ? "Download Draft PDF" : "Download Invoice PDF"}
+                    </a>
+                </div>
                 {/* Read-only invoice status and financial totals. */}
                 <section className="mt-8 rounded-lg border border-slate-700 p-6">
                     <h2 className="text-xl font-semibold text-white">Invoice Details</h2>
