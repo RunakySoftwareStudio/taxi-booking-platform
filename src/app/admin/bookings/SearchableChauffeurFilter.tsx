@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { formStyles } from "@/styles/classNames";
 
 type ChauffeurFilterOption = {
@@ -24,6 +25,9 @@ type SearchableChauffeurFilterProps = {
     cleared and disabled.
 */
 export default function SearchableChauffeurFilter({ chauffeurs, assignmentFilter, selectedChauffeurId = "",}: SearchableChauffeurFilterProps) {
+
+    /* Navigate to the unfiltered Admin bookings page. */
+    const router = useRouter();
 
     /* Unassigned bookings cannot have a selected chauffeur. */
     const initialChauffeur =
@@ -69,8 +73,7 @@ export default function SearchableChauffeurFilter({ chauffeurs, assignmentFilter
                     Assignment
                 </label>
 
-                <select
-                    id="assignment" name="assignment" value={assignment}
+                <select id="assignment" name="assignment" value={assignment}
                     onChange={(event) => handleAssignmentChange(event.target.value as AssignmentFilter)}
                     className={formStyles.selectForm}
                 >
@@ -110,9 +113,27 @@ export default function SearchableChauffeurFilter({ chauffeurs, assignmentFilter
                     {chauffeurs.map((chauffeur) => (<option key={chauffeur.id} value={chauffeur.name} />))}
                 </datalist>
             </div>
-            {/* Clears the URL and all client-side booking filter values. The order-[99] makes the new Reset button stay at the end of the flex row, even though it technically comes from the chauffeur component.
-                So visually you should still have:*/}
-            <button type="button" onClick={() => window.location.assign("/admin/bookings")} className={`${formStyles.filterButton} order-99`}>
+
+            {/* Reset all booking filters, including Journey period. */}
+            <button className={`${formStyles.filterButton} order-99`}
+                type="button"
+                onClick={() => {
+                    setAssignment("all");
+                    setSearchValue("");
+                    setChauffeurId("");
+
+                    /* Reset the Journey period selection. */
+                    const periodSelect = document.getElementById("period");
+                    if (periodSelect instanceof HTMLSelectElement) {periodSelect.value = "all";}
+
+                    /* Reset the cancelled-bookings checkbox without submitting the form. */
+                    const cancelledCheckbox = document.querySelector<HTMLInputElement>('input[name="includeCancelled"]' );
+                    if (cancelledCheckbox) {cancelledCheckbox.checked = false; }
+
+                    /* Navigate to the unfiltered bookings page. */
+                    router.push("/admin/bookings");
+                }}
+            >
                 Reset filters
             </button>
         </>

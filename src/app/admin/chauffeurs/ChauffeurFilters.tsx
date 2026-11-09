@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { formStyles } from "@/styles/classNames";
 
 type ChauffeurFiltersProps = {
@@ -28,11 +29,33 @@ export default function ChauffeurFilters({
 
     /* Stores the editable text-filter values so they can be cleared with ×. */
     const [nameValue, setNameValue] = useState(nameFilter);
+   
+    /* Navigate between Admin chauffeur pages without a full reload. */
+    const router = useRouter();
+    
     const [serviceAreaValue, setServiceAreaValue] = useState(serviceAreaFilter);
 
-    /* Clears all chauffeur filters and returns to the full chauffeur list. */
+    /* Clears the visible filters and returns to the full chauffeur list. */
     function resetFilters() {
-        window.location.assign("/admin/chauffeurs");
+        /* Reset the controlled text fields. */
+        setNameValue("");
+        setServiceAreaValue("");
+
+        /* Reset the uncontrolled dropdown fields. */
+        const form = document.querySelector<HTMLFormElement>('form[action="/admin/chauffeurs"]');
+        if (form) {
+            for (const [name, value] of [
+                ["pets", "all"],
+                ["wheelchairCapacity", ""],
+                ["extraLargeLuggage", "all"],
+            ]) {
+                const select = form.elements.namedItem(name);
+                if (select instanceof HTMLSelectElement) {select.value = value; }
+            }
+        }
+
+        /* Remove the URL filters using Next.js navigation. */
+        router.push("/admin/chauffeurs");
     }
 
     return (
