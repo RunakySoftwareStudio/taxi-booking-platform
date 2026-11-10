@@ -14212,6 +14212,60 @@ GRANT SELECT ON TABLE public.user_profiles TO authenticated;
         END update_booking_financial_exclusion
     =============================================================*/
     /* ============================================================
+       VOYA TAXI — BOOKING FINANCIAL EXCLUSION PROTECTION
+
+       Prevent financial exclusion changes after a booking
+       has a frozen chauffeur commission.
+    ============================================================ */
+
+    /* SECTION 1: Protect financial exclusion fields. */
+    CREATE OR REPLACE FUNCTION public.protect_booking_financial_exclusion()
+    RETURNS TRIGGER
+    LANGUAGE plpgsql
+    SET search_path = ''
+    AS $function$
+    BEGIN
+        /* Allow updates when financial exclusion values are unchanged. */
+        IF NEW.is_financially_excluded IS NOT DISTINCT FROM OLD.is_financially_excluded
+           AND NEW.financial_exclusion_reason IS NOT DISTINCT FROM OLD.financial_exclusion_reason
+        THEN
+            RETURN NEW;
+        END IF;
+
+        /* Block changes after commission generation. */
+        IF EXISTS (
+            SELECT 1
+            FROM public.chauffeur_booking_commissions
+            WHERE booking_id = OLD.id
+        ) THEN
+            RAISE EXCEPTION
+                'Financial exclusion cannot be changed after commission creation.'
+                USING ERRCODE = '22023';
+        END IF;
+
+        RETURN NEW;
+    END;
+    $function$;
+
+    /* SECTION 2: Activate protection on financial exclusion updates. */
+    CREATE TRIGGER protect_booking_financial_exclusion
+    BEFORE UPDATE OF is_financially_excluded, financial_exclusion_reason
+    ON public.bookings
+    FOR EACH ROW
+    EXECUTE FUNCTION public.protect_booking_financial_exclusion();
+
+    /* SECTION 3: Restrict direct function execution. */
+    REVOKE ALL ON FUNCTION public.protect_booking_financial_exclusion()
+    FROM PUBLIC, anon, authenticated, service_role;
+
+    /* SECTION 4: Document the database protection. */
+    COMMENT ON FUNCTION public.protect_booking_financial_exclusion() IS
+    'Prevents changes to booking financial exclusion settings after a frozen chauffeur commission exists.';
+
+    /* ============================================================
+       END BOOKING FINANCIAL EXCLUSION PROTECTION
+    ============================================================ */
+    /* ============================================================
     VOYA TAXI — CHAUFFEUR BOOKING COMMISSIONS
 
     Purpose:
