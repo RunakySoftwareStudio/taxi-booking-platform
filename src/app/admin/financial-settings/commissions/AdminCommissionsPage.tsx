@@ -33,6 +33,25 @@ export default async function AdminCommissionsPage() {
         console.error("Could not load chauffeur commissions:", bookingsError);
     }
     /*
+        FINANCIAL REVIEW — UNRESOLVED COMMISSION FAILURES
+
+        Load automatic commission generation failures requiring
+        Admin attention. Resolved failures are excluded.
+    */
+    const { data: commissionFailures, error: failuresError } = await supabaseAdmin
+        .from("chauffeur_commission_generation_failures")
+        .select(`
+                id, booking_id,error_code,
+                error_message, created_at,
+                bookings (chauffeur_id, completed_at)
+            `)
+        .is("resolved_at", null)
+        .order("created_at", { ascending: false });
+
+    if (failuresError) {
+        console.error("Could not load financial review failures:", failuresError);
+    }
+    /*
         Load read-only commission previews.
         Existing generated commissions are excluded because their stored historical financial values must be used.
 
@@ -78,6 +97,60 @@ export default async function AdminCommissionsPage() {
                 <p className="mt-2 text-slate-300">
                     Review completed journeys, track chauffeur service fees, and manage commission generation.
                 </p>
+
+                {/* FINANCIAL REVIEW — Unresolved automatic commission failures. */}
+                <section className="mt-8 rounded-lg border border-slate-700 p-6">
+                    <h2 className="text-xl font-semibold text-white">Financial Review</h2>
+                    <p className="mt-2 text-sm text-slate-300">
+                        Completed bookings whose automatic commission generation requires attention.
+                    </p>
+
+                    <div className="mt-4 overflow-x-auto">
+                        {failuresError 
+                        ? (<p className="text-sm text-red-300">Unable to load financial review records.</p>)
+                        : !commissionFailures || commissionFailures.length === 0 
+                            ? (<p className="text-sm text-green-400">No unresolved commission failures.</p>) 
+                            : (
+                                <table className="w-full text-left text-sm">
+                                    <thead className="border-b border-slate-700 text-slate-300">
+                                        <tr>
+                                            <th className="px-3 py-3">Booking</th>
+                                            <th className="px-3 py-3">Chauffeur</th>
+                                            <th className="px-3 py-3">Failure Date</th>
+                                            <th className="px-3 py-3">Error</th>
+                                            <th className="px-3 py-3">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {commissionFailures.map((failure) => {
+                                            /* Normalize the booking relationship to one object. */
+                                            const booking = Array.isArray(failure.bookings) ? failure.bookings[0] : failure.bookings;
+
+                                            return (
+                                                <tr key={failure.id} className="border-b border-slate-800 text-slate-200">
+                                                    <td className="px-3 py-3">
+                                                        <Link href={`/admin/bookings/${failure.booking_id}`} className="text-cyan-400 hover:underline">
+                                                            {failure.booking_id.slice(0, 8)}
+                                                        </Link>
+                                                    </td>
+                                                    <td className="px-3 py-3">{booking?.chauffeur_id ? booking.chauffeur_id.slice(0, 8) : "—"}</td>
+                                                    <td className="px-3 py-3">
+                                                        {new Date(failure.created_at).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" })}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        <span className="text-amber-400">{failure.error_code}</span>
+                                                        <p className="mt-1 max-w-md text-slate-300">{failure.error_message}</p>
+                                                    </td>
+                                                    <td className="px-3 py-3 text-amber-400">Needs Review</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )
+                        }
+                    </div>
+                </section>
 
                 {/* Placeholder for the upcoming commission records. */}
                 <section className="mt-8 rounded-lg border border-slate-700 p-6">
