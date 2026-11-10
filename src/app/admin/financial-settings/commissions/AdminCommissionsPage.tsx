@@ -2,6 +2,7 @@ import Link from "next/link";
 import { pageStyles, formStyles } from "@/styles/classNames";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import GenerateCommissionButton from "./GenerateCommissionButton";
+import RetryCommissionButton from "./RetryCommissionButton";
 /*
     AdminCommissionsPage
 
@@ -119,6 +120,7 @@ export default async function AdminCommissionsPage() {
                                             <th className="px-3 py-3">Failure Date</th>
                                             <th className="px-3 py-3">Error</th>
                                             <th className="px-3 py-3">Status</th>
+                                            <th className="px-3 py-3">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -142,6 +144,10 @@ export default async function AdminCommissionsPage() {
                                                         <p className="mt-1 max-w-md text-slate-300">{failure.error_message}</p>
                                                     </td>
                                                     <td className="px-3 py-3 text-amber-400">Needs Review</td>
+                                                    {/* Retry commission generation after correcting the financial issue. */}
+                                                    <td className="px-3 py-3">
+                                                        <RetryCommissionButton bookingId={failure.booking_id} />
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
