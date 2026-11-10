@@ -35,9 +35,11 @@ export default function AdminFinancialSettingsPage() {
                     <p className="mt-2 text-slate-300">
                         Configure discounts and additional charges for clients.
                     </p>
-                    <p className="mt-4 text-sm text-slate-400">
-                        No adjustments configured.
-                    </p>
+                    {/* Navigate to reusable client discount and surcharge definitions. */}
+                    <Link href="/admin/financial-settings/client-adjustments"
+                        className="mt-4 inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500">
+                        Manage Client Discounts &amp; Surcharges
+                    </Link>
                 </section>
 
                 {/* Chauffeur discounts and surcharges */}
