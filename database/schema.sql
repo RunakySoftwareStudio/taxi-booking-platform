@@ -11534,7 +11534,7 @@ GRANT EXECUTE ON FUNCTION public.update_booking_admin_details(
     uuid, uuid, public.booking_status
 ) TO service_role;
 /*======================================================================
-    END GRANT EXECUTE ON FUNCTION public.update_booking_admin_details(
+    END GRANT EXECUTE ON FUNCTION public.update_booking_admin_details
 ========================================================================*/
 
 /* ============================================================
@@ -11555,13 +11555,13 @@ GRANT EXECUTE ON FUNCTION public.update_booking_admin_details(
    Do not update historical bookings.
 ============================================================ */
 /* ============================================================
-   PROTECTED BOOKING COMPLETION
+PROTECTED BOOKING COMPLETION
 
-   Purpose:
-   Mark an eligible assigned booking as completed and record
-   its official completion timestamp and source atomically.
+Purpose:
+Mark an eligible assigned booking as completed and record
+its official completion timestamp and source atomically.
 
-   Only trusted server operations may invoke this function.
+Only trusted server operations may invoke this function.
 ============================================================ */
 
 CREATE OR REPLACE FUNCTION public.complete_booking(
@@ -11585,13 +11585,13 @@ DECLARE
 BEGIN
     /* SECTION 1: Validate the requested completion source. */
     IF p_booking_id IS NULL OR
-       p_completed_by IS NULL OR
-       p_completed_by NOT IN ('admin', 'chauffeur', 'system') THEN
+    p_completed_by IS NULL OR
+    p_completed_by NOT IN ('admin', 'chauffeur', 'system') THEN
         RAISE EXCEPTION 'Invalid booking completion request.'
         USING ERRCODE = '22023';
     END IF;
 
-    /* ============================================================
+    /*
     SECTION 2: READ AND LOCK THE BOOKING
 
     Retrieve the current status, assigned chauffeur, vehicle,
@@ -11599,7 +11599,7 @@ BEGIN
 
     FOR UPDATE prevents concurrent booking changes while
     completion eligibility is being checked.
-    ============================================================ */
+    */
     SELECT
         status,
         chauffeur_id,
@@ -11632,7 +11632,7 @@ BEGIN
         USING ERRCODE = '22023';
     END IF;
 
-    /* ============================================================
+    /*
     SECTION 3A: VERIFY SCHEDULED JOURNEY END
 
     Manual completion requires a reliable pickup timestamp.
@@ -11640,7 +11640,7 @@ BEGIN
 
     Historical bookings without pickup_at cannot be completed
     until their timestamp has been established reliably.
-    ============================================================ */
+    */
 
     IF v_pickup_at IS NULL THEN
         RAISE EXCEPTION
@@ -11670,14 +11670,17 @@ BEGIN
             completed_by = p_completed_by
         WHERE id = p_booking_id;
 
-    END;
-    $function$;
+        /* SECTION 5A: Automatically process the chauffeur commission. */
+        PERFORM public.process_completed_booking_commission(p_booking_id);
+
+END;
+$function$;
 
 /* ============================================================
-   SECURITY — PROTECTED BOOKING COMPLETION
+SECURITY — PROTECTED BOOKING COMPLETION
 
-   Only trusted server-side service-role operations may
-   execute the booking completion function.
+Only trusted server-side service-role operations may
+execute the booking completion function.
 ============================================================ */
 
 REVOKE ALL ON FUNCTION public.complete_booking(
@@ -11687,6 +11690,9 @@ REVOKE ALL ON FUNCTION public.complete_booking(
 GRANT EXECUTE ON FUNCTION public.complete_booking(
     UUID, TEXT
 ) TO service_role;
+/*======================================================================
+    END VOYA TAXI - PROTECTED BOOKING COMPLETION
+========================================================================*/
 
 /* ============================================================
    VOYA TAXI — PROTECTED CHAUFFEUR BOOKING WITHDRAWAL
@@ -14623,6 +14629,145 @@ GRANT SELECT ON TABLE public.user_profiles TO authenticated;
     TO service_role;
     /* ===========================================================
         END VOYA TAXI — CHAUFFEUR COMMISSION GENERATION
+    =============================================================*/
+
+    /* ============================================================
+    VOYA TAXI — AUTOMATIC COMMISSION GENERATION
+
+    Track unsuccessful automatic commission calculations
+    so they can be reviewed without cancelling the journey.
+    ============================================================ */
+
+    /* SECTION 1: Track commission generation failures. */
+    CREATE TABLE public.chauffeur_commission_generation_failures (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+        booking_id UUID NOT NULL
+            REFERENCES public.bookings(id) ON DELETE RESTRICT,
+
+        error_code TEXT NOT NULL,
+        error_message TEXT NOT NULL,
+
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        resolved_at TIMESTAMPTZ NULL,
+
+        CONSTRAINT chauffeur_commission_failure_unique_booking
+            UNIQUE (booking_id),
+
+        CONSTRAINT chauffeur_commission_failure_message_required
+            CHECK (LENGTH(TRIM(error_message)) > 0)
+    );
+
+    /* Explain the purpose of the table. */
+    COMMENT ON TABLE public.chauffeur_commission_generation_failures IS
+    'Records failed automatic commission generation attempts for completed bookings requiring financial review.';
+
+    /* SECTION 2: Protect commission failure records. */
+    ALTER TABLE public.chauffeur_commission_generation_failures
+    ENABLE ROW LEVEL SECURITY;
+
+    /* Block direct access from ordinary application users. */
+    REVOKE ALL ON TABLE public.chauffeur_commission_generation_failures
+    FROM PUBLIC, anon, authenticated;
+
+    /* Allow the trusted server to create and read failure records. */
+    GRANT SELECT, INSERT, UPDATE
+    ON TABLE public.chauffeur_commission_generation_failures
+    TO service_role;
+
+    /* Preserve financial failure history against deletion. */
+    REVOKE DELETE, TRUNCATE
+    ON TABLE public.chauffeur_commission_generation_failures
+    FROM service_role;
+
+    /*
+    SECTION 3 — AUTOMATIC COMMISSION PROCESSING
+
+    Generate frozen commissions for completed bookings.
+    Financial calculation failures will be recorded separately.
+    */
+
+    CREATE OR REPLACE FUNCTION public.process_completed_booking_commission(
+        p_booking_id UUID
+    )
+    RETURNS VOID
+    LANGUAGE plpgsql
+    SECURITY INVOKER
+    SET search_path = ''
+    AS $function$
+    DECLARE
+        v_excluded BOOLEAN;
+        v_commission_id UUID;
+        v_error_code TEXT;
+        v_error_message TEXT;
+    BEGIN
+        /* SECTION 3A: Check whether the booking is financially excluded. */
+        SELECT is_financially_excluded
+        INTO v_excluded
+        FROM public.bookings
+        WHERE id = p_booking_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Booking not found.'
+            USING ERRCODE = 'P0002';
+        END IF;
+
+        IF v_excluded THEN
+            RETURN;
+        END IF;
+
+        /*
+            SECTION 3B: Generate and freeze the commission.
+
+            Reuse the existing protected calculation function.
+            If generation fails, preserve booking completion.
+        */
+        BEGIN
+            v_commission_id := public.generate_chauffeur_booking_commission(p_booking_id);
+
+            /* Mark an earlier calculation failure as resolved. */
+            UPDATE public.chauffeur_commission_generation_failures
+            SET resolved_at = NOW()
+            WHERE booking_id = p_booking_id
+            AND resolved_at IS NULL;
+
+        /* Record expected financial validation failures only. */
+        EXCEPTION
+            WHEN SQLSTATE '22023' OR SQLSTATE '23514' THEN
+            GET STACKED DIAGNOSTICS
+                v_error_code = RETURNED_SQLSTATE,
+                v_error_message = MESSAGE_TEXT;
+
+            /* Record the error for later financial review. */
+            INSERT INTO public.chauffeur_commission_generation_failures (
+                booking_id,
+                error_code,
+                error_message
+            )
+            VALUES (
+                p_booking_id,
+                v_error_code,
+                v_error_message
+            )
+            ON CONFLICT (booking_id)
+            DO UPDATE SET
+                error_code = EXCLUDED.error_code,
+                error_message = EXCLUDED.error_message,
+                resolved_at = NULL;
+        END;
+
+    END;
+    $function$;
+
+    /* SECTION 4: Restrict automatic commission processing to trusted operations. */
+    REVOKE ALL ON FUNCTION public.process_completed_booking_commission(UUID)
+    FROM PUBLIC, anon, authenticated;
+
+    GRANT EXECUTE ON FUNCTION public.process_completed_booking_commission(UUID)
+    TO service_role;
+
+    /* ===========================================================
+        END VOYA TAXI — AUTOMATIC COMMISSION GENERATION
     =============================================================*/
 
     /*============================================================
