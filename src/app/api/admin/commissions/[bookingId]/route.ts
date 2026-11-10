@@ -21,6 +21,14 @@ const bookingIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-
 
 export async function POST(_request: Request, { params }: RouteContext) {
     try {
+        /* Block commission generation in production until approval. */
+        if (process.env.NODE_ENV !== "development") {
+            return NextResponse.json(
+                { message: "Commission generation is not enabled in production yet." },
+                { status: 403 }
+            );
+        }
+
         /* SECTION 1: Authenticate the administrator. */
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
