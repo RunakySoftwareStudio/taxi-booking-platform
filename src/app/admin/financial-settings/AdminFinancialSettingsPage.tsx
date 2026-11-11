@@ -50,9 +50,12 @@ export default function AdminFinancialSettingsPage() {
                     <p className="mt-2 text-slate-300">
                         Configure adjustments to chauffeur service fees.
                     </p>
-                    <p className="mt-4 text-sm text-slate-400">
-                        No adjustments configured.
-                    </p>
+                    
+                    {/* Navigate to reusable chauffeur discount and surcharge definitions. */}
+                    <Link href="/admin/financial-settings/chauffeur-adjustments"
+                        className="mt-4 inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500">
+                        Manage Chauffeur Discounts &amp; Surcharges
+                    </Link>
                 </section>
 
                 {/* Chauffeur invoicing and commission management. */}
