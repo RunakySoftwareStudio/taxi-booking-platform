@@ -114,8 +114,16 @@ export async function PATCH(request: Request, { params }: RouteContext) {
             })
             .eq("id", adjustmentId).select("id").maybeSingle();
 
-        /* SECTION 4A: Return a clear error when adjustment periods overlap. */
+        /* SECTION 4A: Return clear errors for protected financial periods. */
         if (error) {
+            /* Prevent changes that invalidate existing client assignments. */
+            if (error.code === "P0001" && error.message.includes("existing client assignments would become invalid")) {
+                return NextResponse.json({
+                    message: "Cannot change the effective period because this adjustment is assigned to one or more clients. The new dates would invalidate existing assignments.",
+                }, { status: 409 });
+            }
+
+            /* Prevent overlapping adjustment definition periods. */
             if (error.code === "23P01") {
                 return NextResponse.json({
                     message: `Cannot save: this ${adjustmentType} period overlaps with an existing adjustment. Please change the effective dates.`,

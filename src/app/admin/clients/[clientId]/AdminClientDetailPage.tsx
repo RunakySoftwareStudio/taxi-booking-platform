@@ -2,6 +2,8 @@ import { pageStyles, tableStyles, formStyles, mobileStyle } from "@/styles/class
 import { formatShortDate, formatShortTime , formatShortDateTime } from "@/lib/formatDateTime";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import Link from "next/link";
+/* Coordinate the assignment table and shared Create/Edit form. */
+import ClientAdjustmentAssignmentsManager from "./ClientAdjustmentAssignmentsManager";
 
 //export const dynamic = "force-dynamic";  //Keep dynamic only in: src/app//admin/clients/[clientid]/page.tsx 
 
@@ -31,8 +33,34 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
             .order("pickup_date", { ascending: false })
             .order("pickup_time", { ascending: false });
 
-        if (clientError || !client) 
-        {
+        /* SECTION: Load this client's assigned discounts and surcharges. */
+        const { data: assignments, error: assignmentsError } = await supabaseAdmin
+            .from("client_adjustment_assignments")
+            .select(`
+                id, adjustment_definition_id, effective_from, effective_until, is_active,
+                client_adjustment_definitions!client_adjustment_assignments_adjustment_definition_id_fkey (
+                    name, adjustment_type, value_type, value, currency_code
+                )
+            `)
+            .eq("client_id", clientId)
+            .order("effective_from", { ascending: false });
+
+        if (assignmentsError) {
+            console.error("Could not load client adjustment assignments:", assignmentsError);
+        }
+
+        /* SECTION: Load active reusable definitions for client assignment. */
+        const { data: definitions, error: definitionsError } = await supabaseAdmin
+            .from("client_adjustment_definitions")
+            .select("id, name, adjustment_type, effective_from, effective_until")
+            .eq("is_active", true)
+            .order("name", { ascending: true });
+
+        if (definitionsError) {
+            console.error("Could not load client adjustment definitions:", definitionsError);
+        }
+
+        if (clientError || !client){
             console.error("Could not load client:", clientError);
             return (
                 <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
@@ -73,7 +101,39 @@ export default async function AdminClientDetailPage( {params}: AdminClientDetail
                         <span className={formStyles.formInputInfoValue}> {formatShortDateTime(client.created_at)} </span>
                     </div>
                 </div>
-                
+                {/* SECTION: Client-specific discounts and surcharges. */}
+                {/* Normalize Supabase's relationship array to a single definition. */}
+                {/* SECTION: Manage this client's adjustment assignments. */}
+                <ClientAdjustmentAssignmentsManager
+                    clientId={clientId}
+                    assignments={(assignments ?? []).map((item) => {
+                        const relation = item.client_adjustment_definitions;
+                        const definition = Array.isArray(relation) ? relation[0] : relation;
+
+                        return {
+                            id: item.id,
+                            adjustment_definition_id: item.adjustment_definition_id,
+                            effective_from: item.effective_from,
+                            effective_until: item.effective_until,
+                            is_active: item.is_active,
+                            client_adjustment_definitions: definition ? {
+                                name: definition.name,
+                                adjustment_type: definition.adjustment_type,
+                                value_type: definition.value_type,
+                                value: Number(definition.value),
+                                currency_code: definition.currency_code,
+                            } : null,
+                        };
+                    })}
+                    definitions={(definitions ?? []).map((item) => ({
+                        id: item.id,
+                        name: item.name,
+                        adjustment_type: item.adjustment_type as "discount" | "surcharge",
+                        effective_from: item.effective_from,
+                        effective_until: item.effective_until,
+                    }))}
+                />
+
                 <h2 className={tableStyles.headerTableSmall}>Booking history</h2>
 
                 {/* Mobile booking history cards */}
