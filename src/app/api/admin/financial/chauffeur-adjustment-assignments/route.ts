@@ -88,18 +88,17 @@ export async function POST(request: Request) {
                 { status: 400 }
             );
             
-        /* SECTION 3: Create the assignment using the trusted server-side Supabase client. */
-        const { data, error } = await supabaseAdmin.from("chauffeur_adjustment_assignments")
-            .insert({
-                chauffeur_id: chauffeurId,
-                adjustment_definition_id: definitionId,
-                effective_from: effectiveFrom,
-                effective_until: effectiveUntil || null,
-                is_active: true,
-            })
-            .select("id")
-            .single();
-
+        /* SECTION 3: Create the assignment and initial financial period
+        atomically through the protected database workflow. */
+        const { data, error } = await supabaseAdmin.rpc(
+            "create_chauffeur_adjustment_assignment_financial",
+            {
+                p_chauffeur_id: chauffeurId,
+                p_adjustment_definition_id: definitionId,
+                p_effective_from: effectiveFrom,
+                p_effective_until: effectiveUntil || null,
+            }
+        );
     
         /* SECTION 4: Translate database validation errors into API responses. */
         if (error) {
@@ -121,10 +120,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: "Could not create the chauffeur adjustment assignment." }, { status: 500 });
         }
 
-        /* SECTION 5: Return the newly created assignment. */
+        /* SECTION 5: Return the assignment UUID from the protected RPC. */
         return NextResponse.json({
             success: true,
-            id: data.id,
+            id: data,
             message: "Chauffeur adjustment assigned successfully.",
         }, { status: 201 });
 

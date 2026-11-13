@@ -49,9 +49,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
             if (Object.keys(body).length !== 1 || typeof body.is_active !== "boolean")
                 return NextResponse.json({ message: "Invalid activation request." }, { status: 400 });
 
-            const { data, error } = await supabaseAdmin.from("chauffeur_adjustment_definitions")
-                .update({ is_active: body.is_active })
-                .eq("id", adjustmentId).select("id, is_active").maybeSingle();
+            /* Update definition status through the protected financial workflow.
+            All affected chauffeur financial periods are handled atomically. */
+            const { data, error } = await supabaseAdmin.rpc(
+                body.is_active
+                    ? "reactivate_chauffeur_adjustment_definition_financial"
+                    : "deactivate_chauffeur_adjustment_definition_financial",
+                { p_definition_id: adjustmentId }
+            );
 
             if (error) {
                 console.error("Could not update adjustment status:", error);
@@ -62,8 +67,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
             revalidatePath("/admin/financial-settings/chauffeur-adjustments");
             return NextResponse.json({
-                success: true, is_active: data.is_active,
-                message: data.is_active ? "Adjustment activated successfully." : "Adjustment deactivated successfully."
+                success: true, is_active: body.is_active,
+                message: body.is_active
+                    ? "Adjustment activated successfully."
+                    : "Adjustment deactivated successfully."
             });
         }
         const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -104,15 +111,22 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         if (effectiveUntil && effectiveUntil < effectiveFrom)
             return NextResponse.json({ message: "End date cannot precede start date." }, { status: 400 });
 
-        /* SECTION 4: Update only the selected adjustment definition. */
-        const { data, error } = await supabaseAdmin.from("chauffeur_adjustment_definitions")
-            .update({
-                name, description: description || null, adjustment_type: adjustmentType,
-                value_type: valueType, value,
-                currency_code: valueType === "fixed" ? currencyCode : null,
-                effective_from: effectiveFrom, effective_until: effectiveUntil || null,
-            })
-            .eq("id", adjustmentId).select("id").maybeSingle();
+        /* SECTION 4: Update the adjustment through the protected financial
+        workflow. Preserve historical values and version financial changes. */
+        const { data, error } = await supabaseAdmin.rpc(
+            "update_chauffeur_adjustment_definition_financial",
+            {
+                p_definition_id: adjustmentId,
+                p_name: name,
+                p_description: description || null,
+                p_adjustment_type: adjustmentType,
+                p_value_type: valueType,
+                p_value: value,
+                p_currency_code: valueType === "fixed" ? currencyCode : null,
+                p_effective_from: effectiveFrom,
+                p_effective_until: effectiveUntil || null,
+            }
+        );
 
         /* SECTION 4A: Return clear errors for protected financial periods. */
         if (error) {

@@ -57,12 +57,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
             if (typeof body.is_active !== "boolean")
                 return NextResponse.json({ message: "Invalid activation request." }, { status: 400 });
 
-            /* Update only the assignment status; database trigger records the change. */
-            const { data, error } = await supabaseAdmin.from("chauffeur_adjustment_assignments")
-                .update({ is_active: body.is_active })
-                .eq("id", assignmentId)
-                .select("id, chauffeur_id, is_active")
-                .maybeSingle();
+            /* Change assignment status through the protected financial workflow.
+            The database preserves historical periods and records the audit. */
+            const { data, error } = await supabaseAdmin.rpc(
+                body.is_active
+                    ? "reactivate_chauffeur_adjustment_assignment_financial"
+                    : "deactivate_chauffeur_adjustment_assignment_financial",
+                { p_assignment_id: assignmentId }
+            );
 
             if (error) {
                 console.error("Could not update chauffeur assignment status:", error);
@@ -76,8 +78,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
             return NextResponse.json({
                 success: true,
-                is_active: data.is_active,
-                message: data.is_active
+                is_active: body.is_active,
+                message: body.is_active
                     ? "Chauffeur adjustment assignment activated successfully."
                     : "Chauffeur adjustment assignment deactivated successfully.",
             });
@@ -102,12 +104,16 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         if (effectiveUntil && effectiveUntil < effectiveFrom)
             return NextResponse.json({ message: "Effective Until cannot precede Effective From." }, { status: 400 });
 
-        /* SECTION 5: Update dates; database triggers enforce definition validity and overlap rules. */
-        const { data, error } = await supabaseAdmin.from("chauffeur_adjustment_assignments")
-            .update({ effective_from: effectiveFrom, effective_until: effectiveUntil })
-            .eq("id", assignmentId)
-            .select("id, chauffeur_id")
-            .maybeSingle();
+        /* SECTION 5: Update future assignment dates through the protected
+        financial workflow, preserving historical eligibility and audit. */
+        const { data, error } = await supabaseAdmin.rpc(
+            "update_chauffeur_adjustment_assignment_dates_financial",
+            {
+                p_assignment_id: assignmentId,
+                p_effective_from: effectiveFrom,
+                p_effective_until: effectiveUntil,
+            }
+        );
 
         if (error) {
             if (error.code === "23P01")
